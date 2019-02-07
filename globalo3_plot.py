@@ -536,7 +536,6 @@ def timeseries_rado3dt(t2m, stdo3, emfixo3, stdnox, emfixnox, years, lat, lng,
     frstdnox = globalo3_calculate.separate_years(frstdnox, np.array([0.]), 
         np.array([0.]), years)
     frstdnox = np.mean(frstdnox[:,:,0,0], axis = 1)
-    
     # Find dO3/dT with regionally-averaged data
     (frstd_byyr, frstd_ls, frstd_lsp, frstd_mkz, frstd_mkp) = \
         globalo3_calculate.calculate_trends_do3dt(frt2m, frstdo3, 
@@ -572,6 +571,7 @@ def timeseries_rado3dt(t2m, stdo3, emfixo3, stdnox, emfixnox, years, lat, lng,
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
                 'timeseries_rado3dt_%s.eps'%fstr)
     return 
+
 
 import numpy as np
 import sys
@@ -681,11 +681,11 @@ map_global(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, np.mean((no_n+no2_n),
 map_global(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, do3dt_n, do3dt_s,
            '<dO$_{\mathregular{3}}$/dT> [ppbv K$^{\mathregular{-1}}$]', 
            np.linspace(0, 3., 7), 'PuBu', 'meando3dt')
-#map_r2(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, r_noxo3_n**2, 
-#       r_noxo3_s**2, 'NO$_{x}$', 'O$_{\mathregular{3}}$', 'nox_o3')
-#map_do3dt(lng_gmi_n, lat_gmi_n, lng_gmi_s, lat_gmi_s, do3dt_n, do3dt_s, 
-#    years)
-#map_rto3(lng_gmi_n, lat_gmi_n, lng_gmi_s, lat_gmi_s, r_n, r_s, years)    
+map_r2(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, r_noxo3_n**2, 
+       r_noxo3_s**2, 'NO$_{x}$', 'O$_{\mathregular{3}}$', 'nox_o3')
+map_rto3(lng_gmi_n, lat_gmi_n, lng_gmi_s, lat_gmi_s, r_t2mo3_n, r_t2mo3_s, 
+    years)    
+
 
 # Plot global trends
 map_global(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, nox_ls_n, 
@@ -707,143 +707,144 @@ map_global(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, do3dt_mk_n,
     p_s = do3dt_mkp_s)
 
 
-## Load Std fields from Strode et al. (2015)
-#stdlat_gmi_n, stdlng_gmi_n, times_n, stdo3_n = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n, 'O3', 'HindcastFFIgac2')
-#stdlat_gmi_s, stdlng_gmi_s, times_s, stdo3_s = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s, 'O3', 'HindcastFFIgac2')
-#stdlat_gmi_n, stdlng_gmi_n, times_n, stdno_n = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n, 'NO', 'HindcastFFIgac2')
-#stdlat_gmi_s, stdlng_gmi_s, times_s, stdno_s = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s, 'NO', 'HindcastFFIgac2')
-#stdlat_gmi_n, stdlng_gmi_n, times_n, stdno2_n = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n, 'NO2', 'HindcastFFIgac2')
-#stdlat_gmi_s, stdlng_gmi_s, times_s, stdno2_s = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s, 'NO2', 'HindcastFFIgac2')
-## Load EmFix O3 from Strode et al. (2015)
-#emfixlat_gmi_n, emfixlng_gmi_n, times_n, emfixo3_n = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n, 'O3', 'Hindcast3Igac2')
-#emfixlat_gmi_s, emfixlng_gmi_s, times_s, emfixo3_s = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s, 'O3', 'Hindcast3Igac2')
-#emfixlat_gmi_n, emfixlng_gmi_n, times_n, emfixno_n = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n, 'NO', 'Hindcast3Igac2')
-#emfixlat_gmi_s, emfixlng_gmi_s, times_s, emfixno_s = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s, 'NO', 'Hindcast3Igac2')
-#emfixlat_gmi_n, emfixlng_gmi_n, times_n, emfixno2_n = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n, 'NO2', 'Hindcast3Igac2')
-#emfixlat_gmi_s, emfixlng_gmi_s, times_s, emfixno2_s = \
-#    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s, 'NO2', 'Hindcast3Igac2')    
-## Convert trace gases from volume mixing ratio to ppbv
-#stdo3_n = stdo3_n*1e9
-#stdo3_s = stdo3_s*1e9
-#stdno_n = stdno_n*1e9
-#stdno_s = stdno_s*1e9
-#stdno2_n = stdno2_n*1e9
-#stdno2_s = stdno2_s*1e9
-#emfixo3_n = emfixo3_n*1e9
-#emfixo3_s = emfixo3_s*1e9
-#emfixno_n = emfixno_n*1e9
-#emfixno_s = emfixno_s*1e9
-#emfixno2_n = emfixno2_n*1e9
-#emfixno2_s = emfixno2_s*1e9
-## Load MERRA-2 T2m
-#lat_merra_n, lng_merra_n, stdt2m_n = \
-#    globalo3_open.open_merra2t2m_specifieddomain(years, months_n, latmin_n, 
-#    latmax_n, lngmin_n, lngmax_n)
-#lat_merra_s, lng_merra_s, stdt2m_s = \
-#    globalo3_open.open_merra2t2m_specifieddomain(years, months_s, latmin_s, 
-#    latmax_s, lngmin_s, lngmax_s)
-## Interpolate T2m
-#stdt2m_n = globalo3_open.interpolate_merra_to_ctmresolution(stdlat_gmi_n, 
-#    stdlng_gmi_n, lat_merra_n, lng_merra_n, stdt2m_n)
-#stdt2m_s = globalo3_open.interpolate_merra_to_ctmresolution(stdlat_gmi_s, 
-#    stdlng_gmi_s, lat_merra_s, lng_merra_s, stdt2m_s)
+# Load Std fields from Strode et al. (2015)
+stdlat_gmi_n, stdlng_gmi_n, times_n, stdo3_n = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n, 'O3', 'HindcastFFIgac2')
+stdlat_gmi_s, stdlng_gmi_s, times_s, stdo3_s = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s, 'O3', 'HindcastFFIgac2')
+stdlat_gmi_n, stdlng_gmi_n, times_n, stdno_n = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n, 'NO', 'HindcastFFIgac2')
+stdlat_gmi_s, stdlng_gmi_s, times_s, stdno_s = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s, 'NO', 'HindcastFFIgac2')
+stdlat_gmi_n, stdlng_gmi_n, times_n, stdno2_n = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n, 'NO2', 'HindcastFFIgac2')
+stdlat_gmi_s, stdlng_gmi_s, times_s, stdno2_s = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s, 'NO2', 'HindcastFFIgac2')
+# Load EmFix O3 from Strode et al. (2015)
+emfixlat_gmi_n, emfixlng_gmi_n, times_n, emfixo3_n = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n, 'O3', 'Hindcast3Igac2')
+emfixlat_gmi_s, emfixlng_gmi_s, times_s, emfixo3_s = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s, 'O3', 'Hindcast3Igac2')
+emfixlat_gmi_n, emfixlng_gmi_n, times_n, emfixno_n = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n, 'NO', 'Hindcast3Igac2')
+emfixlat_gmi_s, emfixlng_gmi_s, times_s, emfixno_s = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s, 'NO', 'Hindcast3Igac2')
+emfixlat_gmi_n, emfixlng_gmi_n, times_n, emfixno2_n = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n, 'NO2', 'Hindcast3Igac2')
+emfixlat_gmi_s, emfixlng_gmi_s, times_s, emfixno2_s = \
+    globalo3_open.open_overpass2_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s, 'NO2', 'Hindcast3Igac2')    
+# Convert trace gases from volume mixing ratio to ppbv
+stdo3_n = stdo3_n*1e9
+stdo3_s = stdo3_s*1e9
+stdno_n = stdno_n*1e9
+stdno_s = stdno_s*1e9
+stdno2_n = stdno2_n*1e9
+stdno2_s = stdno2_s*1e9
+emfixo3_n = emfixo3_n*1e9
+emfixo3_s = emfixo3_s*1e9
+emfixno_n = emfixno_n*1e9
+emfixno_s = emfixno_s*1e9
+emfixno2_n = emfixno2_n*1e9
+emfixno2_s = emfixno2_s*1e9
+# Load MERRA-2 T2m
+lat_merra_n, lng_merra_n, stdt2m_n = \
+    globalo3_open.open_merra2t2m_specifieddomain(years, months_n, latmin_n, 
+    latmax_n, lngmin_n, lngmax_n)
+lat_merra_s, lng_merra_s, stdt2m_s = \
+    globalo3_open.open_merra2t2m_specifieddomain(years, months_s, latmin_s, 
+    latmax_s, lngmin_s, lngmax_s)
+# Interpolate T2m
+stdt2m_n = globalo3_open.interpolate_merra_to_ctmresolution(stdlat_gmi_n, 
+    stdlng_gmi_n, lat_merra_n, lng_merra_n, stdt2m_n)
+stdt2m_s = globalo3_open.interpolate_merra_to_ctmresolution(stdlat_gmi_s, 
+    stdlng_gmi_s, lat_merra_s, lng_merra_s, stdt2m_s)
 
 
-## Calculate dO3/dT
-#stddo3dt_n = globalo3_calculate.calculate_do3dt(stdt2m_n, stdo3_n, 
-#    stdlat_gmi_n, stdlng_gmi_n)    
-#stddo3dt_s = globalo3_calculate.calculate_do3dt(stdt2m_s, stdo3_s, 
-#    stdlat_gmi_s, stdlng_gmi_s)
-#emfixdo3dt_n = globalo3_calculate.calculate_do3dt(stdt2m_n, emfixo3_n, 
-#    stdlat_gmi_n, stdlng_gmi_n)    
-#emfixdo3dt_s = globalo3_calculate.calculate_do3dt(stdt2m_s, emfixo3_s, 
-#    stdlat_gmi_s, stdlng_gmi_s)
-## Calculate least-squares/Mann-Kendall trends
-#(stddo3dt_byyr_n, stddo3dt_ls_n, stddo3dt_lsp_n, stddo3dt_mkz_n, 
-#    stddo3dt_mkp_n) = globalo3_calculate.calculate_trends_do3dt(t2m_n, stdo3_n, 
-#    stdlat_gmi_n, stdlng_gmi_n, years)
-#(stddo3dt_byyr_s, stddo3dt_ls_s, stddo3dt_lsp_s, stddo3dt_mkz_s, 
-#    stddo3dt_mkp_s) = globalo3_calculate.calculate_trends_do3dt(t2m_s, stdo3_s, 
-#    stdlat_gmi_s, stdlng_gmi_s, years)
-#(emfixdo3dt_byyr_n, emfixdo3dt_ls_n, emfixdo3dt_lsp_n, emfixdo3dt_mkz_n, 
-#    emfixdo3dt_mkp_n) = globalo3_calculate.calculate_trends_do3dt(t2m_n, 
-#    emfixo3_n, stdlat_gmi_n, stdlng_gmi_n, years)
-#(emfixdo3dt_byyr_s, emfixdo3dt_ls_s, emfixdo3dt_lsp_s, emfixdo3dt_mkz_s, 
-#    emfixdo3dt_mkp_s) = globalo3_calculate.calculate_trends_do3dt(t2m_s, 
-#    emfixo3_s, stdlat_gmi_s, stdlng_gmi_s, years)
+# Calculate dO3/dT
+stddo3dt_n = globalo3_calculate.calculate_do3dt(stdt2m_n, stdo3_n, 
+    stdlat_gmi_n, stdlng_gmi_n)    
+stddo3dt_s = globalo3_calculate.calculate_do3dt(stdt2m_s, stdo3_s, 
+    stdlat_gmi_s, stdlng_gmi_s)
+emfixdo3dt_n = globalo3_calculate.calculate_do3dt(stdt2m_n, emfixo3_n, 
+    stdlat_gmi_n, stdlng_gmi_n)    
+emfixdo3dt_s = globalo3_calculate.calculate_do3dt(stdt2m_s, emfixo3_s, 
+    stdlat_gmi_s, stdlng_gmi_s)
+# Calculate least-squares/Mann-Kendall trends
+(stddo3dt_byyr_n, stddo3dt_ls_n, stddo3dt_lsp_n, stddo3dt_mkz_n, 
+    stddo3dt_mkp_n) = globalo3_calculate.calculate_trends_do3dt(stdt2m_n, 
+    stdo3_n, stdlat_gmi_n, stdlng_gmi_n, years)
+(stddo3dt_byyr_s, stddo3dt_ls_s, stddo3dt_lsp_s, stddo3dt_mkz_s, 
+    stddo3dt_mkp_s) = globalo3_calculate.calculate_trends_do3dt(stdt2m_s, 
+    stdo3_s, stdlat_gmi_s, stdlng_gmi_s, years)
+(emfixdo3dt_byyr_n, emfixdo3dt_ls_n, emfixdo3dt_lsp_n, emfixdo3dt_mkz_n, 
+    emfixdo3dt_mkp_n) = globalo3_calculate.calculate_trends_do3dt(stdt2m_n, 
+    emfixo3_n, stdlat_gmi_n, stdlng_gmi_n, years)
+(emfixdo3dt_byyr_s, emfixdo3dt_ls_s, emfixdo3dt_lsp_s, emfixdo3dt_mkz_s, 
+    emfixdo3dt_mkp_s) = globalo3_calculate.calculate_trends_do3dt(stdt2m_s, 
+    emfixo3_s, stdlat_gmi_s, stdlng_gmi_s, years)
 
 
-## Plot mean global fields from Std and Emfix simulation and differences
-## for O3
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    np.mean(stdo3_n, axis=0), np.mean(stdo3_s, axis=0), 
-#    '<O$_{\mathregular{3, Std}}$> [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
-#    'meano3_std') 
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    np.mean(emfixo3_n, axis=0), np.mean(emfixo3_s, axis=0), 
-#    '<O$_{\mathregular{3, EmFix}}$> [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
-#    'meano3_emfix')
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    np.mean(emfixo3_n-stdo3_n, axis=0), np.mean(emfixo3_s-stdo3_s, axis=0), 
-#    '<O$_{\mathregular{3}}$>$_{\mathregular{EmFix - Std}}$ [ppbv]', 
-#    np.linspace(-8, 8, 9), 'bwr', 'meano3_emfixstddiff')
-## For NOx
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    np.mean((stdno_n+stdno2_n), axis=0), np.mean((stdno_s+stdno2_s), axis=0), 
-#    '<NO$_{x\mathregular{, Std}}$> [ppbv]', np.linspace(0.5, 1.5, 11), 
-#    'PuBu', 'meannox_std')
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    np.mean((emfixno_n+emfixno2_n), axis=0), np.mean((emfixno_s+emfixno2_s), 
-#    axis=0), '<NO$_{x\mathregular{, EmFix}}$> [ppbv]', 
-#    np.linspace(0.5, 1.5, 11), 'PuBu', 'meannox_emfix')
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    np.mean((emfixno_n+emfixno2_n)-(stdno_n+stdno2_n), axis=0), 
-#    np.mean((emfixno_s+emfixno2_s)-(stdno_s+stdno2_s), 
-#    axis=0), '<NO$_{x}$>$_{\mathregular{EmFix - Std}}$ [ppbv]', 
-#    np.linspace(-0.5, 0.5, 11), 'bwr', 'meannox_emfixstddiff')
-## For dO3/dT
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, stddo3dt_n, 
-#    stddo3dt_s,'<dO$_{\mathregular{3, Std}}$/dT> [ppbv K$^{\mathregular{-1}}$]', 
-#    np.linspace(0, 3., 7), 'PuBu', 'meando3dt_std')
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    emfixdo3dt_n, stddo3dt_s,'<dO$_{\mathregular{3, EmFix}}$/dT> '+
-#    '[ppbv K$^{\mathregular{-1}}$]', np.linspace(0, 3., 7), 'PuBu', 
-#    'meando3dt_emfix')    
-#map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
-#    (emfixdo3dt_n-stddo3dt_n), (emfixdo3dt_s-stddo3dt_s),
-#    '<dO$_{\mathregular{3}}$/dT>$_{\mathregular{EmFix - Std}}$ '+
-#    '[ppbv K$^{\mathregular{-1}}$]', np.linspace(-1, 1., 9), 'bwr', 
-#    'meando3dt_emfixstddiff')  
+# Plot mean global fields from Std and Emfix simulation and differences
+# for O3
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    np.mean(stdo3_n, axis=0), np.mean(stdo3_s, axis=0), 
+    '<O$_{\mathregular{3, Std}}$> [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
+    'meano3_std') 
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    np.mean(emfixo3_n, axis=0), np.mean(emfixo3_s, axis=0), 
+    '<O$_{\mathregular{3, EmFix}}$> [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
+    'meano3_emfix')
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    np.mean(emfixo3_n-stdo3_n, axis=0), np.mean(emfixo3_s-stdo3_s, axis=0), 
+    '<O$_{\mathregular{3}}$>$_{\mathregular{EmFix - Std}}$ [ppbv]', 
+    np.linspace(-8, 8, 9), 'bwr', 'meano3_emfixstddiff')
+# For NOx
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    np.mean((stdno_n+stdno2_n), axis=0), np.mean((stdno_s+stdno2_s), axis=0), 
+    '<NO$_{x\mathregular{, Std}}$> [ppbv]', np.linspace(0.5, 1.5, 11), 
+    'PuBu', 'meannox_std')
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    np.mean((emfixno_n+emfixno2_n), axis=0), np.mean((emfixno_s+emfixno2_s), 
+    axis=0), '<NO$_{x\mathregular{, EmFix}}$> [ppbv]', 
+    np.linspace(0.5, 1.5, 11), 'PuBu', 'meannox_emfix')
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    np.mean((emfixno_n+emfixno2_n)-(stdno_n+stdno2_n), axis=0), 
+    np.mean((emfixno_s+emfixno2_s)-(stdno_s+stdno2_s), 
+    axis=0), '<NO$_{x}$>$_{\mathregular{EmFix - Std}}$ [ppbv]', 
+    np.linspace(-0.5, 0.5, 11), 'bwr', 'meannox_emfixstddiff')
+# For dO3/dT
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, stddo3dt_n, 
+    stddo3dt_s,'<dO$_{\mathregular{3, Std}}$/dT> [ppbv K$^{\mathregular{-1}}$]', 
+    np.linspace(0, 3., 7), 'PuBu', 'meando3dt_std')
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    emfixdo3dt_n, stddo3dt_s,'<dO$_{\mathregular{3, EmFix}}$/dT> '+
+    '[ppbv K$^{\mathregular{-1}}$]', np.linspace(0, 3., 7), 'PuBu', 
+    'meando3dt_emfix')    
+map_global(stdlat_gmi_n, stdlat_gmi_s, stdlng_gmi_n, stdlng_gmi_s, 
+    (emfixdo3dt_n-stddo3dt_n), (emfixdo3dt_s-stddo3dt_s),
+    '<dO$_{\mathregular{3}}$/dT>$_{\mathregular{EmFix - Std}}$ '+
+    '[ppbv K$^{\mathregular{-1}}$]', np.linspace(-1, 1., 9), 'bwr', 
+    'meando3dt_emfixstddiff')  
 
-## Plot regionally-averaged trends
-## Eastern U.S. 
-#timeseries_rado3dt(stdt2m_n, stdo3_n, emfixo3_n, (stdno_n+stdno2_n), 
-#    (emfixno_n+emfixno2_n), years, stdlat_gmi_n, stdlng_gmi_n, 270., 49., 290., 
-#    32., 'eastus')
-## China
-#timeseries_rado3dt(stdt2m_n, stdo3_n, emfixo3_n, (stdno_n+stdno2_n), 
-#    (emfixno_n+emfixno2_n), years, stdlat_gmi_n, stdlng_gmi_n, 110., 28., 118., 
-#    22., 'china')
+
+# Plot regionally-averaged trends
+# Eastern U.S. 
+timeseries_rado3dt(stdt2m_n, stdo3_n, emfixo3_n, (stdno_n+stdno2_n), 
+    (emfixno_n+emfixno2_n), years, stdlat_gmi_n, stdlng_gmi_n, 270., 49., 290., 
+    32., 'eastus')
+# China
+timeseries_rado3dt(stdt2m_n, stdo3_n, emfixo3_n, (stdno_n+stdno2_n), 
+    (emfixno_n+emfixno2_n), years, stdlat_gmi_n, stdlng_gmi_n, 110., 28., 118., 
+    22., 'china')
