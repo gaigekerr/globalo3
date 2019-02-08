@@ -10,8 +10,12 @@ Revision History
     24012019 -- function 'open_schnello3' added; edited 
                 function 'interpolate_merra_to_ctmresolution' to interpolate
                 any gridded dataset to the resolution of the CTM
-    30022019 -- function 'open_overpass2_specifieddomain' modified to handle 
+    30012019 -- function 'open_overpass2_specifieddomain' modified to handle 
                 any named GMI simulation's overpass2 output
+    07022019 -- function 'open_gmideposition_specifieddomain' added
+    08022019 -- np.roll issue with longitude corrected in functions 
+                'open_gmideposition_specifieddomain' and 
+                'open_merra2t2m_specifieddomain'
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -134,6 +138,82 @@ def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
         lng[-1] = 360.    
     return lat, lng, np.hstack(times), np.vstack(gas_all)
 
+def open_gmideposition_specifieddomain(years, latmin, latmax, lngmin, lngmax, 
+    gas, process):
+    """load daily deposition or scavenging data from MERRA-2 GMI simulation
+    
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period
+    latmin : float    
+        Latitude (degrees north) of bottom edge of bounding box for focus 
+        region. For this parameter and others defining the bounding box, 
+        function finds the closest index to bounding box edges
+    latmax : float
+        Latitude (degrees north) of upper edge of bounding box for focus region
+    lngmin : float
+        Longitude (degrees east, 0-360) of left edge of bounding box for focus 
+        region        
+    lngmax : float
+        Longitude (degrees east, 0-360) of right edge of bounding box for focus 
+        region
+    gas : str
+        Chemical formula of desired trace gas; e.g., O3, OH, NO, NO2, CO, CH2O
+    process : str
+        DD for dry deposition, WD for wet deposition, and SCAV for scavenging
+        
+    Returns
+    -------
+    lat : numpy.ndarray
+        GMI latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        GMI longitude coordinates, units of degrees east, [lng,]
+    dep : numpy.ndarray
+        MERRA-2 GMI daily deposition data, for example, if process is DD
+        (SCAV) and gas is O3, then the data are the dry deposition of Ox
+        (savenging of Ox), units of kg m-3 s-1 (SCAV) or kg m-2 s-1 (DD/WD), 
+        [years, days in year, lat, lng] (DD/WD) or [years, days in year, 
+        level, lat, lng] (SCAV)
+    """
+    import time
+    import numpy as np
+    import xarray as xr
+    import sys
+    sys.path.append('/Users/ghkerr/phd/GMI/')
+    from geo_idx import geo_idx    
+    start_time = time.time()
+    PATH_DEPOSITION = '/Users/ghkerr/phd/globalo3/data/GMI/MERRA2_GMI/'
+    dep = []
+    for year in years:
+        ds = xr.open_dataset(PATH_DEPOSITION+
+                             'MERRA2_GMI.tavg24_3d_dep_Nv.%dJJA_%s.nc4'
+                             %(year,gas))
+        if (year==years[0]):
+            lat = ds['lat'].data
+            lng = ds['lon'].data
+            # Convert longitude from (-180-180) to (0-360)
+            lng = lng % 360       
+            # Shift this grid such that it spans (0-360) rather than 
+            # (180-360, 0-180)
+            lng = np.roll(lng,int(lng.shape[0]/2)-1)
+            latmin = geo_idx(latmin,lat)
+            latmax = geo_idx(latmax,lat)
+            lngmin = geo_idx(lngmin,lng)
+            lngmax = geo_idx(lngmax,lng)
+        # Extract desired data, roll deposition grid similar to longitude grid
+        # Restrict data to focus region
+        dep_yr = ds['%s_%s'%(process,gas)].data
+        dep_yr = np.roll(dep_yr, int(dep_yr.shape[-1]/2)-1, axis=2)    
+        dep_yr = dep_yr[:,latmin:latmax+1,lngmin:lngmax+1]
+        lat = lat[latmin:latmax+1]
+        lng = lng[lngmin:lngmax+1]       
+        dep.append(dep_yr)
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
+          'MERRA-2 GMI %s %s data for %d-%d loaded in %.2f seconds' 
+          %(gas,process,years[0],years[-1],(time.time()-start_time)))
+    return lat, lng, np.array(dep)
+
 def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin, 
     lngmax):
     """load daily maximum 2-meter temperatures from MERRA-2 over the specific 
@@ -187,9 +267,7 @@ def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin,
             # Open monthly overpass2 file 
             infile = Dataset(PATH_MERRA+'MERRA2_300.inst1_2d_asm_Nx.%d%.2d.SUB.nc'
                              %(year,month),'r')        
-            # On first iteration, extract dimensions and find indicies 
-            # corresponding to (closest to) desired domain
-            if (year == years[0]) and (month == months_int[0]):
+            if (month==months_int[0]) and (year==years[0]):
                 lat = infile.variables['lat'][:]
                 lng = infile.variables['lon'][:]
                 # Convert longitude from (-180-180) to (0-360)
@@ -203,14 +281,14 @@ def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin,
                 lngmax = geo_idx(lngmax,lng)
                 # Restrict coordinates over focus region 
                 lat = lat[latmin:latmax+1]
-                lng = lng[lngmin:lngmax+1]
+                lng = lng[lngmin:lngmax+1]           
             # Extract 2-meter temperatures for the month
             t2m_month = infile.variables['T2M'][:]
             # Drop leap days from analysis
             if (calendar.isleap(year)==True) and (month == 2):
                 t2m_month = t2m_month[:-1]
             # Roll grid similar to longitude grid
-            t2m_month = np.roll(t2m_month, int(lng.shape[0]/2)-1, axis = 2)
+            t2m_month = np.roll(t2m_month, int(t2m_month.shape[-1]/2)-1, axis = 2)
             t2m_month = t2m_month[:,latmin:latmax+1,lngmin:lngmax+1]
             t2m_all.append(t2m_month)
     print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
@@ -288,7 +366,7 @@ def open_edgar_specifieddomain(years, latmin, latmax, lngmin, lngmax,
     return lat, lng, np.stack(edgar_all)
 
 def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
-    t2m): 
+    t2m, checkplot='yes'): 
     """interpolate MERRA-2 field (0.5 deg latitude x 0.625 deg longitude) to 
     resolution of GMI CTM (1 deg latitude x 1.25 deg longitude) using xESMF. 
     
@@ -304,6 +382,8 @@ def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
         MERRA-2 longitude coordinates, units of degrees east, [lng,]        
     t2m : numpy.ndarray
         Daily maximum 2-meter temperatures, [time, lat, lng]
+    checkplot : str
+        If 'yes' the mean fields before/after interpolation are plotted
         
     Returns
     -------
@@ -327,16 +407,19 @@ def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
     fig = plt.figure()
     ax1 = plt.subplot2grid((2,2),(0,0),colspan=2)
     ax2 = plt.subplot2grid((2,2),(1,0),colspan=2)
-    clevs = np.linspace(275, 315, 21)
-    ax1.contourf(np.mean(t2m, axis=0), clevs)
-    ax1.set_title('Original')
-    m2 = ax2.contourf(np.mean(t2m_interp, axis=0), clevs)
-    ax2.set_title('Interpolated')
-    fig.subplots_adjust(right=0.8)
-    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    fig.colorbar(m2, cax=cbar_ax)
-    plt.subplots_adjust(hspace=0.4)
-    plt.show()
+    clevs = np.linspace(t2m.min(), t2m.max(), 10)
+    if checkplot == 'yes':
+        a = t2m.mean(axis=tuple(range(0, t2m.ndim-2)))
+        b = t2m_interp.mean(axis=tuple(range(0, t2m_interp.ndim-2)))        
+        ax1.contourf(a, clevs)
+        ax1.set_title('Original')
+        m2 = ax2.contourf(b, clevs)
+        ax2.set_title('Interpolated')
+        fig.subplots_adjust(right=0.8)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+        fig.colorbar(m2, cax=cbar_ax)
+        plt.subplots_adjust(hspace=0.4)
+        plt.show()
     print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
           'MERRA-2 interpolated to CTM resolution in %.2f seconds' 
           %((time.time()-start_time)))
