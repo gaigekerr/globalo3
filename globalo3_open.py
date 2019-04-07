@@ -16,6 +16,7 @@ Revision History
     08022019 -- np.roll issue with longitude corrected in functions 
                 'open_gmideposition_specifieddomain' and 
                 'open_merra2t2m_specifieddomain'
+    07042019 -- function 'open_toar' added
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -201,13 +202,13 @@ def open_gmideposition_specifieddomain(years, latmin, latmax, lngmin, lngmax,
             latmax = geo_idx(latmax,lat)
             lngmin = geo_idx(lngmin,lng)
             lngmax = geo_idx(lngmax,lng)
+            lat = lat[latmin:latmax+1]
+            lng = lng[lngmin:lngmax+1]                   
         # Extract desired data, roll deposition grid similar to longitude grid
         # Restrict data to focus region
         dep_yr = ds['%s_%s'%(process,gas)].data
         dep_yr = np.roll(dep_yr, int(dep_yr.shape[-1]/2)-1, axis=2)    
         dep_yr = dep_yr[:,latmin:latmax+1,lngmin:lngmax+1]
-        lat = lat[latmin:latmax+1]
-        lng = lng[lngmin:lngmax+1]       
         dep.append(dep_yr)
     print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
           'MERRA-2 GMI %s %s data for %d-%d loaded in %.2f seconds' 
@@ -392,7 +393,6 @@ def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
     """
     import numpy as np
     import xesmf as xe
-    import matplotlib.pyplot as plt
     import time
     start_time = time.time()
     # Interpolate finer grid (MERRA-2) to the resolution of the CTM
@@ -403,12 +403,13 @@ def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
     regridder = xe.Regridder(grid_in,grid_out,'bilinear')
     regridder.clean_weight_file()
     t2m_interp = regridder(t2m)
-    # Check to ensure that interpolation worked
-    fig = plt.figure()
-    ax1 = plt.subplot2grid((2,2),(0,0),colspan=2)
-    ax2 = plt.subplot2grid((2,2),(1,0),colspan=2)
-    clevs = np.linspace(t2m.min(), t2m.max(), 10)
     if checkplot == 'yes':
+        import matplotlib.pyplot as plt        
+        # Check to ensure that interpolation worked
+        fig = plt.figure()
+        ax1 = plt.subplot2grid((2,2),(0,0),colspan=2)
+        ax2 = plt.subplot2grid((2,2),(1,0),colspan=2)
+        clevs = np.linspace(np.nanmin(t2m), np.nanmax(t2m), 10)
         a = t2m.mean(axis=tuple(range(0, t2m.ndim-2)))
         b = t2m_interp.mean(axis=tuple(range(0, t2m_interp.ndim-2)))        
         ax1.contourf(a, clevs)
@@ -536,3 +537,168 @@ def open_schnello3(years, months, domain):
           'Schnell et al. (2014) gridded O3 for %d-%d loaded in %.2f seconds' 
           %(years[0], years[-1],(time.time()-start_time)))
     return lat.data, lng.data, o3.data
+
+def open_merra2_rh2mvars(years, hours, lngmin, latmax, lngmax, latmin):
+    """Using function "open_merra2," function opens the components needed 
+    to calculated relative humidity (specific humidity, surface pressure, 
+    temperature) at 2 meters and produces a daily average over the hours 
+    specified in input parameter. 
+
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period, [years,]
+    hours : list 
+        Hours (in Zulu time) during which reanalysis data, n.b., for 
+        inst3_3d_asm_Np collection, output is 3-hourly (0, 3, 9, etc.), 
+        [hours,]
+    lngmin : float
+        Longitude coordinate of the left side (minimum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmax : float 
+        Latitude coordinate of the top side (maximum) of the bounding box 
+        containing the focus region, units of degrees north    
+    lngmax : float 
+        Longitude coordinate of the right side (maximum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmin : float
+        Latitude coordinate of the bottom side (minimum) of the bounding box 
+        containing the focus region, units of degrees north           
+
+    Returns
+    -------    
+    QV2M : numpy.ndarray
+        MERRA-2 2-meter specific humidity regridded to GMI resolution, units
+        of kg kg-1, [time, lat, lng]
+    T2M : numpy.ndarray
+        MERRA-2 2-meter temperature regridded to GMI resolution, units of K, 
+        [time, lat, lng]    
+    PS : numpy.ndarray
+        MERRA-2 surface pressure regridded to GMI resolution, units of Pa, 
+        [time, lat, lng]
+    lat_gmi_n : numpy.ndarray
+        GMI latitude coordinates, units of degrees north, [lat,]
+    lng_gmi_n : numpy.ndarray
+        GMI longitude coordinates, units of degrees east, [lng,]
+    """
+    import sys
+    sys.path.append('/Users/ghkerr/phd/transporto3/')
+    import transporto3_open
+    sys.path.append('/Users/ghkerr/phd/globalo3/')
+    import globalo3_open    
+    # Open GMI output to obtain lat/lng
+    lat_gmi_n, lng_gmi_n, times_n, o3_n = \
+        globalo3_open.open_overpass2_specifieddomain([2008], 
+        ['jun','jul','aug'], latmin, latmax, lngmin, lngmax, 'O3', 
+        'HindcastMR2')
+    # Load 2-meter specific humidity, temperature and surface pressure and 
+    # interpolate
+    QV2M, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, hours, 
+        'QV2M', 'tavg1_2d_slv_Nx', 'JJA_rh.nc', lngmin, latmax, lngmax, latmin, 
+        dailyavg='yes')
+    QV2M = interpolate_merra_to_ctmresolution(lat_gmi_n, lng_gmi_n, 
+        lat_merra, lng_merra, QV2M)
+    T2M, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, hours, 
+        'T2M', 'tavg1_2d_slv_Nx', 'JJA_rh.nc', lngmin, latmax, lngmax, latmin, 
+        dailyavg='yes')
+    T2M = interpolate_merra_to_ctmresolution(lat_gmi_n, lng_gmi_n, 
+        lat_merra, lng_merra, T2M)
+    PS, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, hours, 
+        'PS', 'tavg1_2d_slv_Nx', 'JJA_rh.nc', lngmin, latmax, lngmax, latmin, 
+        dailyavg='yes')
+    PS = interpolate_merra_to_ctmresolution(lat_gmi_n, lng_gmi_n, 
+        lat_merra, lng_merra, PS)
+    return QV2M, T2M, PS, lat_gmi_n, lng_gmi_n
+
+
+def open_toar(years, months, varname, res):
+    """For the variable/metric of interest function opens monthly mean 
+    daily maximum 8-hour averaged gridded ozone for the specified resolution. 
+    
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period, [years,]
+    months : list
+        Three letter abbreviations (lowercase) for months in measuring period
+    varname : str
+        Variable of interest (e.g., 'rural_mean', 'rural_median', 'urban_mean',
+        urban_median')
+    res : int 
+        Resolution of TOAR gridded set (resolutions of 10°×10°, 5°×5°, and 
+        2°×2° are available). Recommended use of the 5° longitude ×5° latitude 
+        products is encouraged as they provide a reasonable compromise between 
+        global coverage and regional differentiation.
+    
+    Returns
+    -------
+    var : numpy.ndarray
+         TOAR output for specified metric, units of ppbv, [time, lat, lng]
+    ttime : pandas.core.indexes.datetimes.DatetimeIndex
+        Timestamps of months for which TOAR data is desired, [time,]
+    lat : numpy.ndarray
+        TOAR latitude coordinates for resolution of interest, units of degrees 
+        north, [lat,]
+    lng : numpy.ndarray
+        TOAR longitude coordinates for resolution of interest, units of degrees 
+        east, [lng,]    
+    """
+    import time
+    start_time = time.time()
+    import numpy as np
+    import pandas as pd
+    import calendar
+    import xarray as xr
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading TOAR %s O3...' %varname)
+    PATH_TOAR = '/Users/ghkerr/phd/globalo3/data/TOAR/'
+    # n.b., this will open the monthly timeseries TOAR data at specified 
+    # resolution
+    ds = xr.open_dataset(PATH_TOAR+'%dx%d_degrees/'%(res,res)+
+                         'timeseries_1990-2014/'+
+                         'toar_monthly_dma8epax_1990-2014_2x2.nc')
+    whereyear = np.where(np.in1d(ds.time.dt.year, np.array(years)) == 
+                         True)[0]
+    # Convert month abbreviations to integers
+    months_int = []
+    for month in months:
+        months_int.append(list(calendar.month_abbr).index(month.title()))
+    wheremonth = np.where(np.in1d(ds.time.dt.month, np.array(months_int)) == 
+                          True)[0]
+    # Find years and months of interest; n.b., the first wheretime finds the 
+    # indices intersecting years and months with respect to whereyear, so
+    # whereyear must be indexed to find the overall position of months/years of
+    # interest in the array
+    wheretime = np.where(np.in1d(whereyear, wheremonth) == True)[0]
+    wheretime = whereyear[wheretime]
+    #dt = pd.to_datetime(ds.time.data)
+    #dt = dt[wheretime]
+    # Extract relevant variable 
+    ds = ds[[varname]]
+    ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
+            lon=(ds.dims['lon']//2), roll_coords=True) # ghk: removed -1 from 
+            # ds.dims['lon']//2-1
+    ds = ds.isel(time=wheretime)  
+    var = ds[varname].values
+    ttime = pd.to_datetime(ds.time.values)
+    lat = ds.lat.values
+    lng = ds.lon.values
+    print('TOAR %s for %d-%d loaded in %.2f seconds!'%(varname, years[0],
+             years[-1], time.time() - start_time))
+    return var, ttime, lat, lng
+
+
+
+
+
+
+
+
+
+res = 2
+years = [2008, 2009, 2010]
+months = ['jun', 'jul', 'aug']
+var = 'urban_mean'
+
+
+urban_mean, toartime, toarlat, toarlng = open_toar(years, months, var, res)
