@@ -416,6 +416,9 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
         Latitude coordinates, units of degrees north, [lat,]
     lng_fr : numpy.ndarray
         Longitude coordinates, units of degrees east, [lng,]
+    jetdistance : int
+        The number of grid cells north and south of the jet over which the 
+        field will be evaluated
     anom : bool
         If True, field_jet will be calculated relative to values at the jet's 
         center
