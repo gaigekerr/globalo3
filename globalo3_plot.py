@@ -244,10 +244,10 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    plt.figure()
-    ax=plt.subplot2grid((1,1), (0,0), colspan=1,
+    plt.figure(figsize=(8,3))
+    ax=plt.subplot2grid((1,2), (0,0), colspan=2,
                         projection=ccrs.Miller(central_longitude=0.))
-    ax.set_title(title, fontsize=18, x=0.02, ha='left')    
+    ax.set_title(title, fontsize=14, x=0.02, ha='left')    
     if oceanon == 'yes':
         ax.add_feature(cfeature.OCEAN, zorder=10, lw = 0.0, color='lightgrey')
     ax.coastlines(lw=0.25, color='k')
@@ -273,13 +273,13 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
                     elinewidth=0.5, ecolor='k', fmt='o', 
                     transform=ccrs.PlateCarree())
     # Add colorbar
-    colorbar_axes = plt.gcf().add_axes([0.82,0.25,0.03,0.5])
+    colorbar_axes = plt.gcf().add_axes([0.78,0.25,0.02,0.5])
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label(cbar_label, fontsize=16)
+    colorbar.set_label(cbar_label, fontsize=14)
     plt.gcf().subplots_adjust(right=0.75, hspace=-0.2)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'map_nh_%s.eps'%fstr)
+                'map_nh_%s.eps'%fstr, transparent=True)
     return 
 
 def timeseries_seasonalo3():
@@ -858,46 +858,60 @@ except NameError:
         lng_gmi_n)
     r_o3u500_n = globalo3_calculate.calculate_r(U500, o3_dat_n, lat_gmi_n, 
         lng_gmi_n)    
-    ## Calculate trends
-    #nox_byyr_n, nox_ls_n, nox_lsp_n, nox_mk_n, nox_mkp_n = \
-    #globalo3_calculate.calculate_trends((no_n+no2_n), lat_gmi_n, lng_gmi_n, years)
-    #do3dt_byyr_n, do3dt_ls_n, do3dt_lsp_n, do3dt_mk_n, do3dt_mkp_n = \
-    #globalo3_calculate.calculate_trends_do3dt(t2m_n, o3_n, lat_gmi_n, lng_gmi_n, 
-    #    years)
-    #edgar_byyr_n, edgar_ls_n, edgar_lsp_n, edgar_mk_n, edgar_mkp_n = \
-    #globalo3_calculate.calculate_trends(nox_edgar_n, lat_gmi_n, lng_gmi_n, years)
+    # Calculate trends
+    nox_byyr_n, nox_ls_n, nox_lsp_n, nox_mk_n, nox_mkp_n = \
+    globalo3_calculate.calculate_trends((no_n+no2_n), lat_gmi_n, lng_gmi_n, 
+        years)
+    do3dt_byyr_n, do3dt_ls_n, do3dt_lsp_n, do3dt_mk_n, do3dt_mkp_n = \
+    globalo3_calculate.calculate_trends_do3dt(t2m_n, o3_n, lat_gmi_n, 
+        lng_gmi_n, years)
+    edgar_byyr_n, edgar_ls_n, edgar_lsp_n, edgar_mk_n, edgar_mkp_n = \
+    globalo3_calculate.calculate_trends(nox_edgar_n, lat_gmi_n, lng_gmi_n, 
+        years)
 
 
 """PLOT MEAN GLOBAL FIELDS AND CORRELATIONS"""
 #map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '', 
 #       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
-#       'meano3_%d-%d_jet'%(years[0],years[-1]), e_n=jet_lat_mean, 
-#       eerr_n=jet_lat_std)
+#       'meano3_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml,axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 #map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(o3_n, axis=0), '(a)', 
 #       '$\mathregular{\sigma}_{\mathregular{O}_{\mathregular{3}}}$ [ppbv]', 
 #       np.linspace(5, 11, 7), 'PuBu', 'sigmao3_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=jet_lat_mean, eerr_n=jet_lat_std)
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(nox_edgar_n, axis=0), '(b)', 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0),
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(nox_edgar_n, axis=0), '', 
 #       'NO$_{x\:\mathregular{, EDGAR}}$ [kg m$^{\mathregular{-2}}$ '+
 #       's$^{\mathregular{-1}}$]', np.linspace(0e-10, 1e-10, 11), 'PuBu', 
-#       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), e_n=jet_lat_mean, 
-#       eerr_n=jet_lat_std)
+#       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 #map_nh(lat_gmi_n, lng_gmi_n, do3dt_n, '(a) Transport and Chemistry', 
 #       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'Reds', 'do3dt_%d-%d'%(years[0],years[-1]),
-#       e_n=jet_lat_mean, eerr_n=jet_lat_std)
+#       np.linspace(0, 3., 7), 'Reds', 'do3dt_%d-%d_jet'%(years[0],years[-1]),
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 #map_nh(lat_gmi_n, lng_gmi_n, do3dt_dat_n, '(b) Transport only', 
 #       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'Reds', 'do3dt_transport_%d-%d'
-#       %(years[0],years[-1]))
+#       np.linspace(0, 3., 7), 'Reds', 'do3dt_transport_%d-%d_jet' %(years[0],
+#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0),
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 #map_nh(lat_gmi_n, lng_gmi_n, do3drh_n,
 #       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
 #       np.linspace(-0.75, 0.75, 7), 'bwr', 'do3drh_%d-%d'%(years[0],years[-1]))
+## Change in O3 with change in eddy-driven jet position 
+#map_nh(lat_nhml, lng_nhml, m_o3jetdist, '', 
+#       '[ppbv degree$^{\mathregular{-1}}$]', np.linspace(-0.2, 0.4, 7), 
+#       'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 ## O3-T, O3-RH, T-RH correlations in + Chemistry simulation
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '', 
+#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '(c)', 
 #    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_t2mo3chem_%d-%d'%(years[0],years[-1]))#, e_n=jet_lat_mean, 
-#    eerr_n=jet_lat_std)
+#    'r_t2mo3chem_%d-%d_jet'%(years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 #map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n,'r(RH, O$_\mathregular{3}$)',
 #    np.linspace(-1., 1., 11), 'bwr', 'r_rho3chem_%d-%d'%(years[0],years[-1]))
 #map_nh(lat_gmi_n, lng_gmi_n, r_t2mrh_n,'r(RH, T)',
@@ -907,6 +921,12 @@ except NameError:
 #    'r(T, O$_\mathregular{3,\:+\:Chemistry}$) $-$ r(T, O$_\mathregular{3,'+
 #    '\:Tr;ansport}$)', np.linspace(-.4, .4, 9), 'bwr', 
 #    'r_t2mo3_diffchemtransport_%d-%d'%(years[0],years[-1]))
+## Correlation between O3 and distance from eddy-driven jet
+#map_nh(lat_nhml, lng_nhml, r_o3jetdist, '', 
+#       r'$\it{r}\:$(O$_\mathregular{3}$, jet distance)', 
+#       np.linspace(-0.7, 0.7, 8), 'bwr', 'r_o3jet_%d-%d_jet'%(years[0],
+#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 ## dO3/dT from + Chemistry overlaid with O3-T correlation contours
 #map_do3dt_ro3t_nh(do3dt_n, r_t2mo3_n, lat_gmi_n, lng_gmi_n, '2008-2010')
 ## Plot O3-T correlation over India for + Chemistry, Transport, and difference
@@ -930,31 +950,6 @@ except NameError:
 #   '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
 #   np.linspace(0,6,11), 'PuBu', 
 #   'stdt2m_%d-%d'%(years[0],years[-1]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 """PLOT MEAN LOCATION OF JET STREAM (MAX U WINDS AT 500 HPA) AND 
@@ -1024,7 +1019,7 @@ except NameError:
 
 
 """PLOT MEAN LOCATION OF JET STREAM (MAX U WINDS AT 500 HPA) AND 
-   O3, dO3/dT, and r(O3, T) WITHIN +/- 10 DEGREES OF JET STREAM"""    
+   O3, dO3/dT, and r(O3, T) WITHIN +/- 10 DEGREES OF JET STREAM""" 
 #U500_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(U500, 
 #    lat_gmi_n, lng_gmi_n, 0., 360., 23., 60.)
 #o3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(o3_n, 
@@ -1035,13 +1030,20 @@ except NameError:
 #    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 0., 360., 23., 60.)      
 #land_nhml = globalo3_calculate.find_grid_overland(lat_nhml, lng_nhml)   
 #lat_jet_nhml, o3_jet_nhml = globalo3_calculate.find_field_atjet(o3_nhml, 
-#    U500_nhml, lng_nhml, lng_nhml, 10, anom=True)
+#    U500_nhml, lat_nhml, lng_nhml, 10, anom=True)
 #lat_jet_nhml, do3dt_jet_nhml = globalo3_calculate.find_field_atjet(do3dt_nhml, 
-#    U500_nhml, lng_nhml, lng_nhml, 10)
+#    U500_nhml, lat_nhml, lng_nhml, 10)
 #lat_jet_nhml, r_t2mo3_jet_nhml = globalo3_calculate.find_field_atjet(
-#    r_t2mo3_nhml, U500_nhml, lng_nhml, lng_nhml, 10)   
-# Find locations of shorelines by finding fraction of NaNs (ocean) grid 
-# cells in a given longitudinal transect 
+#    r_t2mo3_nhml, U500_nhml, lat_nhml, lng_nhml, 10) 
+#m_o3jetdist, r_o3jetdist = globalo3_calculate.calculate_o3jet_relationship(
+#    o3_nhml, lat_jet_nhml, lat_nhml, lng_nhml)
+#lng_fr = lng_nhml
+#lat_fr = lat_nhml
+#land_fr = land_nhml
+#jet_lat = lat_jet_nhml
+#r_t2mo3_jet = r_t2mo3_jet_nhml
+## Find locations of shorelines by finding fraction of NaNs (ocean) grid 
+## cells in a given longitudinal transect 
 #ocean_frac = np.empty(shape=(lng_fr.shape[0]))
 #ocean_frac[:] = np.nan
 #land_fr_roll = np.roll(land_fr, shift=int(len(lng_fr)/2), axis=1)
@@ -1057,9 +1059,9 @@ except NameError:
 #fig = plt.figure()
 #axt = plt.subplot2grid((2,2), (0,0), colspan=2, projection=
 #                       ccrs.Miller(central_longitude=0.))
-#axt.set_title('(a)', fontsize=18, x=0.02, ha='left')    
+#axt.set_title('(a)', fontsize=14, x=0.02, ha='left')    
 #axb = plt.subplot2grid((2,2), (1,0), colspan=2)
-#axb.set_title('(b)', fontsize=18, x=0.02, ha='left')    
+#axb.set_title('(b)', fontsize=14, x=0.02, ha='left')    
 #axt.add_feature(cfeature.OCEAN, zorder=1, lw=0.0, color='lightgrey')
 #axt.coastlines(lw=0.25, color='k')
 #axt.set_extent([lng_fr.min()-180, lng_fr.max()-180, lat_fr.min(), 
@@ -1079,16 +1081,17 @@ except NameError:
 #                  np.nanmean(o3_anom_jet_roll, axis=0), 
 #                  np.linspace(-14, 14, 8), cmap=plt.get_cmap('bwr'), 
 #                  extend='both')
-#axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=16)
+#axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=14)
 #axb.set_xticks(np.linspace(0, 360, 9))
-#axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180])
-#axb.set_ylabel('Grid cells from jet', fontsize=16)
+#axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180], fontsize=12)
+#axb.set_ylabel('Grid cells from jet', fontsize=14)
+#axb.tick_params(labelsize=12)
 ## Add colorbar
-#colorbar_axes = plt.gcf().add_axes([0.78,0.18,0.03,0.5])
+#colorbar_axes = plt.gcf().add_axes([0.78,0.135,0.02,0.375])
 #colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical')
 #colorbar.ax.tick_params(labelsize=12)
 #colorbar.set_label(r'$\mathregular{\Delta}$ O$_{\mathregular{3}}$', 
-#                   fontsize=16)
+#                   fontsize=14)
 ## Find where at least 50% of transect are land-based grid cells
 #whereshore = np.where((ocean_frac>0.47) & (ocean_frac<0.5))[0]
 ## Manually remove duplicates and close doubles (this is clunky!)
@@ -1102,7 +1105,7 @@ except NameError:
 #axt = plt.subplot2grid((2,2), (0,0), colspan=2, projection=
 #                       ccrs.Miller(central_longitude=0.))
 #axb = plt.subplot2grid((2,2), (1,0), colspan=2)
-#axb.set_title('(d)', fontsize=18, x=0.02, ha='left')    
+#axb.set_title('(d)', fontsize=14, x=0.02, ha='left')    
 #axt.add_feature(cfeature.OCEAN, zorder=1, lw=0.0, color='lightgrey')
 #axt.coastlines(lw=0.25, color='k')
 #axt.set_extent([lng_fr.min()-180, lng_fr.max()-180, lat_fr.min(), 
@@ -1121,16 +1124,17 @@ except NameError:
 #mb = axb.contourf(lng_fr, np.arange(-10, 11, 1), do3dt_jet_roll, 
 #                  np.linspace(0, 2, 6), cmap=plt.get_cmap('Reds'),
 #                  extend='both')
-#axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=16)
+#axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=14)
 #axb.set_xticks(np.linspace(0, 360, 9))
-#axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180])
-#axb.set_ylabel('Grid cells from jet', fontsize=16)
+#axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180], fontsize=12)
+#axb.set_ylabel('Grid cells from jet', fontsize=14)
+#axb.tick_params(labelsize=12)
 ## Add colorbar
-#colorbar_axes = plt.gcf().add_axes([0.78,0.18,0.03,0.5])
+#colorbar_axes = plt.gcf().add_axes([0.78,0.135,0.02,0.375])
 #colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical')
 #colorbar.ax.tick_params(labelsize=12)
 #colorbar.set_label('dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',
-#                   fontsize=16)
+#                   fontsize=14)
 ## Find where at least 50% of transect are land-based grid cells
 #whereshore = np.where((ocean_frac>0.47) & (ocean_frac<0.5))[0]
 ## Manually remove duplicates and close doubles (this is clunky!)
@@ -1144,7 +1148,7 @@ except NameError:
 #axt = plt.subplot2grid((2,2), (0,0), colspan=2, projection=
 #                       ccrs.Miller(central_longitude=0.))
 #axb = plt.subplot2grid((2,2), (1,0), colspan=2)
-#axb.set_title('(c)', fontsize=18, x=0.02, ha='left')    
+#axb.set_title('(c)', fontsize=14, x=0.02, ha='left')    
 #axt.add_feature(cfeature.OCEAN, zorder=1, lw=0.0, color='lightgrey')
 #axt.coastlines(lw=0.25, color='k')
 #axt.set_extent([lng_fr.min()-180, lng_fr.max()-180, lat_fr.min(), 
@@ -1162,15 +1166,16 @@ except NameError:
 #r_t2mo3_jet_roll = np.roll(r_t2mo3_jet, int(lng_fr.shape[0]/2.), axis=1)
 #mb = axb.contourf(lng_fr, np.arange(-10, 11, 1), r_t2mo3_jet_roll, 
 #                  np.linspace(-1, 1, 11), cmap=plt.get_cmap('bwr'))
-#axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=16)
+#axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=14)
 #axb.set_xticks(np.linspace(0, 360, 9))
 #axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180])
-#axb.set_ylabel('Grid cells from jet', fontsize=16)
+#axb.set_ylabel('Grid cells from jet', fontsize=14)
+#axb.tick_params(labelsize=12)
 ## Add colorbar
-#colorbar_axes = plt.gcf().add_axes([0.78,0.18,0.03,0.5])
+#colorbar_axes = plt.gcf().add_axes([0.78,0.135,0.02,0.375])
 #colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical')
 #colorbar.ax.tick_params(labelsize=12)
-#colorbar.set_label('r(T, O$_\mathregular{3}$)', fontsize=16)
+#colorbar.set_label(r'$\it{r}\:$(T, O$_\mathregular{3}$)', fontsize=14)
 ## Find where at least 50% of transect are land-based grid cells
 #whereshore = np.where((ocean_frac>0.47) & (ocean_frac<0.5))[0]
 ## Manually remove duplicates and close doubles (this is clunky!)
@@ -1273,15 +1278,15 @@ except NameError:
 #land_eu = globalo3_calculate.find_grid_overland(lat_eu, lng_eu)
 ## Over China
 #o3_china, lat_china, lng_china = globalo3_calculate.find_grid_in_bb(o3_n, 
-#    lat_gmi_n, lng_gmi_n, 85., 130., 20., 55.)
+#    lat_gmi_n, lng_gmi_n, 100., 130., 20., 55.)
 #do3dt_china, lat_china, lng_china = globalo3_calculate.find_grid_in_bb(do3dt_n, 
-#    lat_gmi_n, lng_gmi_n, 85., 130., 20., 55.)
+#    lat_gmi_n, lng_gmi_n, 100., 130., 20., 55.)
 #r_t2mo3_china, lat_china, lng_china = globalo3_calculate.find_grid_in_bb(
-#    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 85., 130., 20., 55.)
+#    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 100., 130., 20., 55.)
 #do3drh_china, lat_china, lng_china = globalo3_calculate.find_grid_in_bb(
 #    do3drh_n, lat_gmi_n, lng_gmi_n, 85., 130., 20., 55.)
 #U500_china, lat_china, lng_china = globalo3_calculate.find_grid_in_bb(U500, 
-#    lat_gmi_n, lng_gmi_n, 85., 130., 20., 55.)
+#    lat_gmi_n, lng_gmi_n, 100., 130., 20., 55.)
 #land_china = globalo3_calculate.find_grid_overland(lat_china, lng_china)
 ## Plot O3 (colorcoded by dO3/dT) and U500 versus latitude
 #scatter_latitude_o3u500(lat_na, lng_na, U500_na, o3_na*land_na, 
@@ -1322,16 +1327,16 @@ except NameError:
 #    do3drh_china*land_china, 'PuBu_r', '$\mathregular{\partial}$O$_{'+
 #    '\mathregular{3}}$ $\mathregular{\partial}$RH$^{\mathregular{-1}}$ [ppbv '+
 #    '%$^{\mathregular{-1}}$]', np.linspace(-.75, 0.25, 6), 'do3drh_china')
-#lng = lng_eu
-#lat = lat_eu
-#o3 = o3_eu*land_eu
-#o3 = do3dt_eu*land_eu
-#c = r_t2mo3_eu*land_eu
-#U500_fr = U500_eu
-#region = 'eu'
+#lng = lng_ena
+#lat = lat_ena
+#o3 = o3_ena*land_ena
+#o3 = do3dt_ena*land_ena
+#c = r_t2mo3_ena*land_ena
+#U500_fr = U500_ena
+#region = 'ena'
 #ylabel = '$\mathregular{\sigma}_{\mathregular{O}_{\mathregular{3}}}$ [ppbv]'
 #ylabel = '$\mathregular{O}_{\mathregular{3}}}$ [ppbv]'
-#ylabel = 'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$'
+#ylabel = 'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]'
 #cbar_label = r'$\it{r}\:$(T, O$_\mathregular{3}$)'
 #clevs = np.linspace(-0.9, 0.9, 10)
 #cmap = 'bwr'
@@ -1345,31 +1350,36 @@ except NameError:
 #skippoints = 1
 ## Flatten latitude grid for plotting
 #lat_f = lat_m.flatten()[::skippoints]
-##o3_f = np.nanstd((o3),axis=0).flatten()[::skippoints]
+#o3_f = np.nanmean((o3),axis=0).flatten()[::skippoints]
 #o3_f = (o3).flatten()[::skippoints]
 #c_f = c.flatten()[::skippoints]
 ## Plotting O3 against latitude
 #fig = plt.figure()
 #ax = plt.subplot2grid((1,1),(0,0))
+#ax.set_title('(a)', fontsize=14, x=0.02, ha='left')    
 #mb = ax.scatter(lat_f, o3_f, s=8, c=c_f,
 #                cmap=cmap_discretize(plt.get_cmap(cmap), len(clevs)-1), 
 #                vmin=clevs[0], vmax=clevs[-1])
 #colorbar_axes = plt.gcf().add_axes([0.83,0.15,0.03,0.7])
 #colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
 #                        extend='both')
-#colorbar.set_label(cbar_label)
+#colorbar.set_label(cbar_label, fontsize=14)
 #colorbar.set_ticks(clevs)
 #colorbar.set_ticklabels(clevs)
+#colorbar.ax.tick_params(labelsize=12)
 #ax.set_xlim([20,70])
-#ax.set_xlabel('Latitude [$^{\mathregular{\circ}}$]')
-#ax.set_ylabel(ylabel)
+#ax.set_xlabel('Latitude [$^{\mathregular{\circ}}$]', fontsize=14)
+#ax.tick_params(labelsize=12)
+#ax.set_ylabel(ylabel, fontsize=14)
 ## Plotting zonally-averaged U500 against latitude
 #ax2 = ax.twinx()
 #ax2.plot(lat, U500_za, '-k')
-#ax2.set_ylabel('U$_{\mathregular{500\:hPa}}$ [m s$^{\mathregular{-1}}$]')
+#ax2.set_ylabel('U$_{\mathregular{500\:hPa}}$ [m s$^{\mathregular{-1}}$]',
+#               fontsize=14)
+#ax2.tick_params(labelsize=12)
 #plt.gcf().subplots_adjust(right=0.7, hspace=-0.2)
 #plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-#            'scatter_latitude_do3dtu500_rt2mo3_%s.eps'%region, dpi=300)
+#            'scatter_latitude_meano3_%s.eps'%region, dpi=300)
 
 
 """CALCULATE THE STANDARD DEVIATION OF 2-METER TEMPERATURE WITH LATITUDE
@@ -1457,9 +1467,11 @@ except NameError:
 #    np.nanmean(rural_mean, axis=0)], axis=0), toarlat, toarlng, 114, 50, 145, 
 #    18, 2, vmin, vmax, nlevs, '', 'O$_{\mathregular{3}}$ [ppbv]', 
 #    'ruralurbanmean_asia_PCA')
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '',
-#       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(vmin, vmax, nlevs+1), 
-#       'YlGnBu', 'FIXME')
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '', 
+#       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(25, 65, 11), 'YlGnBu', 
+#       'meano3_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml,axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 
 
 """PLOT GLOBAL TRENDS"""
