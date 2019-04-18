@@ -244,7 +244,7 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    plt.figure(figsize=(8,3))
+    fig = plt.figure(figsize=(8,3))
     ax=plt.subplot2grid((1,2), (0,0), colspan=2,
                         projection=ccrs.Miller(central_longitude=0.))
     ax.set_title(title, fontsize=14, x=0.02, ha='left')    
@@ -813,10 +813,10 @@ except NameError:
     # Interpolate T2m
     t2m_n = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, lng_gmi_n, 
         lat_merra_n, lng_merra_n, t2m_n)
-    ## Calculate relative humidity
-    #rh_n = globalo3_calculate.calculate_rh_from_q(years, list(np.arange(0, 23, 1)), 
-    #    lngmin_n, latmax_n, lngmax_n, latmin_n)
-    # Load MERRA-2 U at 500 hPa
+    # Calculate relative humidity
+    rh_n = globalo3_calculate.calculate_rh_from_q(years, 
+        list(np.arange(0,24,1)), lngmin_n, latmax_n, lngmax_n, latmin_n)
+    # Load MERRA-2 data at 500 hPa
     years = [2008,2009,2010]
     hours = [0,3,6,9,12,15,18,21]
     U500, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
@@ -825,11 +825,18 @@ except NameError:
     V500, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
         hours, 'V', 'inst3_3d_asm_Np', 'JJA_500mb.nc', lngmin_n, latmax_n, 
         lngmax_n, latmin_n, dailyavg='yes')
+    QV500, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
+        hours, 'QV', 'inst3_3d_asm_Np', 'JJA_500mb.nc', lngmin_n, latmax_n, 
+        lngmax_n, latmin_n, dailyavg='yes')
     # Interpolate MERRA-2 data to resolution of CTM
     U500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
         lng_gmi_n, lat_merra, lng_merra, U500, checkplot='yes')
     V500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
         lng_gmi_n, lat_merra, lng_merra, V500, checkplot='yes')
+    QV500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra, lng_merra, QV500, checkplot='yes')    
+    # Calculate wind direction at 500 hPa
+    DIR500 = globalo3_calculate.convert_uv_tocardinal(U500, V500) 
     # Load EDGAR inventory     
     lat_edgar_n, lng_edgar_n, nox_edgar_n = \
         globalo3_open.open_edgar_specifieddomain(years, latmin_n, latmax_n, 
@@ -844,24 +851,27 @@ except NameError:
         lng_gmi_n)
     do3dt_dat_n = globalo3_calculate.calculate_do3dt(t2m_n, o3_dat_n, 
         lat_gmi_n, lng_gmi_n)
-    ## Calculate dO3/dRH
-    #do3drh_n = globalo3_calculate.calculate_do3dt(rh_n*100., o3_n, lat_gmi_n, 
-    #    lng_gmi_n)
+    # Calculate dO3/dRH
+    do3drh_n = globalo3_calculate.calculate_do3dt(rh_n*100., o3_n, lat_gmi_n, 
+        lng_gmi_n)
     # Calculate correlation coefficients
     r_t2mo3_n = globalo3_calculate.calculate_r(t2m_n, o3_n, lat_gmi_n, 
         lng_gmi_n)
-    #r_rho3_n = globalo3_calculate.calculate_r(rh_n, o3_n, lat_gmi_n, 
-    #    lng_gmi_n)
-    #r_t2mrh_n = globalo3_calculate.calculate_r(rh_n, t2m_n, lat_gmi_n, 
-    #    lng_gmi_n)
+    r_rho3_n = globalo3_calculate.calculate_r(rh_n, o3_n, lat_gmi_n, 
+        lng_gmi_n)
+    r_t2mrh_n = globalo3_calculate.calculate_r(rh_n, t2m_n, lat_gmi_n, 
+        lng_gmi_n)
     r_t2mo3_n_dat = globalo3_calculate.calculate_r(t2m_n, o3_dat_n, lat_gmi_n, 
         lng_gmi_n)
     r_o3u500_n = globalo3_calculate.calculate_r(U500, o3_dat_n, lat_gmi_n, 
+        lng_gmi_n)
+    r_dirrh_n = globalo3_calculate.calculate_r(DIR500, rh_n, lat_gmi_n, 
+        lng_gmi_n)
+    r_dirq500_n = globalo3_calculate.calculate_r(DIR500, QV500, lat_gmi_n, 
+        lng_gmi_n)
+    r_diro3_n = globalo3_calculate.calculate_r(DIR500, o3_n, lat_gmi_n, 
         lng_gmi_n)    
     # Calculate trends
-    nox_byyr_n, nox_ls_n, nox_lsp_n, nox_mk_n, nox_mkp_n = \
-    globalo3_calculate.calculate_trends((no_n+no2_n), lat_gmi_n, lng_gmi_n, 
-        years)
     do3dt_byyr_n, do3dt_ls_n, do3dt_lsp_n, do3dt_mk_n, do3dt_mkp_n = \
     globalo3_calculate.calculate_trends_do3dt(t2m_n, o3_n, lat_gmi_n, 
         lng_gmi_n, years)
@@ -887,6 +897,10 @@ except NameError:
 #       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), 
 #       e_n=np.nanmean(lat_jet_nhml, axis=0), 
 #       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(DIR500, axis=0), '', 
+#       'Wind direction$_{\mathregular{500\:hPa}}$ [$^{\circ}$]', 
+#       np.linspace(0, 360, 16), 'twilight', 
+#       'meanwinddir_%d-%d_jet'%(years[0],years[-1])) 
 #map_nh(lat_gmi_n, lng_gmi_n, do3dt_n, '(a) Transport and Chemistry', 
 #       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
 #       np.linspace(0, 3., 7), 'Reds', 'do3dt_%d-%d_jet'%(years[0],years[-1]),
@@ -906,16 +920,24 @@ except NameError:
 #       'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
 #       e_n=np.nanmean(lat_jet_nhml, axis=0), 
 #       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## O3-T, O3-RH, T-RH correlations in + Chemistry simulation
+## O3, T, RH, wind direction correlations in + Chemistry simulation
 #map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '(c)', 
 #    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
 #    'r_t2mo3chem_%d-%d_jet'%(years[0],years[-1]), 
 #    e_n=np.nanmean(lat_jet_nhml, axis=0), 
 #    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n,'r(RH, O$_\mathregular{3}$)',
-#    np.linspace(-1., 1., 11), 'bwr', 'r_rho3chem_%d-%d'%(years[0],years[-1]))
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mrh_n,'r(RH, T)',
-#    np.linspace(-1., 1., 11), 'bwr', 'r_t2mrh_%d-%d'%(years[0],years[-1]))
+#map_nh(lat_gmi_n, lng_gmi_n, r_dirrh_n, '', 
+#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, RH)', 
+#       np.linspace(-0.9, 0.9, 10), 'bwr', 
+#       'r_dirrh_%d-%d_jet'%(years[0],years[-1])) 
+#map_nh(lat_gmi_n, lng_gmi_n, r_dirq500_n, '', 
+#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
+#       'q$_{\mathregular{500\:hPa}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
+#       'r_dirq500_%d-%d_jet'%(years[0],years[-1])) 
+#map_nh(lat_gmi_n, lng_gmi_n, r_diro3_n, '', 
+#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
+#       'O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
+#       'r_diro3_%d-%d_jet'%(years[0],years[-1]))
 ## Difference in O3-T correlation in + Chemistry and Transport 
 #map_nh(lat_gmi_n, lng_gmi_n, (r_t2mo3_n-r_t2mo3_n_dat), 
 #    'r(T, O$_\mathregular{3,\:+\:Chemistry}$) $-$ r(T, O$_\mathregular{3,'+
