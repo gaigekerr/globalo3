@@ -15,6 +15,8 @@ Revision History
     30012019 -- trend-calculating functions consolidated into single function
     04042019 -- functions 'find_grid_in_bb' and 'find_grid_overland' added
     12042019 -- function 'find_field_atjet' added
+    15042019 -- function 'calculate_o3jet_relationship' added
+    18042019 -- function 'convert_uv_tocardinal' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -353,7 +355,6 @@ def find_grid_overland(lat, lng):
                 island[i,j] = 1.
     return island
 
-
 def calculate_rh_from_q(years, hours, lngmin, latmax, lngmax, latmin):
     """Calculate the relative humidity from specific humidity, temperature, and 
     pressure using the ratio of vapor pressure to saturation vapor pressures.
@@ -385,7 +386,7 @@ def calculate_rh_from_q(years, hours, lngmin, latmax, lngmax, latmin):
         hours, lngmin, latmax, lngmax, latmin)
     print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
           'Calculating relative humidity using the Clausius-Clapeyron '+
-          'equation...')        
+          'equation...')   
     es = 6.112 * np.exp((17.67 * (T-273.15))/((T-273.15) + 243.5))
     e = Q * (PS/100.) / (0.378 * Q + 0.622)
     rh = e / es
@@ -410,14 +411,15 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
     ----------
     field : numpy.ndarray
         Field of interest, [lat, lng] or [time, lat, lng]  
-    U500_fr : numpy.ndarry
+    U500_fr : numpy.ndarray
         Zonal (U) wind at 500 hPa in region, units of m s-1, [time, lat, lng]
     lat_fr : numpy.ndarray
         Latitude coordinates, units of degrees north, [lat,]
     lng_fr : numpy.ndarray
         Longitude coordinates, units of degrees east, [lng,]
     jetdistance : int
-        The number of grid cells north and south of the jet over which the 
+        Number of grid cells (with respect to latitude) on each side (north 
+        and south) the jet (maximum zonal wind at 500 hPa) over which the 
         field will be evaluated
     anom : bool
         If True, field_jet will be calculated relative to values at the jet's 
@@ -425,10 +427,10 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
 
     Returns
     -------
-    lat_jet : numpy.ndarry
+    lat_jet : numpy.ndarray
         The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
         in region, units of degrees north[time, lng]
-    field_jet : numpy.ndarry
+    field_jet : numpy.ndarray
         The value of the field at the jet and within +/- jetdistance of jet, 
         [lat, lng] or [time, lat, lng]
     """
@@ -446,7 +448,7 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
             U500_transect = U500_day[:, i]
             U500max = np.where(U500_transect==U500_transect.max())[0][0]   
             # Find latitude of jet
-            lat_jet[day, i] = lat_fr[U500max]   
+            lat_jet[day, i] = lat_fr[U500max]
     del i
     # If field of interest has dimensions [time, lat, lng], output will be 
     # field north/south of jet for every timestep and will thus have dimensions 
@@ -510,3 +512,96 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
             field_alongcenter = np.swapaxes(field_alongcenter, 2, 1)
             field_jet = field_jet - field_alongcenter
     return lat_jet, field_jet
+
+def calculate_o3jet_relationship(o3_fr, lat_jet_fr, lat_fr, lng_fr):
+    """Given the O3 concentrations and the jet's latitude in a focus region, 
+    function determines the relationship between O3 and distance from the 
+    jet at each grid cell. This is quantified in terms of the slope (i.e., 
+    change in O3 per degree shift in the jet stream) and the correlation (i.e.,
+    the Pearson product-moment correlation coefficient calculated between O3 
+    and a grid cell's distance from the jet.)
+    
+    Parameters
+    ----------
+    o3_fr : numpy.ndarray
+        O3 concentrations in the focus region, units of ppbv, [time, lat, lng]
+    lat_jet_fr : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng]
+    lat_fr : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    lng_fr : numpy.ndarray
+        Longitude coordinates, units of degrees east, [lng,]
+
+    Returns
+    -------
+    slope : numpy.ndarray
+        The slope of the linear regression of O3 versus a grid cell's distance
+        from the jet, units of ppbv deg-1, [lat, lng]
+    correl : numpy.ndarray
+        The Pearson product-moment correlation coefficient calculated between 
+        O3 and a grid cell's distance from the jet, [lat, lng]
+    """
+    import numpy as np
+    # Array slope is the slope of the linear regression of surface-level O3 and 
+    # a grid cell's distance from the eddy-driven jet (positive distance is a 
+    # jet north of grid cell); array correl is the correlation between the two 
+    # times series
+    slope = np.empty(shape=(lat_fr.shape[0],lng_fr.shape[0]))
+    slope[:] = np.nan
+    correl = np.empty(shape=(lat_fr.shape[0],lng_fr.shape[0]))
+    correl[:] = np.nan
+    # Loop through latitudes
+    for loci in np.arange(0,len(lat_fr),1):
+        # Loop through longitudes
+        for locj in np.arange(0,len(lng_fr),1):
+            o3ij = o3_fr[:, loci, locj]
+            # Latitude of eddy-driven jet at a given grid cell
+            jetj = lat_jet_fr[:, locj]
+            # Difference in grid cell's latitude and the latitude of the jet
+            diff = jetj-lat_fr[loci]
+            slope[loci,locj] = np.polyfit(diff, o3ij, 1)[0]
+            correl[loci,locj] = np.corrcoef(diff, o3ij)[0,1]
+    return slope, correl
+
+def convert_uv_tocardinal(U, V): 
+    """calculate the wind direction using the typical meteorological convention
+    where, for example, 0 deg denotes wind from the north (southerly flow) and 
+    90 deg denotes wind from the east (westerly flow). 
+    
+    Parameters
+    ----------
+    U : numpy.ndarray
+        The zonal wind component. Array size and shape must match V, units of 
+        m s-1, [time, lat, lng]
+    V : numpy.ndarray
+        The meridional wind component. Array size and shape must match V, units 
+        of m s-1, [time, lat, lng]
+        
+    Returns
+    -------
+    wind_dir_met : numpy.ndarray     
+        Cardinal wind direction, units of degrees, [time, lat, lng]    
+    """
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
+          'Calculating wind direction...')    
+    import time
+    start_time = time.time()    
+    import numpy as np
+    # Find wind magntiude
+    wind_abs = np.hypot(U, V)
+    wind_dir_trig = np.arctan2(V/wind_abs, U/wind_abs) 
+    wind_dir_degrees = wind_dir_trig*(180/np.pi)
+    # np.arctan2 has a discontinunity at 180 deg, switching to (-180 to 0 deg)
+    # going clockwise. Use modulo operator to convert these negative values. 
+    # n.b., for positive (1 to 180 deg): if you mod any positive number between
+    # 1 and 180 by 360, you will get the exact same number you put in. for 
+    # negative (-180 to -1): using mod here will return values in the range 
+    # of 180 and 359 degrees.
+    wind_dir_degrees = (wind_dir_degrees+360) % 360
+    # Convert from cartesian directions to cardinal conventions used in 
+    # meteorology 
+    wind_dir_met = (270-wind_dir_degrees) % 360
+    print('Wind direction calculated in %.2f seconds!'
+          %(time.time()-start_time)) 
+    return wind_dir_met
