@@ -17,6 +17,9 @@ Revision History
     12042019 -- function 'find_field_atjet' added
     15042019 -- function 'calculate_o3jet_relationship' added
     18042019 -- function 'convert_uv_tocardinal' added
+    14052019 -- function 'identify_SLPcenter' added
+    17052019 -- function 'filter_center_bylat' added
+    21052019 -- function 'filter_center_byjet' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -513,7 +516,7 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
             field_jet = field_jet - field_alongcenter
     return lat_jet, field_jet
 
-def calculate_o3jet_relationship(o3_fr, lat_jet_fr, lat_fr, lng_fr):
+def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
     """Given the O3 concentrations and the jet's latitude in a focus region, 
     function determines the relationship between O3 and distance from the 
     jet at each grid cell. This is quantified in terms of the slope (i.e., 
@@ -524,14 +527,23 @@ def calculate_o3jet_relationship(o3_fr, lat_jet_fr, lat_fr, lng_fr):
     Parameters
     ----------
     o3_fr : numpy.ndarray
-        O3 concentrations in the focus region, units of ppbv, [time, lat, lng]
-    lat_jet_fr : numpy.ndarray
-        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
-        in region, units of degrees north[time, lng]
+        O3 concentrations in the focus region (i.e., Northern Hemisphere), 
+        units of ppbv, [time, lat, lng]
     lat_fr : numpy.ndarray
-        Latitude coordinates, units of degrees north, [lat,]
+        Latitude coordinates of the focus region (i.e., Northern Hemisphere), 
+        units of degrees north, [lat,]
     lng_fr : numpy.ndarray
-        Longitude coordinates, units of degrees east, [lng,]
+        Longitude coordinates of the focus region (i.e., Northern Hemisphere), 
+        units of degrees east, [lng,]        
+    jetpos : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north, [time, lngjet]
+    lng_jet = numpy.ndarray
+        The longitude grid over which the eddy-driven jet's position was 
+        analyzed (i.e., since the EDJ is found by examining 500 hPa zonal winds
+        in the mid-latitudes, the latitudes and longitudes defining the mid-
+        latitudes could differ from the focus region's coordinates), 
+        units of degrees east, [lngjet]
 
     Returns
     -------
@@ -556,8 +568,9 @@ def calculate_o3jet_relationship(o3_fr, lat_jet_fr, lat_fr, lng_fr):
         # Loop through longitudes
         for locj in np.arange(0,len(lng_fr),1):
             o3ij = o3_fr[:, loci, locj]
-            # Latitude of eddy-driven jet at a given grid cell
-            jetj = lat_jet_fr[:, locj]
+            # Latitude of eddy-driven jet at a given grid cell, found by finding 
+            # a timeseries of the jet location at the longitude of interest
+            jetj = jetpos[:, np.abs(lng_jet-lng_fr[locj]).argmin()]
             # Difference in grid cell's latitude and the latitude of the jet
             diff = jetj-lat_fr[loci]
             slope[loci,locj] = np.polyfit(diff, o3ij, 1)[0]
@@ -605,3 +618,285 @@ def convert_uv_tocardinal(U, V):
     print('Wind direction calculated in %.2f seconds!'
           %(time.time()-start_time)) 
     return wind_dir_met
+
+def identify_SLPcenter(lat, lng, SLP, dx, dy, kind, pr_crit, years, 
+    checkplot='no', fstr=''):
+    """function identifies the centers of cyclones or anticyclones from sea 
+    level pressure fields (SLP) over the specified domain. The center of a 
+    cyclone (anticyclone) is defined as a local pressure minima (maxima). In 
+    order for this to be true for a cyclone (anticyclone), the pressure at a 
+    particular grid cell must be less (more) than the dx/dy grid cells on all
+    sides of it and the pressure at the grid cell must be less (more) than the 
+    criteria pressure specified in variable 'pr_crit.' If checkplot='yes', a
+    map showing the locations of all (anti)cyclones and a binned 2D histogram
+    indicating their frequency is plotted.)
+
+    Parameters
+    ----------
+    lat : numpy.ndarray
+        Latitude coordinates for SLP, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Longitude coordinates for SLP, units of degrees east, [lng,]
+    SLP : numpy.ndarray
+        MERRA-2 Sea level pressure (SLP), units of Pa, [time, lat, lng]
+    dx : int
+        The search area in the x (longitudinal) direction over which pressure 
+        values are examined to identify minima/maxima
+    dy : int
+        The search area in the y (latitudinal) direction over which pressure 
+        values are examined to identify minima/maxima    
+    kind : str
+        cyclone or anticyclone
+    pr_crit : float
+        The critical pressure above (below) which a SLP minima (maxima) cannot
+        be considered a cyclone (anticyclone); n.b. I have been using 1000 hPa
+        (100000 Pa) and 1012 hPa (101200 Pa) as the critical pressures for 
+        cyclones and anticylones, respectively, units of Pa
+    years : list
+        Years in measuring period
+    checkplot : str
+        If 'yes' a map indicating the frequency/location of cyclones/
+        anticyclones is plotted
+    fstr : str
+        Output filename suffix (should indicate whether plot shows cyclone
+        or anticylone)
+        
+    Returns
+    -------
+    center : numpy.ndarray 
+        A value of 1 indicates the presence of a cyclone/anticylone for a 
+        particular day and locaditon, [time, lat, lng]   
+    where_center_daycoord : list
+        The dates (day indices) of cyclones/anticyclones        
+    where_center_ycoord : list 
+        The y-coordinates (latitude indices) of cyclones/anticyclones
+    where_center_xcoord : list 
+        The x-coordinates (longitude indices) of cyclones/anticyclones        
+    """
+    import time 
+    start_time = time.time()    
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
+          'Calculating %s locations...'%kind)   
+    import numpy as np
+    center = np.empty(shape=SLP.shape)
+    center[:] = np.nan    
+    for day in np.arange(0, len(SLP), 1):
+        SLP_day = SLP[day]
+        # For given day, index pressure grid. The outer rows/columns of the 
+        # grid since the neighboring eight grid points cannot be searched for 
+        # a pressure minima; here i is the latitude index and j is the 
+        # longitude index
+        for i in np.arange(dy, len(lat)-dy, 1):
+            for j in np.arange(dx, len(lng)-dx, 1):
+                # SLP at point of interest and SLP at the eight grid cells
+                # surrounding that grid cell
+                SLP_day_atpoint = SLP_day[i, j]
+                # Similar to Lang & Waugh (2011), each of the surrounding grid
+                # points within a search radius defined by dx and dy (not 
+                # counting the center grid point) must be greater than (for 
+                # cyclones) or less than (for anticyclones) the pressure in the 
+                # center)
+                SLP_day_surround = SLP_day[i-dy:i+dy+1, j-dx:j+dx+1]
+                # For cyclones
+                if kind=='cyclone':
+                    if (np.min(SLP_day_surround) >= SLP_day_atpoint) & \
+                    (SLP_day_atpoint < pr_crit):
+                        center[day,i,j] = 1.
+                # For anticyclones
+                else: 
+                    if (np.max(SLP_day_surround) <= SLP_day_atpoint) & \
+                    (SLP_day_atpoint > pr_crit):
+                        center[day,i,j] = 1.       
+    where_center_ycoord, where_center_xcoord = [], []
+    where_center_daycoord = []
+    where_center_lat, where_center_lng = [], []
+    # Loop through days in measuring period
+    for day in np.arange(0, len(center), 1):
+        # Find position(s) of (anti)cyclone on day of interest
+        where_center_day = center[day]
+        where_center_day = np.where(where_center_day==1.)
+        # Append latitude/longitude indices/coordinates to list containing
+        # values for all days
+        where_center_ycoord.append(where_center_day[0])
+        where_center_xcoord.append(where_center_day[1])      
+        where_center_daycoord.append(np.repeat(day, len(where_center_day[0])))
+        where_center_lat.append(lat[where_center_day[0]])
+        where_center_lng.append(lng[where_center_day[1]])
+    where_center_daycoord = np.hstack(where_center_daycoord)
+    where_center_ycoord = np.hstack(where_center_ycoord)
+    where_center_xcoord = np.hstack(where_center_xcoord)
+    where_center_lat = np.hstack(where_center_lat)
+    where_center_lng = np.hstack(where_center_lng)
+    if checkplot=='yes':
+        import matplotlib.pyplot as plt
+        import cartopy.util
+        import cartopy.crs as ccrs
+        import cartopy.feature as cfeature  
+        fig = plt.figure(figsize=(9,4))
+        ax = plt.subplot2grid((1,1), (0,0), projection=ccrs.PlateCarree())
+        # Do coordinate conversion of (x,y)
+        xynps = ax.projection.transform_points(ccrs.PlateCarree(), 
+            where_center_lng, where_center_lat)
+        # Make 2D histogram; n.b., h:(counts, xedges, yedges, image)
+        h = ax.hist2d(xynps[:,0], xynps[:,1], bins=15, zorder=10, alpha=1., 
+            vmin=0, vmax=7, cmap=plt.get_cmap('Blues'), 
+            transform=ccrs.PlateCarree())
+        colorbar_axes = plt.gcf().add_axes([0.83,0.25,0.02,0.5])
+        colorbar = plt.colorbar(h[3], colorbar_axes, orientation='vertical',
+                                extend='max')
+        colorbar.ax.tick_params(labelsize=12)
+        colorbar.set_label('Frequency', fontsize=14)
+        # Add scatterpoints for all 
+        ax.plot(where_center_lng, where_center_lat, 'ko', markersize=2, zorder=12,
+                transform=ccrs.PlateCarree())
+        ax.coastlines(lw=0.25, color='k', zorder=10) 
+#        ax.set_extent([lng[0]-360, lng[-1]-360, lat[0], lat[-1]])
+#        if (lng[0]==0.) and (lng[-1]==360.): 
+        ax.set_extent([-180., 180., 0., 85.]) 
+#        else: 
+#            ax.set_extent([lng[0]-360, lng[-1]-360, lat[0], lat[-1]])
+        plt.gcf().subplots_adjust(right=0.8)
+        plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+            'identify_SLPcenter_%s.eps' %fstr, dpi = 300)
+    print('%s locations for %d-%d calculated in %.2f seconds!'%(
+        kind.capitalize(), years[0], years[-1], time.time() - start_time)) 
+    # OPTIONAL: Plot maps showing the pressure centers on given days (needs
+    # mtime as an argument) 
+    #import matplotlib.pyplot as plt
+    #import cartopy.crs as ccrs
+    #import cartopy.feature as cfeature        
+    #day = 0
+    #from datetime import datetime 
+    #plt.figure(figsize=(9,4))
+    #ax = plt.subplot2grid((1,1), (0,0), projection=ccrs.PlateCarree())
+    #ax.set_title('%s' %(datetime.strftime(mtime[day], '%m/%d/%Y')))
+    #ax.set_extent([lng[0]-360, lng[-1]-360, lat[0], lat[-1]])
+    ## Contours of SLP 
+    #mb = ax.contourf(lng,lat, SLP[day]/100., cmap=plt.get_cmap('rainbow'), 
+    #                 transform=ccrs.PlateCarree())
+    #colorbar = plt.colorbar(mb)
+    #colorbar.ax.tick_params(labelsize=12)
+    #colorbar.set_label('Pressure [hPa]', fontsize=14)
+    #ax.coastlines(lw=0.25, color='k')    
+    ## Locations of identified cyclones/anticyclones
+    #lng_grid, lat_grid = np.meshgrid(lng, lat)
+    #ax.scatter(lng_grid, lat_grid, s=cyclones[day]*50, facecolor='k', 
+    #            lw=0, marker='.', transform=ccrs.PlateCarree())
+    #ax.scatter(lng_grid, lat_grid, s=anticyclones[day]*50, facecolor='k', 
+    #            lw=0, marker='.', transform=ccrs.PlateCarree())
+    #plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+    #            'identify_SLPcenter_%s.eps'
+    #            %datetime.strftime(mtime[day], '%m-%d-%Y'))    
+    return (center, where_center_daycoord, where_center_ycoord, 
+        where_center_xcoord)
+    
+def filter_center_bylat(center, lat_thresh, lat_gmi):
+    """filter (anti)cyclones by latitude, separating them into systems at 
+    low latitudes (high latitudes) such that any systems above (below)
+    the specified latitude threshold are set to NaN. 
+    
+    Parameters
+    ----------
+    center : numpy.ndarray 
+        A value of 1 indicates the presence of a cyclone/anticylone for a 
+        particular day and locaditon, [time, lat, lng]       
+    lat_gmi : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+        
+    Returns
+    -------
+    center_lowlat : numpy.ndarray
+        A value of 1 indicates the presence of a cyclone/anticylone for a 
+        particular day and location with all cyclones/anticyclones poleward of 
+        the specified latitude threshold set to NaN, [time, lat, lng]       
+    center_highlat : numpy.ndarray
+        A value of 1 indicates the presence of a cyclone/anticylone for a 
+        particular day and location with all cyclones/anticyclones equatorward
+        of the specified latitude threshold set to NaN, [time, lat, lng]           
+    """
+    import numpy as np
+    import copy
+    center_lowlat = copy.deepcopy(center)
+    center_highlat = copy.deepcopy(center)
+    # Find index of latitude threshold
+    lat_thresh_idx = np.abs(lat_gmi-lat_thresh).argmin()
+    # Set all pressure centers (which are denoted with 1s above or below the 
+    # latitude threshold to NaNs).
+    center_lowlat[:, lat_thresh_idx:] = np.nan
+    center_highlat[:, :lat_thresh_idx] = np.nan
+    return center_lowlat, center_highlat    
+
+def filter_center_byjet(center, jet, lat_systemcoords, lng_systemcoords, 
+    lat_jetcoords, lng_jetcoords): 
+    """filter (anti)cyclones by their latitude with respect to the eddy-driven 
+    jet.
+    
+    Parameters
+    ----------
+    center : numpy.ndarray 
+        A value of 1 indicates the presence of a cyclone/anticylone for a 
+        particular day and locaditon, [time, lat_systemcoords, 
+        lng_systemcoords]      
+    jet : numpy.ndarray 
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng_jetcoords]        
+    lat_systemcoords : numpy.ndarray 
+        Latitude coordinates corresponding to the (anti)cyclone array, units of 
+        degrees north, [lat_systemcoords,]        
+    lng_systemcoords : numpy.ndarray 
+        Longitude coordinates corresponding to the (anti)cyclone array, units of 
+        degrees east, [lng_systemcoords,]
+    lat_jetcoords : numpy.ndarray
+        Latitude coordinates corresponding to the jet array, units of degrees
+        north, [lat_jetcoords,]
+    lng_jetcoords : numpy.ndarray
+        Longitude coordinates corresponding to the jet array, units of degrees 
+        east, [lng_jetcoords,]
+    lat_jet : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng_jetcoords]        
+        
+    Returns
+    -------
+    abovejet : numpy.ndarray
+        A value of 1 indicates the presence of an (anti)cyclone above the eddy-
+        driven jet on the day which the (anti)cyclone occurs, [time, 
+        lat_systemcoords, lng_systemcoords]       
+    belowjet : numpy.ndarray
+        A value of 1 indicates the presence of an (anti)cyclone below the eddy-
+        driven jet on the day which the (anti)cyclone occurs, [time, 
+        lat_systemcoords, lng_systemcoords]
+    """
+    import numpy as np
+    # Find indicies corresponding to positions (with respect to space and time)
+    # of (anti)cyclones    
+    where_system = np.where(center == 1)
+    # Positions of systems above/below jet
+    abovejet = np.empty(shape=center.shape)
+    abovejet[:] = np.nan
+    belowjet = np.empty(shape=center.shape)
+    belowjet[:] = np.nan
+    # Loop through all systems
+    for systemday, systemlat_idx, systemlng_idx in zip(where_system[0],
+                                                       where_system[1],
+                                                       where_system[2]): 
+        # Find longitude index within the jet array coordinates closest to 
+        # the system 
+        system_lng_jetspace = np.abs(lng_jetcoords-
+                                     lng_systemcoords[systemlng_idx]).argmin()    
+        # Find latitude of jet at longitude/on day of interest
+        jet_lat = jet[systemday, system_lng_jetspace]
+        # Add 1 to array denoting the position of systems above (below) jet if 
+        # the latitude of the system is greater than (less than) 0
+        if (lat_systemcoords[systemlat_idx]-jet_lat) > 0:
+            abovejet[systemday, systemlat_idx, systemlng_idx] = 1.
+        else: 
+            belowjet[systemday, systemlat_idx, systemlng_idx] = 1.
+    # OPTIONAL: to check to see if function works
+    #import matplotlib.pyplot as plt
+    #for d in np.arange(0, 276, 10):    
+    #    plt.plot(lng_jetcoords, jet[d], 'ko')   
+    #    plt.plot(lng_systemcoords[np.where(abovejet[d]==1.)[1]],
+    #             lat_systemcoords[np.where(abovejet[d]==1.)[0]], 'ro')
+    #    plt.show()            
+    return abovejet, belowjet
