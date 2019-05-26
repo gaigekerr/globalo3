@@ -683,22 +683,6 @@ def open_toar(years, months, varname, res):
     ttime = pd.to_datetime(ds.time.values)
     lat = ds.lat.values
     lng = ds.lon.values
-    print('TOAR %s for %d-%d loaded in %.2f seconds!'%(varname, years[0],
+    print('TOAR %s for %d-%d loaded in %.2f seconds'%(varname, years[0],
              years[-1], time.time() - start_time))
     return var, ttime, lat, lng
-
-
-
-
-
-
-
-
-
-res = 2
-years = [2008, 2009, 2010]
-months = ['jun', 'jul', 'aug']
-var = 'urban_mean'
-
-
-urban_mean, toartime, toarlat, toarlng = open_toar(years, months, var, res)
