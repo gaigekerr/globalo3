@@ -17,6 +17,11 @@ Revision History
                 'open_gmideposition_specifieddomain' and 
                 'open_merra2t2m_specifieddomain'
     07042019 -- function 'open_toar' added
+    11062019 -- function 'open_geos_c1sd' added to open output from GSFC
+                GEOS-C1SD tracer simulations
+    18062019 -- 'open_geos_c1sd' modified to handle datasets with no vertical
+                coordinates (i.e., MSLP) and transport output arrays such that 
+                time is the first dimension
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -610,7 +615,6 @@ def open_merra2_rh2mvars(years, hours, lngmin, latmax, lngmax, latmin):
         lat_merra, lng_merra, PS)
     return QV2M, T2M, PS, lat_gmi_n, lng_gmi_n
 
-
 def open_toar(years, months, varname, res):
     """For the variable/metric of interest function opens monthly mean 
     daily maximum 8-hour averaged gridded ozone for the specified resolution. 
@@ -686,3 +690,107 @@ def open_toar(years, months, varname, res):
     print('TOAR %s for %d-%d loaded in %.2f seconds'%(varname, years[0],
              years[-1], time.time() - start_time))
     return var, ttime, lat, lng
+
+def open_geos_c1sd(years, varname, levmax, levmin, lngmin, latmax, lngmax, 
+    latmin, columnmean=False):
+    """function opens daily summertime (JJA) output from variable of interest 
+    from GEOS-C1SD simulations for summers in specified measuring period and 
+    for the pressure level(s) of interest. Function can also compute the 
+    column-averaged value 
+
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period, [years,]
+    varname : str
+        Variable of interest from GSFC/Held-Suarez runs. Options include
+        ps (surface pressure), u (wind), t (temperature), co50 (CO emissions
+        over mainly Asia with a 50 day life time), co25 (same as co50 but with 
+        a 25 day lifetime), nh50 (fixed mixing ratio at the surface between 
+        30 and 50˚N with a 50 day lifetime), st80_25 (fixed mixing ratio in the 
+        stratosphere, < 80 hPa, and 25 day lifetime in the troposphere).
+    levmax : int/float
+        Desired pressure level closest to the surface; n.b. function finds 
+        pressure level closest to value in coordinates
+    levmin : int/float
+        Desired pressure level aloft 
+    lngmin : float
+        Longitude coordinate of the left side (minimum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmax : float 
+        Latitude coordinate of the top side (maximum) of the bounding box 
+        containing the focus region, units of degrees north    
+    lngmax : float 
+        Longitude coordinate of the right side (maximum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmin : float
+        Latitude coordinate of the bottom side (minimum) of the bounding box 
+        containing the focus region, units of degrees north      
+    columnmean : bool
+        If True, the field is averaged over all pressure levels bounded by 
+        levmax and levmin
+        
+    Returns
+    -------
+    var : numpy.ndarray
+        Model output for specified variable, if columnsum = True then shape is
+        [time, lat, lng] if False then shape is [time, press, lat, lng]
+    lat : numpy.ndarray
+        Model latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Model numpy.ndarray coordinates, units of degrees east, [lng,]    
+    pressure : numpy.ndarray
+        Model pressure levels, units of hPa, [press]
+    """
+    import time
+    start_time = time.time()
+    import os
+    import numpy as np
+    import xarray as xr
+    PATH_TRACER = '/Users/ghkerr/phd/globalo3/data/GSFC/'
+    # Search for appropriate files given variable of interested specified in 
+    # varname
+    infiles = [PATH_TRACER+fn for fn in os.listdir(PATH_TRACER) if 
+               any(ext in fn for ext in [str(y) for y in years])]
+    infiles = [fn for fn in infiles if varname+'_' in fn]
+    infiles.sort()
+    # Open multiple NetCDF files and store in Dataset
+    ds = xr.open_mfdataset(infiles, concat_dim='time')
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading %s from GEOS-C1SD simulation...' %varname)
+    # Extract relevant variable 
+    ds = ds[[varname]]
+    ds = ds.assign_coords(longitude=(ds.longitude % 360)).roll(
+            longitude=(ds.dims['longitude']//2), roll_coords=True)
+    # Subset Dataset with respect to spatial coordinates 
+    ds = ds.sel(latitude=slice(latmin, latmax), 
+                longitude=slice(lngmin, lngmax))
+    # Sample appropriate level if pressure coordinates exist (i.e., for 
+    # surface pressure fields there are no vertical coordinates)
+    try:
+        ds.pressure
+        ds = ds.sel(pressure=slice(levmax,levmin))
+        # Extract
+        var = ds[varname].values
+        lat = ds.latitude.values
+        lng = ds.longitude.values
+        pressure = ds.pressure.values
+        # If specified, average variable over all pressure levels (i.e., if 
+        # column-averaged mixing ratios for a tracer is desired)
+        if (columnmean == True) and (len(pressure) > 1):
+            pressure_dim = var.shape.index(pressure.shape[0])
+            var = np.nanmean(var, axis=pressure_dim)
+        elif (columnmean == True) and (len(pressure) == 1):
+            var = var[:,:,0]
+        print('%d-%d hPa %s for %d-%d loaded in '%(pressure[0], pressure[-1], 
+              varname, years[0], years[-1])+'%.2f seconds!'
+              %(time.time() - start_time))
+        return var.T, lat, lng, pressure        
+    except AttributeError:
+        # Extract
+        var = ds[varname].values
+        lat = ds.latitude.values
+        lng = ds.longitude.values
+        print('%s for %d-%d loaded in '%(varname, years[0], years[-1])+
+              '%.2f seconds!'%(time.time() - start_time))
+        return var.T, lat, lng
