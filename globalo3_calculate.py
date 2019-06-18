@@ -20,6 +20,8 @@ Revision History
     14052019 -- function 'identify_SLPcenter' added
     17052019 -- function 'filter_center_bylat' added
     21052019 -- function 'filter_center_byjet' added
+    11062019 -- function 'find_grid_in_bb' edited to handle output from 
+                GEOS-C1SD
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -316,6 +318,8 @@ def find_grid_in_bb(ingrid, lat, lng, left, right, down, up):
         outgrid = ingrid[:, down:up+1, left:right+1]    
     elif (lat_dim == 0) and (lng_dim == 1):
         outgrid = ingrid[down:up+1, left:right+1]    
+    elif (lat_dim == 1) and (lng_dim == 0):
+        outgrid = ingrid[left:right+1, down:up+1]        
     else: 
         print('Dimensional information does not match!'+
               ' Cannot reduce grid.')    
@@ -360,7 +364,7 @@ def find_grid_overland(lat, lng):
 
 def calculate_rh_from_q(years, hours, lngmin, latmax, lngmax, latmin):
     """Calculate the relative humidity from specific humidity, temperature, and 
-    pressure using the ratio of vapor pressure to saturation vapor pressures.
+    pressure using the ratio of vapor pressure to saturation vapor pressure.
     Code adapted from earthscience.stackexchange.com/questions/2360/
     how-do-i-convert-specific-humidity-to-relative-humidity
     
