@@ -12,12 +12,15 @@ Revision History
     19022019 -- map functions changed to just focus on Northern Hemisphere
     23042019 -- function 'timeseries_o3atabovebelow_jet' added
     26052019 -- function 'map_jet_centerdist' added
+    17062019 -- function 'edjetlocation_fieldatedjet' added
+    18062019 -- contour/label capability added to 'map_nh' 
 """
 # Change font
 import sys
 if 'mpl' not in sys.modules:
     import matplotlib.font_manager
-    prop = matplotlib.font_manager.FontProperties(fname='/Users/ghkerr/Library/Fonts/cmunbmr.ttf')
+    prop = matplotlib.font_manager.FontProperties(
+            fname='/Users/ghkerr/Library/Fonts/cmunbmr.ttf')
     matplotlib.rcParams['font.family'] = prop.get_name()
     prop = matplotlib.font_manager.FontProperties(
         fname='/Users/ghkerr/Library/Fonts/cmunbbx.ttf')
@@ -198,8 +201,8 @@ def map_trend(lat_n, lat_s, lng_n, lng_s, trend_n, trend_s, cbar_label,
     return
 
 def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr, 
-    p_n=None, e_n=None, eerr_n=None, alpha=0.05, extent=None, quiver=None,
-    oceanon='yes'):
+    contour=None, contour_levs=None, p_n=None, e_n=None, eerr_n=None, 
+    alpha=0.05, extent=None, quiver=None, oceanon='yes', extend='both'):
     """plot desired quantity over the Northern Hemisphere (however, if variable
     'extent' is specified, map can be tailored to any region).
     
@@ -218,11 +221,16 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
     cbar_label : str
         Label for the colorbar (field and units)
     clevs : numpy.ndarray
-        Contour levels values
+        Filled contour levels values
     cmap : str
         Colormap name
     fstr : str
         Output filename suffix
+    contour : numpy.ndarray
+        If type(f_c) is numpy.ndarray, black contours and labels are plotted 
+        atop filled contours
+    contour_levs : numpy.ndarray
+        Contour level values
     p_n : numpy.ndarray or NoneType
         If type(p_n) is numpy.ndarray, gridded values less than the 
         significance level (alpha) are plotted as scatterpoints
@@ -241,10 +249,13 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
         U-wind (V-wind)
     oceanon : str
         If 'yes', map adds ocean polygons feature        
+    extend : str
+        Extend settings for matplotlib colormap/colorbar (i.e., 'neither', 
+        'both', 'min', 'max')
 
     Returns
     -------
-    None                    
+    None              
     """
     import copy
     import numpy as np
@@ -265,7 +276,13 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
     # Plot filled contours
     cmap = plt.get_cmap(cmap)
     mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap=cmap,
-                     transform=ccrs.PlateCarree(), extend='both')
+                     transform=ccrs.PlateCarree(), extend=extend)
+    # If specified, add contours and labels. 
+    if contour is None: pass
+    else:
+        cs = ax.contour(lng_n, lat_n, contour, contour_levs, colors = 'k', 
+                        transform=ccrs.PlateCarree())
+        plt.clabel(cs, fontsize=10, inline=1, fmt = '%1.0f')
     # If specified, add stippling (e.g., for statistical significance)
     if p_n is None: pass
     else:
@@ -1073,6 +1090,108 @@ def map_jet_centerdist(centers, lat_jet, lng_jetcoords, lng_centercoords,
                 'map_jet_centerdist_%s.eps'%kind, dpi=300)
     return 
 
+def edjetlocation_fieldatedjet(lat_fr, lng_fr, lat_jet, field_jet, cmap, 
+    cbar_label, clevs, fieldstr, fstr, skiplng=6):
+    """function plots the mean position and variability (standard deviation) 
+    of the eddy-driven jet on a map of the mid-latitudes of the Northern 
+    Hemisphere (upper subplot) and a given field depicting a variable equator-
+    and poleward of the latitude of the jet averaged over all days. 
+    
+    Parameters
+    ----------
+    lat_fr : numpy.ndarray
+        Latitude coordinates for the focus region, units of degrees north, 
+        [lat,]                
+    lng_fr : numpy.ndarray
+        Longitude coordinates for the focus region, units of degrees east, 
+        [lng,]          
+    lat_jet : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng]
+    field_jet : numpy.ndarray
+        The value of the field at the jet and within +/- jetdistance of jet, 
+        [lat, lng] or [time, lat, lng]
+    cmap : str
+        Colormap name    
+    cbar_label : str
+        Label for the colorbar (field and units)
+    clevs : numpy.ndarray
+        Contour levels values
+    fieldstr : str
+        For naming the output file; this variable should specify which 
+        field is shown (i.e., o3anom, do3dt, etc.)
+    fstr : str
+        For naming the output file; this variable should specify the model 
+        shown (i.e., GEOS-C1SD, etc. )
+    skiplng : int
+        This number of longitude coordinates will be skipped when the mean 
+        position and variability of the eddy-driven jet is plotted (default is
+        6, which looks visually nice for 1˚ resolution output)
+
+    Returns
+    -------
+    None    
+    """
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+    fig = plt.figure()
+    axt = plt.subplot2grid((2,2), (0,0), colspan=2, projection=
+                           ccrs.Miller(central_longitude=0.))
+    axt.set_title('(a)', fontsize=14, x=0.02, ha='left')    
+    axb = plt.subplot2grid((2,2), (1,0), colspan=2)
+    axb.set_title('(b)', fontsize=14, x=0.02, ha='left')    
+    axt.add_feature(cfeature.OCEAN, zorder=1, lw=0.0, color='lightgrey')
+    axt.coastlines(lw=0.25, color='k')
+    axt.set_extent([lng_fr.min()-180, lng_fr.max()-180, lat_fr.min(), 
+                    lat_fr.max()])    
+    axt.set_xticks([-180,-135,-90,-45,0,45,90,135,180])
+    axt.set_xticklabels([''])
+    # Plot only every X number of longitude values
+    axt.errorbar(lng_fr[::skiplng], np.nanmean(lat_jet, axis=0)[::skiplng], 
+                 yerr=np.nanstd(lat_jet, axis=0)[::skiplng], zorder=10, 
+                 color='k', markersize=2, elinewidth=0.5, ecolor='k', 
+                 fmt='o', transform=ccrs.PlateCarree())
+    # Roll O3 differences arond the jet so that they align with the top (map)
+    # subplot
+    field_jet_roll = np.roll(field_jet, int(lng_fr.shape[0]/2.), axis=2)
+    mb = axb.contourf(lng_fr, np.arange(-10, 11, 1), 
+                      np.nanmean(field_jet_roll, axis=0), clevs, 
+                      cmap=plt.get_cmap('bwr'), extend='both')
+    axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=14)
+    axb.set_xticks(np.linspace(0, 360, 9))
+    axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180], fontsize=12)
+    axb.set_ylabel('Grid cells from jet', fontsize=14)
+    axb.tick_params(labelsize=12)
+    # Add colorbar
+    colorbar_axes = plt.gcf().add_axes([0.78,0.135,0.02,0.375])
+    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label(cbar_label, fontsize=14)
+    ## Optional: this is clunky and should be improved to more clearly indicate
+    ## the location of shorelines in (b)
+    ## Find locations of shorelines by finding fraction of NaNs (ocean) grid 
+    ## cells in a given longitudinal transect 
+    #ocean_frac = np.empty(shape=(lng_fr.shape[0]))
+    #ocean_frac[:] = np.nan
+    #land_fr_roll = np.roll(land_fr, shift=int(len(lng_fr)/2), axis=1)
+    #for i in np.arange(0, len(lng_fr), 1):
+    #    land_fr_transect = land_fr_roll[:, i]
+    #    frac = np.where(np.isnan(land_fr_transect)==
+    #                    True)[0].shape[0]/len(land_fr_roll[:, i])
+    #    ocean_frac[i] = frac
+    #del i
+    ## Find where at least 50% of transect are land-based grid cells
+    #whereshore = np.where((ocean_frac>0.47) & (ocean_frac<0.5))[0]
+    ## Manually remove duplicates and close doubles (this is clunky!)
+    #whereshore = np.delete(whereshore, [1,3,5,6])
+    #for ws in whereshore: 
+    #    axb.axvline(x=lng_fr[ws], c='k', lw=0.75)
+    plt.gcf().subplots_adjust(right=0.75, hspace=-0.1)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+                'edjetlocation_%satedjet_%s.eps'%(fieldstr, fstr), dpi=300)
+    return 
+
 import numpy as np
 from datetime import datetime
 import sys
@@ -1108,9 +1227,9 @@ except NameError:
     # Interpolate T2m
     t2m_n = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, lng_gmi_n, 
         lat_merra_n, lng_merra_n, t2m_n)
-#    # Calculate relative humidity
-#    rh_n = globalo3_calculate.calculate_rh_from_q(years, 
-#        list(np.arange(0,24,1)), lngmin_n, latmax_n, lngmax_n, latmin_n)
+    # Calculate relative humidity
+    rh_n = globalo3_calculate.calculate_rh_from_q(years, 
+        list(np.arange(0,24,1)), lngmin_n, latmax_n, lngmax_n, latmin_n)
     # Load MERRA-2 data at 500 hPa
     years = [2008,2009,2010]
     hours = [0,3,6,9,12,15,18,21]
@@ -1146,16 +1265,16 @@ except NameError:
         lng_gmi_n)
     do3dt_dat_n = globalo3_calculate.calculate_do3dt(t2m_n, o3_dat_n, 
         lat_gmi_n, lng_gmi_n)
-#    # Calculate dO3/dRH
-#    do3drh_n = globalo3_calculate.calculate_do3dt(rh_n*100., o3_n, lat_gmi_n, 
-#        lng_gmi_n)
+    # Calculate dO3/dRH
+    do3drh_n = globalo3_calculate.calculate_do3dt(rh_n*100., o3_n, lat_gmi_n, 
+        lng_gmi_n)
     # Calculate correlation coefficients
     r_t2mo3_n = globalo3_calculate.calculate_r(t2m_n, o3_n, lat_gmi_n, 
         lng_gmi_n)
     r_t2mo3_n_dat = globalo3_calculate.calculate_r(t2m_n, o3_dat_n, lat_gmi_n, 
         lng_gmi_n)    
-#    r_rho3_n = globalo3_calculate.calculate_r(rh_n*100., o3_n, lat_gmi_n, 
-#        lng_gmi_n)
+    r_rho3_n = globalo3_calculate.calculate_r(rh_n*100., o3_n, lat_gmi_n, 
+        lng_gmi_n)
 #    r_t2mrh_n = globalo3_calculate.calculate_r(rh_n, t2m_n, lat_gmi_n, 
 #        lng_gmi_n)
 #    r_o3u500_n = globalo3_calculate.calculate_r(U500, o3_dat_n, lat_gmi_n, 
@@ -1188,6 +1307,155 @@ except NameError:
     m_o3jetdist, r_o3jetdist = \
         globalo3_calculate.calculate_o3jet_relationship(o3_n, lat_gmi_n,
         lng_gmi_n, lat_jet_nhml, lng_nhml)
+
+"""LOAD AND PLOT OUTPUT FROM GEOS-C1SD"""
+#import numpy as np
+#import sys
+#sys.path.append('/Users/ghkerr/phd/GMI/')
+#from geo_idx import geo_idx
+#sys.path.append('/Users/ghkerr/phd/globalo3/')
+#import globalo3_open, globalo3_calculate
+#sys.path.append('/Users/ghkerr/phd/transporto3/')
+years = [1990, 1991, 1992, 1993, 1994]
+#latmin, latmax, lngmin, lngmax = -2., 90., 0., 360.
+## Open GEOS-C1SD CO emissions with 25 day lifetime output
+#co25_gsd, lat_gsd, lng_gsd, pressure_co25_gsd = globalo3_open.open_geos_c1sd(
+#    years, 'co25', 1000., 800., lngmin, latmax, lngmax, latmin, columnmean=True)
+## Open GEOS-C1SD CO emissions with 50 day lifetime output
+#co50_gsd, lat_gsd, lng_gsd, pressure_co50_gsd = globalo3_open.open_geos_c1sd(
+#    years, 'co50', 1000., 800., lngmin, latmax, lngmax, latmin, columnmean=True)
+## Open GEOS-C1SD output with fixed mixing ratio at the surface between 
+## 30 and 50˚N and 50 day lifetime
+#nh50_gsd, lat_gsd, lng_gsd, pressure_nh50_gsd = globalo3_open.open_geos_c1sd(
+#    years, 'nh50', 1000., 800., lngmin, latmax, lngmax, latmin, columnmean=True)
+## Open GEOS-C1SD output with fixed mixing ratio in the stratosphere (> 80 hPa)
+## and a 25 day lifetime in the troposphere
+#st80_25_gsd, lat_gsd, lng_gsd, pressure_st80_25_gsd = \
+#    globalo3_open.open_geos_c1sd(years, 'st80_25', 1000., 800., lngmin, latmax, 
+#    lngmax, latmin, columnmean=True)
+## Open GEOS-C1SD 500 hPa U wind
+#U500_gsd, lat_gsd, lng_gsd, pressure_U_gsd = globalo3_open.open_geos_c1sd(years, 
+#    'U', 500., 500., lngmin, latmax, lngmax, latmin, columnmean=True)
+#PS_gsd, lat_gsd, lng_gsd = globalo3_open.open_geos_c1sd(years, 'PS', 0., 0., 
+#    lngmin, latmax, lngmax, latmin) # note that levmax, levmin parameters are
+#    # dummies 
+## Add cyclic point to longitude coordinates so that it wraps around the Prime
+## Meridian when plotting
+#lng_gsd[-1]=360.
+## Plot mean fields for GEOS-C1SD simulations
+#map_nh(lat_gsd, lng_gsd, np.nanmean(co25_gsd, axis=0)*1e9, 
+#   'Mean 1000-800 hPa column', 'CO25 [ppbv]', 
+#   np.linspace(0., 100., 6), 'PuBu', 'co25_1000-800hPa_%d-%d'%(years[0],
+#   years[-1]), oceanon='no', extend='max')
+#map_nh(lat_gsd, lng_gsd, np.nanmean(co50_gsd, axis=0)*1e9, 
+#   'Mean 1000-800 hPa column', 'CO50 [ppbv]', 
+#   np.linspace(0., 100., 6), 'PuBu', 'co50_1000-800hPa_%d-%d'%(years[0],
+#   years[-1]), oceanon='no', extend='max')
+#map_nh(lat_gsd, lng_gsd, np.nanmean(nh50_gsd, axis=0)*1e9, 
+#   'Mean 1000-800 hPa column', 'NH50 [ppbv]', 
+#   np.linspace(0., 100000., 6), 'PuBu', 'nh50_1000-800hPa_%d-%d'%(years[0],
+#   years[-1]), oceanon='no', extend='max')
+#map_nh(lat_gsd, lng_gsd, np.nanmean(st80_25_gsd, axis=0)*1e9, 
+#   'Mean 1000-800 hPa column', 'ST80_25 [ppbv]', 
+#   np.linspace(0., 1., 6), 'PuBu', 'st80_25_1000-800hPa_%d-%d'%(years[0],
+#   years[-1]), oceanon='no', extend='max')
+#map_nh(lat_gsd, lng_gsd, np.nanmean(U500_gsd, axis=0), 
+#   '500 hPa', 'U [m s$^{\mathregular{-1}}$]', np.linspace(-16, 16, 9), 
+#   'bwr', 'u_500hPa_%d-%d'%(years[0], years[-1]), oceanon='no', extend='both')
+## Subset fields of interest in the Northern Hemisphere mid-latitudes
+#U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = \
+#    globalo3_calculate.find_grid_in_bb(U500_gsd, lat_gsd, lng_gsd, 0., 360., 
+#    23., 60.)
+#co25_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = globalo3_calculate.find_grid_in_bb(
+#    co25_gsd, lat_gsd, lng_gsd, 0., 360., 23., 60.)
+#co50_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = globalo3_calculate.find_grid_in_bb(
+#    co50_gsd, lat_gsd, lng_gsd, 0., 360., 23., 60.)
+#nh50_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = globalo3_calculate.find_grid_in_bb(
+#    nh50_gsd, lat_gsd, lng_gsd, 0., 360., 23., 60.)
+#st80_25_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = \
+#    globalo3_calculate.find_grid_in_bb(st80_25_gsd, lat_gsd, lng_gsd, 0., 
+#    360., 23., 60.)
+##land_nhml = globalo3_calculate.find_grid_overland(lat_gsd, lng_gsd)
+## Identify eddy-driven jet and tracers in the vicinity of the jet 
+#lat_jet_gsd_nhml, co25_gsd_nhml = globalo3_calculate.find_field_atjet(
+#    co25_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
+#lat_jet_gsd_nhml, co50_gsd_nhml = globalo3_calculate.find_field_atjet(
+#    co50_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
+#lat_jet_gsd_nhml, nh50_gsd_nhml = globalo3_calculate.find_field_atjet(
+#    nh50_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
+#lat_jet_gsd_nhml, st80_25_gsd_nhml = globalo3_calculate.find_field_atjet(
+#    st80_25_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
+## Plot tracer anomalies about the eddy-driven jet
+#edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
+#    co25_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ CO25 [ppbv]', 
+#    np.linspace(-50., 50., 6), 'co25anom', 
+#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
+#    co50_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ CO50 [ppbv]', 
+#    np.linspace(-50., 50., 6), 'co50anom', 
+#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
+#    nh50_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ NH50 [ppbv]',  
+#    np.linspace(-50000., 50000., 6), 'nh50anom', 
+#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
+#    st80_25_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ ST80_25 [ppbv]',  
+#    np.linspace(-0.5, 0.5, 6), 'st80_25anom', 
+#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+## Find indices corresponding to the focus region (Eastern North America)
+#left = geo_idx(269., lng_gsd_nhml)
+#right = geo_idx(294., lng_gsd_nhml)
+## For CO25 tracer
+#co25_gsd_ena = co25_gsd_nhml[:, :, left:right+1]
+#lng_gsd_ena = lng_gsd[left:right+1]
+#field_vj = co25_gsd_ena*1e9
+## Half of latitudinal span of field
+#splitint = int(len(lat_gsd_nhml)/2.)
+## Split field in the vicinity of jet to the field above/below the jet
+#field_vj_below = field_vj[:, :splitint]
+#field_vj_above = field_vj[:, -splitint:]
+## Find regional average of field above/below jet
+#field_vj_below_ra = np.nanmean(field_vj_below, axis=tuple((1,2)))
+## Determine days with the largest increases (tracer anomaly > 0) equatorward 
+## of the jet and largest decreases (tracer anomaly < 0) equatorward 
+## of the jet
+#below_increase = np.where(field_vj_below_ra > 
+#                     np.nanpercentile(field_vj_below_ra, 80))[0]
+#below_decrease = np.where(field_vj_below_ra < 
+#                     np.nanpercentile(field_vj_below_ra, 20))[0]
+## Jet location, CO25 anomaly in the vicinity of jet and the 500 hPa u-wind 
+## anomaly on days where the CO25 anomaly below the jet has largest increase
+## (> 80th percentile)
+#edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, 
+#    lat_jet_gsd_nhml[below_increase], co25_gsd_nhml[below_increase]*1e9, 
+#    'bwr', r'$\mathregular{\Delta}$ CO25 [ppbv]',  np.linspace(-50., 50., 6), 
+#    'co25anom_positivebelowjet_', '1000-800hPa_%d-%d'%(years[0], years[-1]), 
+#    skiplng=4)
+#map_nh(lat_gsd, lng_gsd, (np.nanmean(U500_gsd[below_increase], axis=0)-
+#    np.nanmean(U500_gsd, axis=0)), '500 hPa | Sfc. Pressure', 
+#    '$\mathregular{\Delta}$ U [m s$^{\mathregular{-1}}$]', 
+#    np.linspace(-10, 10, 6), 'bwr', 
+#    'uanomalyforco25_positivebelowjet_500hPa_%d-%d'%(years[0], years[-1]), 
+#    contour=(np.nanmean(PS_gsd[below_increase], axis=0)-
+#    np.nanmean(PS_gsd, axis=0))/100., contour_levs=[-3,-2,-1,1,2,3], 
+#    oceanon='no', extend='both')
+## Jet location, CO25 anomaly in the vicinity of jet and the 500 hPa u-wind 
+## anomaly on days where the CO25 anomaly below the jet has largest decrease
+## (< 20th percentile)
+#edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, 
+#    lat_jet_gsd_nhml[below_decrease], 
+#    co25_gsd_nhml[below_decrease]*1e9, 
+#    'bwr', r'$\mathregular{\Delta}$ CO25 [ppbv]',  np.linspace(-50., 50., 6), 
+#    'co25anom_negativebelowjet_', '1000-800hPa_%d-%d'%(years[0], years[-1]), 
+#    skiplng=4)
+#map_nh(lat_gsd, lng_gsd, (np.nanmean(U500_gsd[below_decrease], axis=0)-
+#    np.nanmean(U500_gsd, axis=0)), '500 hPa | Sfc. Pressure', 
+#    '$\mathregular{\Delta}$ U [m s$^{\mathregular{-1}}$]', 
+#    np.linspace(-10, 10, 6), 'bwr', 
+#    'uanomalyforco25_negativebelowjet_500hPa_%d-%d'%(years[0], years[-1]), 
+#    contour=(np.nanmean(PS_gsd[below_decrease], axis=0)-
+#    np.nanmean(PS_gsd, axis=0))/100., contour_levs=[-3,-2,-1,1,2,3],
+#    oceanon='no', extend='both')
 
 """RELATIONSHIP OF (ANTI)CYCLONES AND EDDY-DRIVEN JET"""
 #latmin_n = 25.
@@ -1259,6 +1527,8 @@ except NameError:
 #    globalo3_calculate.filter_center_bylat(anticyclones, 48., lat_gmi_na)
 #cyclones_abovejet, cyclones_belowjet = globalo3_calculate.filter_center_byjet(
 #    cyclones, lat_jet_nhml, lat_gmi_na, lng_gmi_na, lat_nhml, lng_nhml)
+#anticyclones_abovejet, anticyclones_belowjet = globalo3_calculate.filter_center_byjet(
+#    anticyclones, lat_jet_nhml, lat_gmi_na, lng_gmi_na, lat_nhml, lng_nhml)
 #contourf_var_atcenter(cyclones, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'cyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-5, 5, 11), 'bwr', 
 #    'cyclones')        
@@ -1272,12 +1542,23 @@ except NameError:
 #contourf_var_atcenter(cyclones, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'cyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-10, 10, 11), 'bwr', 
 #    'cyclones')        
-#contourf_var_atcenter(cyclones_lowlat, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'cyclone', 
+#contourf_var_atcenter(cyclones_belowjet, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'cyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-10, 10, 11), 'bwr', 
-#    'cyclones_lowlat')
-#contourf_var_atcenter(cyclones_highlat, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'cyclone', 
+#    'cyclones_belowjet')
+#contourf_var_atcenter(cyclones_abovejet, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'cyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-10, 10, 11), 'bwr', 
-#    'cyclones_highlat')
+#    'cyclones_abovejet')
+#contourf_var_atcenter(anticyclones, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'anticyclone', 
+#    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-4, 4, 9), 'bwr', 
+#    'anticyclones')        
+#contourf_var_atcenter(anticyclones_belowjet, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'anticyclone', 
+#    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-4, 4, 9), 'bwr', 
+#    'anticyclones_belowjet')
+#contourf_var_atcenter(anticyclones_abovejet, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'anticyclone', 
+#    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-4, 4, 9), 'bwr', 
+#    'anticyclones_abovejet')
+
+
 #contourf_var_atcenter(anticyclones, o3_na, 'o3', 15, 'anticyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(20, 40, 21), 'gist_earth', 
 #    'anticyclones')        
@@ -1403,8 +1684,8 @@ except NameError:
 #       np.linspace(-0.5, 0.5, 6), 'bwr', 'do3drhchem_%d-%d_jet'%(years[0],
 #       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
 #       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## r(T, O3) from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '', 
+## r(RH, O3) from +Chemistry
+#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
 #    r'$\it{r}\:$(RH, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
 #    'r_rho3chem_%d-%d_jet'%(years[0],years[-1]), 
 #    e_n=np.nanmean(lat_jet_nhml, axis=0), 
