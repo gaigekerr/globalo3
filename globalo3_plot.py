@@ -1307,7 +1307,145 @@ except NameError:
     m_o3jetdist, r_o3jetdist = \
         globalo3_calculate.calculate_o3jet_relationship(o3_n, lat_gmi_n,
         lng_gmi_n, lat_jet_nhml, lng_nhml)
-
+        
+"""PLOT MEAN GLOBAL FIELDS AND CORRELATIONS"""
+## Mean O3
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '', 
+#       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
+#       'meano3chem_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml,axis=0), 
+#       eerr_n=np.std(lat_jet_nhml,axis=0))
+## Mean EDGAR NOx emissions
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(nox_edgar_n, axis=0), '', 
+#       'NO$_{x\:\mathregular{, EDGAR}}$ [kg m$^{\mathregular{-2}}$ '+
+#       's$^{\mathregular{-1}}$]', np.linspace(0e-10, 1e-10, 11), 'PuBu', 
+#       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## dO3/dT from +Chemistry
+#map_nh(lat_gmi_n, lng_gmi_n, do3dt_n, '', 
+#       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
+#       np.linspace(0, 3., 7), 'Reds', 'do3dtchem_%d-%d_jet'%(years[0],years[-1]),
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## r(T, O3) from +Chemistry
+#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '', 
+#    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
+#    'r_t2mo3chem_%d-%d_jet'%(years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## dO3/dT from Transport
+#map_nh(lat_gmi_n, lng_gmi_n, do3dt_dat_n, '', 
+#       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
+#       np.linspace(0, 3., 7), 'Reds', 'do3dtdat_%d-%d_jet'%(years[0],
+#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## r(T, O3) from Transport
+#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n_dat, '', 
+#    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
+#    'r_t2mo3dat_%d-%d_jet'%(years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## O3 variability from +Chemistry 
+#map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(o3_n, axis=0), '', 
+#       '$\mathregular{\sigma}_{\mathregular{O}_{\mathregular{3}}}$ [ppbv]', 
+#       np.linspace(5, 11, 7), 'PuBu', 'sigmao3chem_%d-%d_jet'%(years[0],
+#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0),
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## Temperature variability 
+#map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(t2m_n, axis=0), '', 
+#       '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
+#       np.linspace(2, 6, 9), 'PuBu', 'sigmat2m_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0),
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## Correlation between O3 and distance from eddy-driven jet
+#map_nh(lat_gmi_n, lng_gmi_n, r_o3jetdist, '', 
+#       r'$\it{r}\:$(O$_\mathregular{3}$, jet distance)', 
+#       np.linspace(-0.7, 0.7, 8), 'bwr', 'r_o3jet_%d-%d_jet'%(years[0],
+#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## Change in O3 with change in eddy-driven jet position 
+#map_nh(lat_gmi_n, lng_gmi_n, m_o3jetdist, '', 
+#       '[ppbv degree$^{\mathregular{-1}}$]', np.linspace(-0.2, 0.4, 7), 
+#       'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## dO3/dRH from +Chemistry
+#map_nh(lat_gmi_n, lng_gmi_n, do3drh_n, '', 
+#       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
+#       np.linspace(-0.5, 0.5, 6), 'bwr', 'do3drhchem_%d-%d_jet'%(years[0],
+#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## Correlation between O3 and distance from eddy-driven jet from GMI CTM 
+#map_nh(lat_gmi_n, lng_gmi_n, r_o3jetdist, '', 
+#   r'$\it{r}\:$(O$_\mathregular{3}$, $\mathregular{\phi}_{\mathregular'+
+#   '{jet}}$ $-$ $\mathregular{\phi}$)', np.linspace(-0.7, 0.7, 8), 
+#   'bwr', 'r_o3jetdist_%d-%d_jet'%(years[0], years[-1]), 
+#   e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#   eerr_n=np.zeros(lat_jet_nhml.shape[1]), oceanon='yes')
+## Change in O3 with change in eddy-driven jet position from GMI CTM 
+#map_nh(lat_gmi_n, lng_gmi_n, m_o3jetdist, '', 
+#   r'$\mathregular{\Delta}$ O$_{\mathregular{3}}$ [ppbv $^{\circ \mathregular{-1}}$]',
+#   np.linspace(-0.2, 0.4, 7), 'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]), oceanon='yes')
+## r(RH, O3) from +Chemistry
+#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
+#    r'$\it{r}\:$(RH, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
+#    'r_rho3chem_%d-%d_jet'%(years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
+## Old 
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(DIR500, axis=0), '', 
+#       'Wind direction$_{\mathregular{500\:hPa}}$ [$^{\circ}$]', 
+#       np.linspace(0, 360, 16), 'twilight', 
+#       'meanwinddir_%d-%d_jet'%(years[0],years[-1])) 
+#map_nh(lat_gmi_n, lng_gmi_n, do3drh_n,
+#       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
+#       np.linspace(-0.75, 0.75, 7), 'bwr', 'do3drh_%d-%d'%(years[0],years[-1]))
+## O3, T, RH, wind direction correlations in + Chemistry simulation
+#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
+#    r'$\it{r}\:$(RH, O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 
+#    'bwr', 'r_rho3_%d-%d_jet'%(years[0],years[-1]))
+#map_nh(lat_gmi_n, lng_gmi_n, r_dirrh_n, '', 
+#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, RH)', 
+#       np.linspace(-0.9, 0.9, 10), 'bwr', 
+#       'r_dirrh_%d-%d_jet'%(years[0],years[-1])) 
+#map_nh(lat_gmi_n, lng_gmi_n, r_dirq500_n, '', 
+#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
+#       'q$_{\mathregular{500\:hPa}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
+#       'r_dirq500_%d-%d_jet'%(years[0],years[-1])) 
+#map_nh(lat_gmi_n, lng_gmi_n, r_diro3_n, '', 
+#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
+#       'O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
+#       'r_diro3_%d-%d_jet'%(years[0],years[-1]))
+## dO3/dT from + Chemistry overlaid with O3-T correlation contours
+#map_do3dt_ro3t_nh(do3dt_n, r_t2mo3_n, lat_gmi_n, lng_gmi_n, '2008-2010')
+## Plot O3-T correlation over India for + Chemistry, Transport, and difference
+#map_extent(r_t2mo3_n, lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
+#    'r(T, O$_\mathregular{3,\:+\:Chemistry}$)', np.linspace(-1.,1.,11),
+#    'bwr', 'india_r_t2mo3chem_%d-%d.eps'%(years[0],years[-1]))
+#map_extent(r_t2mo3_n_dat, lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
+#    'r(T, O$_\mathregular{3,\:Transport}$)', np.linspace(-1.,1.,11),
+#    'bwr', 'india_r_t2mo3transport_%d-%d.eps'%(years[0],years[-1]))
+#map_extent((r_t2mo3_n-r_t2mo3_n_dat), lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
+#    'r(T, O$_\mathregular{3,\:+\:Chemistry}$) $-$ r(T, O$_\mathregular{3,'+
+#    '\:Transport}$)', np.linspace(-0.2,0.2,11), 'bwr', 
+#    'india_r_t2mo3_diffchemtransport_%d-%d.eps'%(years[0],years[-1]))
+## Plot mean U500 (eddy-driven jet) winds 
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(U500, axis=0),
+#       '<U$_{\mathregular{500\:hPa}}$> [m s$^{\mathregular{-1}}$]', 
+#       np.linspace(-10,15,11), 'PuBu', 
+#       'meanU500_%d-%d'%(years[0],years[-1]))
+## Plot 2-meter temperature variability 
+#map_nh(lat_gmi_n, lng_gmi_n, np.std(t2m_n, axis=0),
+#   '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
+#   np.linspace(0,6,11), 'PuBu', 
+#   'stdt2m_%d-%d'%(years[0],years[-1]))
+## Plot O3 at, above, and below the mean jet position in Eastern North America
+#timeseries_o3atabovebelow_jet(o3_nhml, lat_jet_nhml, lat_nhml, lng_nhml, 
+#    269, 294)        
+        
 """LOAD AND PLOT OUTPUT FROM GEOS-C1SD"""
 #import numpy as np
 #import sys
@@ -1316,52 +1454,56 @@ except NameError:
 #sys.path.append('/Users/ghkerr/phd/globalo3/')
 #import globalo3_open, globalo3_calculate
 #sys.path.append('/Users/ghkerr/phd/transporto3/')
-years = [1990, 1991, 1992, 1993, 1994]
+#years_gsd = [1990, 1991, 1992, 1993, 1994]
 #latmin, latmax, lngmin, lngmax = -2., 90., 0., 360.
 ## Open GEOS-C1SD CO emissions with 25 day lifetime output
 #co25_gsd, lat_gsd, lng_gsd, pressure_co25_gsd = globalo3_open.open_geos_c1sd(
-#    years, 'co25', 1000., 800., lngmin, latmax, lngmax, latmin, columnmean=True)
+#    years_gsd, 'co25', 1000., 800., lngmin, latmax, lngmax, latmin, 
+#    columnmean=True)
 ## Open GEOS-C1SD CO emissions with 50 day lifetime output
 #co50_gsd, lat_gsd, lng_gsd, pressure_co50_gsd = globalo3_open.open_geos_c1sd(
-#    years, 'co50', 1000., 800., lngmin, latmax, lngmax, latmin, columnmean=True)
+#    years_gsd, 'co50', 1000., 800., lngmin, latmax, lngmax, latmin, 
+#    columnmean=True)
 ## Open GEOS-C1SD output with fixed mixing ratio at the surface between 
 ## 30 and 50˚N and 50 day lifetime
 #nh50_gsd, lat_gsd, lng_gsd, pressure_nh50_gsd = globalo3_open.open_geos_c1sd(
-#    years, 'nh50', 1000., 800., lngmin, latmax, lngmax, latmin, columnmean=True)
+#    years_gsd, 'nh50', 1000., 800., lngmin, latmax, lngmax, latmin, 
+#    columnmean=True)
 ## Open GEOS-C1SD output with fixed mixing ratio in the stratosphere (> 80 hPa)
 ## and a 25 day lifetime in the troposphere
 #st80_25_gsd, lat_gsd, lng_gsd, pressure_st80_25_gsd = \
-#    globalo3_open.open_geos_c1sd(years, 'st80_25', 1000., 800., lngmin, latmax, 
-#    lngmax, latmin, columnmean=True)
+#    globalo3_open.open_geos_c1sd(years_gsd, 'st80_25', 1000., 800., lngmin, 
+#    latmax, lngmax, latmin, columnmean=True)
 ## Open GEOS-C1SD 500 hPa U wind
-#U500_gsd, lat_gsd, lng_gsd, pressure_U_gsd = globalo3_open.open_geos_c1sd(years, 
-#    'U', 500., 500., lngmin, latmax, lngmax, latmin, columnmean=True)
-#PS_gsd, lat_gsd, lng_gsd = globalo3_open.open_geos_c1sd(years, 'PS', 0., 0., 
-#    lngmin, latmax, lngmax, latmin) # note that levmax, levmin parameters are
-#    # dummies 
-## Add cyclic point to longitude coordinates so that it wraps around the Prime
-## Meridian when plotting
-#lng_gsd[-1]=360.
+#U500_gsd, lat_gsd, lng_gsd, pressure_U_gsd = globalo3_open.open_geos_c1sd(
+#    years_gsd, 'U', 500., 500., lngmin, latmax, lngmax, latmin, 
+#    columnmean=True)
+#PS_gsd, lat_gsd, lng_gsd = globalo3_open.open_geos_c1sd(years_gsd, 'PS', 0., 
+#    0., lngmin, latmax, lngmax, latmin) # note that levmax, levmin parameters 
+#    # are dummies 
+# Add cyclic point to longitude coordinates so that it wraps around the Prime
+# Meridian when plotting
+lng_gsd[-1]=360.
 ## Plot mean fields for GEOS-C1SD simulations
 #map_nh(lat_gsd, lng_gsd, np.nanmean(co25_gsd, axis=0)*1e9, 
 #   'Mean 1000-800 hPa column', 'CO25 [ppbv]', 
-#   np.linspace(0., 100., 6), 'PuBu', 'co25_1000-800hPa_%d-%d'%(years[0],
-#   years[-1]), oceanon='no', extend='max')
+#   np.linspace(0., 100., 6), 'PuBu', 'co25_1000-800hPa_%d-%d'%(years_gsd[0],
+#   years_gsd[-1]), oceanon='no', extend='max')
 #map_nh(lat_gsd, lng_gsd, np.nanmean(co50_gsd, axis=0)*1e9, 
 #   'Mean 1000-800 hPa column', 'CO50 [ppbv]', 
-#   np.linspace(0., 100., 6), 'PuBu', 'co50_1000-800hPa_%d-%d'%(years[0],
-#   years[-1]), oceanon='no', extend='max')
+#   np.linspace(0., 100., 6), 'PuBu', 'co50_1000-800hPa_%d-%d'%(years_gsd[0],
+#   years_gsd[-1]), oceanon='no', extend='max')
 #map_nh(lat_gsd, lng_gsd, np.nanmean(nh50_gsd, axis=0)*1e9, 
 #   'Mean 1000-800 hPa column', 'NH50 [ppbv]', 
-#   np.linspace(0., 100000., 6), 'PuBu', 'nh50_1000-800hPa_%d-%d'%(years[0],
-#   years[-1]), oceanon='no', extend='max')
+#   np.linspace(0., 100000., 6), 'PuBu', 'nh50_1000-800hPa_%d-%d'%(years_gsd[0],
+#   years_gsd[-1]), oceanon='no', extend='max')
 #map_nh(lat_gsd, lng_gsd, np.nanmean(st80_25_gsd, axis=0)*1e9, 
 #   'Mean 1000-800 hPa column', 'ST80_25 [ppbv]', 
-#   np.linspace(0., 1., 6), 'PuBu', 'st80_25_1000-800hPa_%d-%d'%(years[0],
-#   years[-1]), oceanon='no', extend='max')
+#   np.linspace(0., 1., 6), 'PuBu', 'st80_25_1000-800hPa_%d-%d'%(years_gsd[0],
+#   years_gsd[-1]), oceanon='no', extend='max')
 #map_nh(lat_gsd, lng_gsd, np.nanmean(U500_gsd, axis=0), 
 #   '500 hPa', 'U [m s$^{\mathregular{-1}}$]', np.linspace(-16, 16, 9), 
-#   'bwr', 'u_500hPa_%d-%d'%(years[0], years[-1]), oceanon='no', extend='both')
+#   'bwr', 'u_500hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), oceanon='no', extend='both')
 ## Subset fields of interest in the Northern Hemisphere mid-latitudes
 #U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = \
 #    globalo3_calculate.find_grid_in_bb(U500_gsd, lat_gsd, lng_gsd, 0., 360., 
@@ -1375,7 +1517,7 @@ years = [1990, 1991, 1992, 1993, 1994]
 #st80_25_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml = \
 #    globalo3_calculate.find_grid_in_bb(st80_25_gsd, lat_gsd, lng_gsd, 0., 
 #    360., 23., 60.)
-##land_nhml = globalo3_calculate.find_grid_overland(lat_gsd, lng_gsd)
+#land_nhml = globalo3_calculate.find_grid_overland(lat_gsd, lng_gsd)
 ## Identify eddy-driven jet and tracers in the vicinity of the jet 
 #lat_jet_gsd_nhml, co25_gsd_nhml = globalo3_calculate.find_field_atjet(
 #    co25_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
@@ -1385,23 +1527,27 @@ years = [1990, 1991, 1992, 1993, 1994]
 #    nh50_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
 #lat_jet_gsd_nhml, st80_25_gsd_nhml = globalo3_calculate.find_field_atjet(
 #    st80_25_gsd_nhml, U500_gsd_nhml, lat_gsd_nhml, lng_gsd_nhml, 10, anom=True)
+## Calculate CO25-jet relationship
+#m_gsd_co25jetdist, r_gsd_co25jetdist = \
+#    globalo3_calculate.calculate_o3jet_relationship(co25_gsd, lat_gsd, lng_gsd, 
+#    lat_jet_gsd_nhml, lng_gsd_nhml)
 ## Plot tracer anomalies about the eddy-driven jet
 #edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
 #    co25_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ CO25 [ppbv]', 
 #    np.linspace(-50., 50., 6), 'co25anom', 
-#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#    '1000-800hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), skiplng=4)
 #edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
 #    co50_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ CO50 [ppbv]', 
 #    np.linspace(-50., 50., 6), 'co50anom', 
-#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#    '1000-800hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), skiplng=4)
 #edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
 #    nh50_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ NH50 [ppbv]',  
 #    np.linspace(-50000., 50000., 6), 'nh50anom', 
-#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#    '1000-800hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), skiplng=4)
 #edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, lat_jet_gsd_nhml, 
 #    st80_25_gsd_nhml*1e9, 'bwr', r'$\mathregular{\Delta}$ ST80_25 [ppbv]',  
 #    np.linspace(-0.5, 0.5, 6), 'st80_25anom', 
-#    '1000-800hPa_%d-%d'%(years[0], years[-1]), skiplng=4)
+#    '1000-800hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), skiplng=4)
 ## Find indices corresponding to the focus region (Eastern North America)
 #left = geo_idx(269., lng_gsd_nhml)
 #right = geo_idx(294., lng_gsd_nhml)
@@ -1429,13 +1575,13 @@ years = [1990, 1991, 1992, 1993, 1994]
 #edjetlocation_fieldatedjet(lat_gsd_nhml, lng_gsd_nhml, 
 #    lat_jet_gsd_nhml[below_increase], co25_gsd_nhml[below_increase]*1e9, 
 #    'bwr', r'$\mathregular{\Delta}$ CO25 [ppbv]',  np.linspace(-50., 50., 6), 
-#    'co25anom_positivebelowjet_', '1000-800hPa_%d-%d'%(years[0], years[-1]), 
+#    'co25anom_positivebelowjet_', '1000-800hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), 
 #    skiplng=4)
 #map_nh(lat_gsd, lng_gsd, (np.nanmean(U500_gsd[below_increase], axis=0)-
 #    np.nanmean(U500_gsd, axis=0)), '500 hPa | Sfc. Pressure', 
 #    '$\mathregular{\Delta}$ U [m s$^{\mathregular{-1}}$]', 
 #    np.linspace(-10, 10, 6), 'bwr', 
-#    'uanomalyforco25_positivebelowjet_500hPa_%d-%d'%(years[0], years[-1]), 
+#    'uanomalyforco25_positivebelowjet_500hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), 
 #    contour=(np.nanmean(PS_gsd[below_increase], axis=0)-
 #    np.nanmean(PS_gsd, axis=0))/100., contour_levs=[-3,-2,-1,1,2,3], 
 #    oceanon='no', extend='both')
@@ -1446,16 +1592,30 @@ years = [1990, 1991, 1992, 1993, 1994]
 #    lat_jet_gsd_nhml[below_decrease], 
 #    co25_gsd_nhml[below_decrease]*1e9, 
 #    'bwr', r'$\mathregular{\Delta}$ CO25 [ppbv]',  np.linspace(-50., 50., 6), 
-#    'co25anom_negativebelowjet_', '1000-800hPa_%d-%d'%(years[0], years[-1]), 
+#    'co25anom_negativebelowjet_', '1000-800hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), 
 #    skiplng=4)
 #map_nh(lat_gsd, lng_gsd, (np.nanmean(U500_gsd[below_decrease], axis=0)-
 #    np.nanmean(U500_gsd, axis=0)), '500 hPa | Sfc. Pressure', 
 #    '$\mathregular{\Delta}$ U [m s$^{\mathregular{-1}}$]', 
 #    np.linspace(-10, 10, 6), 'bwr', 
-#    'uanomalyforco25_negativebelowjet_500hPa_%d-%d'%(years[0], years[-1]), 
+#    'uanomalyforco25_negativebelowjet_500hPa_%d-%d'%(years_gsd[0], years_gsd[-1]), 
 #    contour=(np.nanmean(PS_gsd[below_decrease], axis=0)-
 #    np.nanmean(PS_gsd, axis=0))/100., contour_levs=[-3,-2,-1,1,2,3],
 #    oceanon='no', extend='both')
+## Correlation between CO25 tracer and distance from eddy-driven jet from 
+## GEOS-C1SD    
+#map_nh(lat_gsd, lng_gsd, r_gsd_co25jetdist, '', 
+#    r'$\it{r}\:$(CO25, $\mathregular{\phi}_{\mathregular{jet}}$ $-$ '+
+#    '$\mathregular{\phi}$)', np.linspace(-0.7, 0.7, 8), 'bwr', 
+#    'r_co25jetdist_%d-%d_jet'%(years_gsd[0], years_gsd[-1]),
+#    e_n=np.nanmean(lat_jet_gsd_nhml, axis=0), 
+#    eerr_n=np.zeros(lat_jet_gsd_nhml.shape[1]), oceanon='yes')
+## Change in CO25 with change in eddy-driven jet position from GMI CTM 
+#map_nh(lat_gsd, lng_gsd, m_gsd_co25jetdist*1e9, '', 
+#   r'$\mathregular{\Delta}$ CO25 [ppbv $^{\circ \mathregular{-1}}$]',
+#   np.linspace(-0.2, 0.4, 7), 'gist_earth_r', 'dco25djet_%d-%d_jet'
+#   %(years_gsd[0],years_gsd[-1]), e_n=np.nanmean(lat_jet_gsd_nhml, axis=0), 
+#   eerr_n=np.zeros(lat_jet_gsd_nhml.shape[1]), oceanon='yes')
 
 """RELATIONSHIP OF (ANTI)CYCLONES AND EDDY-DRIVEN JET"""
 #latmin_n = 25.
@@ -1557,8 +1717,6 @@ years = [1990, 1991, 1992, 1993, 1994]
 #contourf_var_atcenter(anticyclones_abovejet, o3_na-np.mean(o3_na,axis=0), 'o3', 15, 'anticyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(-4, 4, 9), 'bwr', 
 #    'anticyclones_abovejet')
-
-
 #contourf_var_atcenter(anticyclones, o3_na, 'o3', 15, 'anticyclone', 
 #    'O$_{\mathregular{3}}$ [ppbv]', np.linspace(20, 40, 21), 'gist_earth', 
 #    'anticyclones')        
@@ -1615,131 +1773,6 @@ years = [1990, 1991, 1992, 1993, 1994]
 #                'map_SLP_o3_northatlantic_%s.eps'
 #                %datetime.strftime(mtime[day], '%m-%d-%Y'), dpi=300)  
 #    plt.show()
-    
-"""PLOT MEAN GLOBAL FIELDS AND CORRELATIONS"""
-## Mean O3
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '', 
-#       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
-#       'meano3chem_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml,axis=0), 
-#       eerr_n=np.std(lat_jet_nhml,axis=0))
-## Mean EDGAR NOx emissions
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(nox_edgar_n, axis=0), '', 
-#       'NO$_{x\:\mathregular{, EDGAR}}$ [kg m$^{\mathregular{-2}}$ '+
-#       's$^{\mathregular{-1}}$]', np.linspace(0e-10, 1e-10, 11), 'PuBu', 
-#       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## dO3/dT from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, do3dt_n, '', 
-#       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'Reds', 'do3dtchem_%d-%d_jet'%(years[0],years[-1]),
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## r(T, O3) from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '', 
-#    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_t2mo3chem_%d-%d_jet'%(years[0],years[-1]), 
-#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## dO3/dT from Transport
-#map_nh(lat_gmi_n, lng_gmi_n, do3dt_dat_n, '', 
-#       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'Reds', 'do3dtdat_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## r(T, O3) from Transport
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n_dat, '', 
-#    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_t2mo3dat_%d-%d_jet'%(years[0],years[-1]), 
-#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## O3 variability from +Chemistry 
-#map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(o3_n, axis=0), '', 
-#       '$\mathregular{\sigma}_{\mathregular{O}_{\mathregular{3}}}$ [ppbv]', 
-#       np.linspace(5, 11, 7), 'PuBu', 'sigmao3chem_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0),
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Temperature variability 
-#map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(t2m_n, axis=0), '', 
-#       '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
-#       np.linspace(2, 6, 9), 'PuBu', 'sigmat2m_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0),
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Correlation between O3 and distance from eddy-driven jet
-#map_nh(lat_gmi_n, lng_gmi_n, r_o3jetdist, '', 
-#       r'$\it{r}\:$(O$_\mathregular{3}$, jet distance)', 
-#       np.linspace(-0.7, 0.7, 8), 'bwr', 'r_o3jet_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Change in O3 with change in eddy-driven jet position 
-#map_nh(lat_gmi_n, lng_gmi_n, m_o3jetdist, '', 
-#       '[ppbv degree$^{\mathregular{-1}}$]', np.linspace(-0.2, 0.4, 7), 
-#       'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## dO3/dRH from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, do3drh_n, '', 
-#       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
-#       np.linspace(-0.5, 0.5, 6), 'bwr', 'do3drhchem_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## r(RH, O3) from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
-#    r'$\it{r}\:$(RH, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_rho3chem_%d-%d_jet'%(years[0],years[-1]), 
-#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Old 
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(DIR500, axis=0), '', 
-#       'Wind direction$_{\mathregular{500\:hPa}}$ [$^{\circ}$]', 
-#       np.linspace(0, 360, 16), 'twilight', 
-#       'meanwinddir_%d-%d_jet'%(years[0],years[-1])) 
-#map_nh(lat_gmi_n, lng_gmi_n, do3drh_n,
-#       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
-#       np.linspace(-0.75, 0.75, 7), 'bwr', 'do3drh_%d-%d'%(years[0],years[-1]))
-## O3, T, RH, wind direction correlations in + Chemistry simulation
-#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
-#    r'$\it{r}\:$(RH, O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 
-#    'bwr', 'r_rho3_%d-%d_jet'%(years[0],years[-1]))
-#map_nh(lat_gmi_n, lng_gmi_n, r_dirrh_n, '', 
-#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, RH)', 
-#       np.linspace(-0.9, 0.9, 10), 'bwr', 
-#       'r_dirrh_%d-%d_jet'%(years[0],years[-1])) 
-#map_nh(lat_gmi_n, lng_gmi_n, r_dirq500_n, '', 
-#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
-#       'q$_{\mathregular{500\:hPa}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
-#       'r_dirq500_%d-%d_jet'%(years[0],years[-1])) 
-#map_nh(lat_gmi_n, lng_gmi_n, r_diro3_n, '', 
-#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
-#       'O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
-#       'r_diro3_%d-%d_jet'%(years[0],years[-1]))
-## dO3/dT from + Chemistry overlaid with O3-T correlation contours
-#map_do3dt_ro3t_nh(do3dt_n, r_t2mo3_n, lat_gmi_n, lng_gmi_n, '2008-2010')
-## Plot O3-T correlation over India for + Chemistry, Transport, and difference
-#map_extent(r_t2mo3_n, lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
-#    'r(T, O$_\mathregular{3,\:+\:Chemistry}$)', np.linspace(-1.,1.,11),
-#    'bwr', 'india_r_t2mo3chem_%d-%d.eps'%(years[0],years[-1]))
-#map_extent(r_t2mo3_n_dat, lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
-#    'r(T, O$_\mathregular{3,\:Transport}$)', np.linspace(-1.,1.,11),
-#    'bwr', 'india_r_t2mo3transport_%d-%d.eps'%(years[0],years[-1]))
-#map_extent((r_t2mo3_n-r_t2mo3_n_dat), lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
-#    'r(T, O$_\mathregular{3,\:+\:Chemistry}$) $-$ r(T, O$_\mathregular{3,'+
-#    '\:Transport}$)', np.linspace(-0.2,0.2,11), 'bwr', 
-#    'india_r_t2mo3_diffchemtransport_%d-%d.eps'%(years[0],years[-1]))
-## Plot mean U500 (eddy-driven jet) winds 
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(U500, axis=0),
-#       '<U$_{\mathregular{500\:hPa}}$> [m s$^{\mathregular{-1}}$]', 
-#       np.linspace(-10,15,11), 'PuBu', 
-#       'meanU500_%d-%d'%(years[0],years[-1]))
-## Plot 2-meter temperature variability 
-#map_nh(lat_gmi_n, lng_gmi_n, np.std(t2m_n, axis=0),
-#   '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
-#   np.linspace(0,6,11), 'PuBu', 
-#   'stdt2m_%d-%d'%(years[0],years[-1]))
-## Plot O3 at, above, and below the mean jet position in Eastern North America
-#timeseries_o3atabovebelow_jet(o3_nhml, lat_jet_nhml, lat_nhml, lng_nhml, 
-#    269, 294)
 
 """ANIMATION OF 500 HPA WINDS AND O3/O3 ANOMALY FOR JJA 2008"""
 #for day in np.arange(0, 92, 1):
@@ -2199,82 +2232,6 @@ years = [1990, 1991, 1992, 1993, 1994]
 #plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
 #            'scatter_latitude_t2m_easternnorthamerica.eps', dpi=300)
 
-
-"""FIND DRIVER OF dO3/dT RELATIONSHIP BY FIXING COMPONENTS"""
-## Global mean O3-T correlation, and O3/T standard deviation
-#gm_r = np.empty(shape=(lat_gmi_n.shape[0],lng_gmi_n.shape[0]))
-#gm_r[:] = np.mean(r_t2mo3_n)
-#gm_sy = np.empty(shape=(lat_gmi_n.shape[0],lng_gmi_n.shape[0]))
-#gm_sy[:] = np.std(o3_n)
-#gm_sx = np.empty(shape=(lat_gmi_n.shape[0],lng_gmi_n.shape[0]))
-#gm_sx[:] = np.std(t2m_n)
-## Calculate dO3/dT holding factors constant; i.e., dO3/dT is calculated by
-## beta=r(O3,T)*[std(O3)/std(T)] (or, generically, as beta=r*(sy/sx))
-#beta = r_t2mo3_n * (np.std(o3_n, axis=0)/np.std(t2m_n, axis=0)) 
-#map_nh(lat_gmi_n, lng_gmi_n, beta,
-#       r'$\mathregular{\beta}$ [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'PuBu', 'beta')
-## Fix r(O3,T)
-#beta_rconstant = gm_r * (np.std(o3_n, axis=0)/np.std(t2m_n, axis=0))
-#map_nh(lat_gmi_n, lng_gmi_n, beta_rconstant,
-#       r'$\mathregular{\beta}_{\overline{\mathregular{r}}}$ '+
-#       '[ppbv K$^{\mathregular{-1}}$]', np.linspace(-1.8, 0.0, 7), 'PuBu', 
-#       'beta_rconstant')
-## Fix r(O3,T), std(O3)
-#beta_rconstant_syconstant = gm_r * (gm_sy/np.std(t2m_n, axis=0))
-#map_nh(lat_gmi_n, lng_gmi_n, beta_rconstant_syconstant,
-#       r'$\mathregular{\beta}_{\overline{\mathregular{r}},\:'+
-#       '\overline{\mathregular{O_{3}}}}$ [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(-2.8, 0.0, 8), 'PuBu', 'beta_rconstant_syconstant')
-## Fix r(O3,T), std(T)
-#beta_rconstant_sxconstant = gm_r * (np.std(o3_n, axis=0)/gm_sx)
-#map_nh(lat_gmi_n, lng_gmi_n, beta_rconstant_sxconstant,
-#       r'$\mathregular{\beta}_{\overline{\mathregular{r}},\:'+
-#       '\overline{\mathregular{T}}}$ [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(-0.105, 0.0, 8), 'PuBu', 'beta_rconstant_sxconstant')
-## Fix std(O3)
-#beta_syconstant = r_t2mo3_n * (gm_sy/np.std(t2m_n, axis=0))
-#map_nh(lat_gmi_n, lng_gmi_n, beta_syconstant,
-#       r'$\mathregular{\beta}_{\overline{\mathregular{O_3}}}$ '+
-#       '[ppbv K$^{\mathregular{-1}}$]', np.linspace(-20, 16, 7), 'PuBu', 
-#       'beta_syconstant')
-## Fix std(T)
-#beta_sxconstant = r_t2mo3_n * (np.std(o3_n, axis=0)/gm_sx)
-#map_nh(lat_gmi_n, lng_gmi_n, beta_sxconstant,
-#       r'$\mathregular{\beta}_{\overline{\mathregular{T}}}$ '+
-#       '[ppbv K$^{\mathregular{-1}}$]', np.linspace(-0.75, 1.0, 7), 'PuBu', 
-#       'beta_sxconstant')
-## Fix std(O3), std(T)
-#beta_sxconstant_syconstant = r_t2mo3_n * (gm_sy/gm_sx) # fix sx, sy
-#map_nh(lat_gmi_n, lng_gmi_n, beta_sxconstant_syconstant,
-#       r'$\mathregular{\beta}_{\overline{\mathregular{O_3}},\:'+
-#       '\overline{\mathregular{T}}}$ [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(-1, 1, 9), 'PuBu', 'beta_sxconstant_syconstant')
-
-
-"""PRIMARY AIR CARE POSTER"""
-#vmin=26
-#vmax=56
-#nlevs=10
-#map_toar(np.nanmean([np.nanmean(urban_mean, axis=0), 
-#    np.nanmean(rural_mean, axis=0)], axis=0), toarlat, toarlng, 225, 70, 304, 
-#    20, 2, vmin, vmax, nlevs, '', 'O$_{\mathregular{3}}$ [ppbv]', 
-#    'ruralurbanmean_northamerica_PCA')
-#map_toar(np.nanmean([np.nanmean(urban_mean, axis=0), 
-#    np.nanmean(rural_mean, axis=0)], axis=0), toarlat, toarlng, -10, 72, 36, 
-#    28, 2, vmin, vmax, nlevs, '', 'O$_{\mathregular{3}}$ [ppbv]', 
-#    'ruralurbanmean_europe_PCA')
-#map_toar(np.nanmean([np.nanmean(urban_mean, axis=0), 
-#    np.nanmean(rural_mean, axis=0)], axis=0), toarlat, toarlng, 114, 50, 145, 
-#    18, 2, vmin, vmax, nlevs, '', 'O$_{\mathregular{3}}$ [ppbv]', 
-#    'ruralurbanmean_asia_PCA')
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '', 
-#       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(25, 65, 11), 'YlGnBu', 
-#       'meano3_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml,axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-
-
 """PLOT GLOBAL TRENDS"""
 #map_nh(lat_gmi_n, lat_gmi_s, lng_gmi_n, lng_gmi_s, nox_ls_n, 
 #    nox_ls_s, 'L-S Trend NO$_{x}$ [ppbv yr$^{\mathregular{-1}}$]', 
@@ -2293,7 +2250,6 @@ years = [1990, 1991, 1992, 1993, 1994]
 #    do3dt_mk_s, 'M-K Trend dO$_{\mathregular{3}}$/dT [$\cdot$]',
 #    np.linspace(-2., 2., 9), 'bwr', 'mktrenddo3dt', p_n = do3dt_mkp_n,
 #    p_s = do3dt_mkp_s)
-
 
 """CHECK STD/EMFIX FIELDS FROM STRODE ET AL. (2015)"""
 #stdlat_gmi_n, stdlng_gmi_n, times_n, stdo3_n = \
