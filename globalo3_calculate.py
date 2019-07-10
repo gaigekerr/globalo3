@@ -22,6 +22,10 @@ Revision History
     21052019 -- function 'filter_center_byjet' added
     11062019 -- function 'find_grid_in_bb' edited to handle output from 
                 GEOS-C1SD
+    26062019 -- remove function 'filter_center_bylat' - this simple approach is 
+                not needed if examining (anti)cyclones with respect to the jet
+    03072019 -- edit function 'find_grid_overland' such that basemap is larger
+                than domain to pick out land at domain edges
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -349,8 +353,8 @@ def find_grid_overland(lat, lng):
     import numpy as np
     from mpl_toolkits.basemap import Basemap
     # Default is projection is 'cyl'
-    bm = Basemap(llcrnrlon=lng.min(),llcrnrlat=lat.min(),
-                 urcrnrlon=lng.max(),urcrnrlat=lat.max())
+    bm = Basemap(llcrnrlon=lng.min()-5,llcrnrlat=lat.min()-5,
+                 urcrnrlon=lng.max()+5,urcrnrlat=lat.max()+5)
     island = np.empty(shape=(lat.shape[0],lng.shape[0]), dtype='float')
     island[:] = np.nan
     # Loop through all unique lat/lng coordinate pairs
@@ -409,10 +413,9 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
     interest at the jet and within +/- jetdistance of that latitude. If the 
     jet latitude is too close to the top or bottom of the focus region, then 
     the values of the field are found up until the focus region boundary and 
-    remaining values are filled with NaNs. If anom=True, then the value of 
-    the field at the jet's center is found and is subtracted from every 
-    longitude band such that at the jet center the field=0 and values north/
-    south represent departures from the value at the jet's center. 
+    remaining values are filled with NaNs. If anom=True, then the anomaly field
+    is found (here anomaly means that grid cells about the jet have their 
+    grid cell climatology mean subtracted from them).
     
     Parameters
     ----------
@@ -441,6 +444,10 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
         The value of the field at the jet and within +/- jetdistance of jet, 
         [lat, lng] or [time, lat, lng]
     """
+    import time
+    start_time = time.time()    
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
+          'Finding field anomaly about the eddy-driven jet...')   
     import numpy as np
     # Array will be filled the daily latitude of the jet (defined as the 
     # location with maximum U wind at 500 mb) in the focus region
@@ -457,9 +464,14 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
             # Find latitude of jet
             lat_jet[day, i] = lat_fr[U500max]
     del i
-    # If field of interest has dimensions [time, lat, lng], output will be 
-    # field north/south of jet for every timestep and will thus have dimensions 
-    # of[time, 2*jetdistance+1, lng]. 
+    # If field of interest has dimensions [time, lat, lng] (i.e., ndims=3) the
+    # output will be the field north/south of jet for every timestep and will 
+    # thus have dimensions of[time, 2*jetdistance+1, lng]. However, if the 
+    # field of interest is already time-averaged and has dimensions [lat, 
+    # lng] (i.e., ndims=2), the output will only have dimensions 
+    # [2*jetdistance+1, lng]. For anom==True, then values about the jet will 
+    # their climatological means (at each grid cell) subtracted from them
+    # Two dimensions
     if np.ndim(field) == 2:
         field_jet = np.empty(shape=(2*jetdistance+1, len(lng_fr)))
         field_jet[:] = np.nan
@@ -480,44 +492,65 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
                       i] = field_transect_above            
             field_jet[jetdistance-len(field_transect_below):jetdistance, 
                       i] = field_transect_below
-    # If field of interest is already time-averaged and has dimensions [lat, 
-    # lng], the output will only have dimensions [2*jetdistance+1, lng]    
+    # Three dimensions
     if np.ndim(field) == 3:
-        field_jet = np.empty(shape=(len(field), 2*jetdistance+1, len(lng_fr)))
-        field_jet[:] = np.nan
-        # Loop through time
-        for day in np.arange(0, len(field), 1):    
-            U500_day = U500_fr[day]
-            # Loop through longitude
-            for i in np.arange(0, len(lng_fr), 1):    
-                U500max = (np.abs(lat_fr-lat_jet[day, i])).argmin()
-                field_jetcenter = field[day, U500max, i]       
-                # Find values above/below jet's center
-                field_transect_above = field[day, U500max+1:U500max+
-                                             jetdistance+1, i]
-                field_transect_below = field[day, U500max-jetdistance:U500max, 
-                                             i]        
-                # Fill output grid
-                field_jet[day, jetdistance, i] = field_jetcenter
-                field_jet[day, jetdistance+1:jetdistance+1+len(
-                          field_transect_above), i] = field_transect_above            
-                field_jet[day, jetdistance-len(field_transect_below):
-                          jetdistance, i] = field_transect_below
-    # If anom==True, then value of the field at the jet's center will be 
-    # subtracted off from the field, so that field[jetdistance, :] = 0.0 by 
-    # definition            
-    if anom==True: 
-        if np.ndim(field) == 2:                    
-            field_alongcenter = field_jet[jetdistance, :]
-            field_alongcenter = np.tile(field_alongcenter, (len(field_jet), 1))
-            field_jet = field_jet-field_alongcenter
-        if np.ndim(field) == 3:
-            field_alongcenter = field_jet[:, jetdistance, :]
-            # Expand along axis by copying 2D array into 3D array 
-            field_alongcenter = np.repeat(field_alongcenter[:,:,np.newaxis], 
-                                          field_jet.shape[1], axis=2)
-            field_alongcenter = np.swapaxes(field_alongcenter, 2, 1)
-            field_jet = field_jet - field_alongcenter
+        if anom is False:
+            field_jet = np.empty(shape=(len(field), 2*jetdistance+1, 
+                len(lng_fr)))
+            field_jet[:] = np.nan
+            # Loop through time
+            for day in np.arange(0, len(field), 1):    
+                U500_day = U500_fr[day]
+                # Loop through longitude
+                for i in np.arange(0, len(lng_fr), 1):    
+                    U500max = (np.abs(lat_fr-lat_jet[day, i])).argmin()
+                    field_jetcenter = field[day, U500max, i]       
+                    # Find values above/below jet's center
+                    field_transect_above = field[day, U500max+1:U500max+
+                        jetdistance+1, i]
+                    field_transect_below = field[day, 
+                        U500max-jetdistance:U500max, i]        
+                    # Fill output grid
+                    field_jet[day, jetdistance, i] = field_jetcenter
+                    field_jet[day, jetdistance+1:jetdistance+1+len(
+                              field_transect_above), i] = field_transect_above            
+                    field_jet[day, jetdistance-len(field_transect_below):
+                              jetdistance, i] = field_transect_below
+        if anom is True: 
+            field_jet = np.empty(shape=(len(field), 2*jetdistance+1, 
+                                        len(lng_fr)))
+            field_jet[:] = np.nan
+            # Loop through time
+            for day in np.arange(0, len(field), 1):  
+                U500_day = U500_fr[day]
+                # Loop through longitude
+                for i in np.arange(0, len(lng_fr), 1):    
+                    U500max = (np.abs(lat_fr-lat_jet[day, i])).argmin()
+                    # Find value of field at the jet's center on the day of 
+                    # interest and the climatology of grid cell over all days 
+                    # in measuring period
+                    field_jetcenter = field[day, U500max, i]       
+                    field_jetcenter_clim = np.nanmean(field[:, U500max, i])
+                    # Find field above/below jet's center and climatology
+                    field_transect_above = field[day, U500max+1:U500max+
+                        jetdistance+1, i]
+                    field_transect_above_clim = np.nanmean(field[:, 
+                        U500max+1:U500max+jetdistance+1, i], axis=0)                
+                    field_transect_below = field[day, U500max-jetdistance:
+                        U500max, i]
+                    field_transect_below_clim = np.nanmean(field[:, 
+                        U500max-jetdistance:U500max, i], axis=0)    
+                    # Fill output grid
+                    field_jet[day, jetdistance, i] = (field_jetcenter-
+                        field_jetcenter_clim)
+                    field_jet[day, jetdistance+1:jetdistance+1+len(
+                        field_transect_above), i] = (field_transect_above-
+                        field_transect_above_clim)
+                    field_jet[day, jetdistance-len(field_transect_below):
+                        jetdistance, i] = (field_transect_below-
+                        field_transect_below_clim)
+    print('Values of field about jet calculated in %.2f seconds!'%(
+            time.time() - start_time))      
     return lat_jet, field_jet
 
 def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
@@ -577,8 +610,14 @@ def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
             jetj = jetpos[:, np.abs(lng_jet-lng_fr[locj]).argmin()]
             # Difference in grid cell's latitude and the latitude of the jet
             diff = jetj-lat_fr[loci]
-            slope[loci,locj] = np.polyfit(diff, o3ij, 1)[0]
-            correl[loci,locj] = np.corrcoef(diff, o3ij)[0,1]
+            # Mask out NaNs to avoid ValueError; i.e., for additional 
+            # information see https://stackoverflow.com/questions/13675912/
+            # python-programming-numpy-polyfit-saying-nan
+            notnan = np.isfinite(diff) & np.isfinite(o3ij)
+            if True in notnan:
+                slope[loci,locj] = np.polyfit(diff[notnan], o3ij[notnan], 1)[0]
+                correl[loci,locj] = np.corrcoef(
+                        diff[notnan], o3ij[notnan])[0,1]
     return slope, correl
 
 def convert_uv_tocardinal(U, V): 
@@ -794,42 +833,6 @@ def identify_SLPcenter(lat, lng, SLP, dx, dy, kind, pr_crit, years,
     return (center, where_center_daycoord, where_center_ycoord, 
         where_center_xcoord)
     
-def filter_center_bylat(center, lat_thresh, lat_gmi):
-    """filter (anti)cyclones by latitude, separating them into systems at 
-    low latitudes (high latitudes) such that any systems above (below)
-    the specified latitude threshold are set to NaN. 
-    
-    Parameters
-    ----------
-    center : numpy.ndarray 
-        A value of 1 indicates the presence of a cyclone/anticylone for a 
-        particular day and locaditon, [time, lat, lng]       
-    lat_gmi : numpy.ndarray
-        Latitude coordinates, units of degrees north, [lat,]
-        
-    Returns
-    -------
-    center_lowlat : numpy.ndarray
-        A value of 1 indicates the presence of a cyclone/anticylone for a 
-        particular day and location with all cyclones/anticyclones poleward of 
-        the specified latitude threshold set to NaN, [time, lat, lng]       
-    center_highlat : numpy.ndarray
-        A value of 1 indicates the presence of a cyclone/anticylone for a 
-        particular day and location with all cyclones/anticyclones equatorward
-        of the specified latitude threshold set to NaN, [time, lat, lng]           
-    """
-    import numpy as np
-    import copy
-    center_lowlat = copy.deepcopy(center)
-    center_highlat = copy.deepcopy(center)
-    # Find index of latitude threshold
-    lat_thresh_idx = np.abs(lat_gmi-lat_thresh).argmin()
-    # Set all pressure centers (which are denoted with 1s above or below the 
-    # latitude threshold to NaNs).
-    center_lowlat[:, lat_thresh_idx:] = np.nan
-    center_highlat[:, :lat_thresh_idx] = np.nan
-    return center_lowlat, center_highlat    
-
 def filter_center_byjet(center, jet, lat_systemcoords, lng_systemcoords, 
     lat_jetcoords, lng_jetcoords): 
     """filter (anti)cyclones by their latitude with respect to the eddy-driven 
