@@ -14,6 +14,8 @@ Revision History
     26052019 -- function 'map_jet_centerdist' added
     17062019 -- function 'edjetlocation_fieldatedjet' added
     18062019 -- contour/label capability added to 'map_nh' 
+    09072019 -- edit function 'edjetlocation_fieldatedjet' to handle and 
+                number of grid cells/degrees from jet center
 """
 # Change font
 import sys
@@ -1205,12 +1207,15 @@ def edjetlocation_fieldatedjet(lat_fr, lng_fr, lat_jet, field_jet, cmap,
     # Roll O3 differences arond the jet so that they align with the top (map)
     # subplot
     field_jet_roll = np.roll(field_jet, int(lng_fr.shape[0]/2.), axis=1)
-    mb = axb.contourf(lng_fr, np.arange(-10, 11, 1), field_jet_roll, clevs, 
+    mb = axb.contourf(lng_fr, np.arange(-int((o3_jet_nhml.shape[1]-1)/2.), 
+                      int((o3_jet_nhml.shape[1]-1)/2.)+1, 1), 
+                      field_jet_roll, clevs, 
                       cmap=plt.get_cmap(cmap), extend='both')
     axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=14)
     axb.set_xticks(np.linspace(0, 360, 9))
     axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180], fontsize=12)
-    axb.set_ylabel('Grid cells from jet', fontsize=14)
+    axb.set_ylabel('Distance from jet center [$^{\mathregular{\circ}}$]', 
+                   fontsize=14)
     axb.tick_params(labelsize=12)
     # Add colorbar
     colorbar_axes = plt.gcf().add_axes([0.78,0.135,0.02,0.375])
@@ -1357,6 +1362,57 @@ except NameError:
         globalo3_calculate.calculate_o3jet_relationship(o3_n, lat_gmi_n,
         lng_gmi_n, lat_jet_nhml, lng_nhml)
 
+"""PLOT MEAN LOCATION OF JET STREAM (MAX U WINDS AT 500 HPA) AND 
+   O3, dO3/dT, and r(O3, T) WITHIN +/- 10 DEGREES OF JET STREAM""" 
+#U500_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(U500, 
+#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)
+#o3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(o3_n, 
+#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)
+#do3dt_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(do3dt_n, 
+#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)   
+#r_t2mo3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(
+#    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)      
+#land_nhml = globalo3_calculate.find_grid_overland(lat_nhml, lng_nhml)   
+#lat_jet_nhml, o3_jet_nhml = globalo3_calculate.find_field_atjet(o3_nhml, 
+#    U500_nhml, lat_nhml, lng_nhml, 20, anom=True)
+#lat_jet_nhml, do3dt_jet_nhml = globalo3_calculate.find_field_atjet(do3dt_nhml, 
+#    U500_nhml, lat_nhml, lng_nhml, 20)
+#lat_jet_nhml, r_t2mo3_jet_nhml = globalo3_calculate.find_field_atjet(
+#    r_t2mo3_nhml, U500_nhml, lat_nhml, lng_nhml, 20) 
+## O3 anomaly in vicinity of jet 
+#edjetlocation_fieldatedjet(lat_nhml, 
+#    lng_nhml,
+#    lat_jet_nhml, 
+#    np.nanmean(o3_jet_nhml, axis=0),
+#    'bwr', 
+#    r'$\mathregular{\Delta}$ O$_{\mathregular{3}}$ [ppbv]',  
+#    np.linspace(-5., 5., 11), 
+#    'o3anom_jet', 
+#    'gmictm_expandlatrange_%d-%d'%(years[0], years[-1]), 
+#    skiplng=6)
+## dO3/dT in vicinity of jet
+#edjetlocation_fieldatedjet(lat_nhml, 
+#    lng_nhml,
+#    lat_jet_nhml, 
+#    do3dt_jet_nhml,
+#    'Reds', 
+#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
+#    np.linspace(0, 2, 6),
+#    'do3dt_jet', 
+#    'gmictm_expandlatrange_%d-%d'%(years[0], years[-1]), 
+#    skiplng=6)
+## r(T, O3) in vicinity of jet
+#edjetlocation_fieldatedjet(lat_nhml, 
+#    lng_nhml,
+#    lat_jet_nhml, 
+#    r_t2mo3_jet_nhml,
+#    'bwr', 
+#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
+#    np.linspace(-1, 1, 11),
+#    'rt2mo3_jet', 
+#    'gmictm_expandlatrange_%d-%d'%(years[0], years[-1]), 
+#    skiplng=6)
+
 """ O3-JET RELATIONSHIP DIFFERENCES BETWEEN STD/EMFIX SIMULATIONS """
 ## Load GMI CTM O3 from EmFix simulation
 #lat_emfix_n, lng_emfix_n, times_emfix_n, o3_emfix_n = \
@@ -1421,119 +1477,104 @@ except NameError:
 #    'emfix-std_%d-%d'%(years[0], years[-1]),
 #    skiplng=6)
 
-
 """O3 ANOMALIES AND JET POSITION ON DAYS WITH EQUATOR/POLEWARD JET"""
-## Find fields over North American mid-latitudes (20-70˚N, 225-300˚E)
+# Find fields over North American mid-latitudes (20-70˚N, 225-300˚E)
 #U500_naml, lat_naml, lng_naml = globalo3_calculate.find_grid_in_bb(U500, 
 #    lat_gmi_n, lng_gmi_n, 225., 300., 20., 70.)
 #o3_naml, lat_naml, lng_naml = globalo3_calculate.find_grid_in_bb(o3_n, 
 #    lat_gmi_n, lng_gmi_n, 225., 300., 20., 70.)
 #land_naml = globalo3_calculate.find_grid_overland(lat_naml, lng_naml)
 #lat_jet_naml, o3_jet_naml = globalo3_calculate.find_field_atjet(o3_naml, 
-#    U500_naml, lat_naml, lng_naml, 10, anom=True)
-## Find the daily mean jet latitude averaged over focus region
-#jet_lat_mean = np.nanmean(lat_jet_naml, axis=1)
-## Days where the mean jet position is 2 sigma above/below average
-#where_high2sigma = np.where(jet_lat_mean > 
-#    jet_lat_mean.mean()+(1.25*np.std(jet_lat_mean)))[0]
-#where_low2sigma = np.where(jet_lat_mean < 
-#    jet_lat_mean.mean()-(1.25*np.std(jet_lat_mean)))[0]
-## Jet and mean O3 anomaly for the jet when poleward than 2 sigma its mean
-## latitude
+#    U500_naml, lat_naml, lng_naml, 20, anom=True)
+#o3_anom_za = np.nanmean(o3_jet_naml, axis=2) 
+#lat_jet_naml_za = np.nanmean(lat_jet_naml, axis=1)
+## Group days into percentile categories based on the jet latitude
+#jet_0_30 = np.where(lat_jet_naml_za < np.percentile(lat_jet_naml_za, 30))[0]
+#jet_30_70 = np.where((lat_jet_naml_za >= np.percentile(lat_jet_naml_za, 30)) &
+#                     (lat_jet_naml_za < np.percentile(lat_jet_naml_za, 70)))[0]
+#jet_70_100 = np.where(lat_jet_naml_za >= np.percentile(lat_jet_naml_za, 70))[0]
+## Since the O3 anomaly (o3_anom_za) is calculated about the jet axis, 
+## create latitude "spines" where the center value of the spine is the mean 
+## jet latitude for each percentile category and values away from the center
+## reflect the resolution of the data
+#res = np.diff(lat_naml).mean()
+#js_0_30c = lat_jet_naml_za[jet_0_30].mean()
+#js_0_30 = np.linspace(js_0_30c-20, js_0_30c+20, o3_anom_za.shape[1])
+#js_30_70c = lat_jet_naml_za[jet_30_70].mean()
+#js_30_70 = np.linspace(js_30_70c-20, js_30_70c+20, o3_anom_za.shape[1])
+#js_70_100c = lat_jet_naml_za[jet_70_100].mean()
+#js_70_100 = np.linspace(js_70_100c-20, js_70_100c+20, o3_anom_za.shape[1])
+## Plot O3 zonally-averaged anomaly about the jet and indicate mean jet 
+## latitude for percentile categories with vertical line
+#fig = plt.figure()
+#ax = plt.subplot2grid((1,1), (0,0))
+#ax.plot(js_0_30, np.nanmean(o3_anom_za[jet_0_30], axis=0), '-', lw=2, 
+#        color='#1b9e77', zorder=10,
+#        label='$\mathregular{\phi_{jet}}$ 0-30th percentile')
+#ax.axvline(x=js_0_30c, color='#1b9e77', linestyle='--', lw=1, 
+#           zorder=1)
+#ax.plot(js_30_70, np.nanmean(o3_anom_za[jet_30_70], axis=0), '-', lw=2, 
+#        color='#d95f02', zorder=11,
+#        label='$\mathregular{\phi_{jet}}$ 30-70th percentile')
+#ax.axvline(x=js_30_70c, color='#d95f02', linestyle='--', lw=1, 
+#           zorder=1)
+#ax.plot(js_70_100, np.nanmean(o3_anom_za[jet_70_100], axis=0), '-', lw=2,
+#        color='#7570b3', zorder=12,
+#        label='$\mathregular{\phi_{jet}}$ 70-100th percentile')
+#ax.axvline(x=js_70_100c, color='#7570b3', linestyle='--', lw=1, 
+#           zorder=1)
+#plt.legend(loc=9,  ncol=3, bbox_to_anchor=(0.5, 1.15), frameon=False)
+#ax.set_xlabel('Latitude [$\mathregular{^{\circ}}$]')
+#ax.set_ylabel('$\mathregular{\delta}$O$_\mathregular{3}$ [ppbv]')
+#plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+'deltao3_latitude_naml.eps',
+#            dpi=300)
+#plt.show()
+## Map of O3 anomalies and jet latitude/variability for days where the jet 
+## latitude is within the 0-30th percentile
 #map_nh(lat_naml, 
 #    lng_naml, 
-#    np.nanmean(o3_naml[where_high2sigma], axis=0)-np.nanmean(o3_naml, axis=0), 
-#    '$\mathregular{\Delta}$ O$_\mathregular{3}$ for $\mathregular{\phi}_'+
-#    '{\mathregular{jet}}$>($\mathregular{\mu}_{\mathregular{\phi_{jet}}}$+'+
-#    '1.25$\mathregular{\sigma}_{\mathregular{\phi_{jet}}}$)',    
+#    np.nanmean(o3_naml[jet_0_30], axis=0)-np.nanmean(o3_naml, axis=0), 
+#    '$\mathregular{\delta}$ O$_\mathregular{3}$ for $\mathregular{\phi}_'+
+#    '{\mathregular{jet}}$ 0-30th percentile',    
 #    '[ppbv]', 
-#    np.linspace(-10, 10, 11), 
+#    np.linspace(-5, 5, 11), 
 #    'bwr', 
-#    'northamerica_anomo3_jetlat_high2sigma',
-#    e_n=np.nanmean(lat_jet_naml[where_high2sigma],axis=0), 
-#    eerr_n=np.nanstd(lat_jet_naml[where_high2sigma],axis=0), 
+#    'northamerica_anomo3_jet_jetp0p30',
+#    e_n=np.nanmean(lat_jet_naml[jet_0_30],axis=0), 
+#    eerr_n=np.nanstd(lat_jet_naml[jet_0_30],axis=0), 
 #    extent=[lng_naml.min(), lng_naml.max(), lat_naml.min(), lat_naml.max()-5], 
 #    oceanon='yes', 
 #    extend='both')
-## Jet and mean O3 anomaly for the jet when equatorward than 2 sigma its mean
-## latitude
+## 30-70th percentile
 #map_nh(lat_naml, 
 #    lng_naml, 
-#    np.nanmean(o3_naml[where_low2sigma], axis=0)-np.nanmean(o3_naml, axis=0), 
-#    '$\mathregular{\Delta}$ O$_\mathregular{3}$ for $\mathregular{\phi}_'+
-#    '{\mathregular{jet}}$<($\mathregular{\mu}_{\mathregular{\phi_{jet}}}$-'+
-#    '1.25$\mathregular{\sigma}_{\mathregular{\phi_{jet}}}$)',
+#    np.nanmean(o3_naml[jet_30_70], axis=0)-np.nanmean(o3_naml, axis=0), 
+#    '$\mathregular{\delta}$ O$_\mathregular{3}$ for $\mathregular{\phi}_'+
+#    '{\mathregular{jet}}$ 30-70th percentile',    
 #    '[ppbv]', 
-#    np.linspace(-10, 10, 11), 
+#    np.linspace(-5, 5, 11), 
 #    'bwr', 
-#    'northamerica_anomo3_jetlat_low2sigma',
-#    e_n=np.nanmean(lat_jet_naml[where_low2sigma],axis=0), 
-#    eerr_n=np.nanstd(lat_jet_naml[where_low2sigma],axis=0), 
+#    'northamerica_anomo3_jet_jetp30p70',
+#    e_n=np.nanmean(lat_jet_naml[jet_30_70],axis=0), 
+#    eerr_n=np.nanstd(lat_jet_naml[jet_30_70],axis=0), 
 #    extent=[lng_naml.min(), lng_naml.max(), lat_naml.min(), lat_naml.max()-5], 
 #    oceanon='yes', 
-#    extend='both')    
-## Maps for individual days/case studies with extreme poleward and equatorward
-## jet streams positions
+#    extend='both')
+## 70-100th percentile
 #map_nh(lat_naml, 
 #    lng_naml, 
-#    o3_naml[where_high2sigma[1]]-np.nanmean(o3_naml, axis=0), 
-#    '$\mathregular{\Delta}$ O$_\mathregular{3}$ for %s' 
-#    %datetime.strftime(mtime[where_high2sigma[1]], '%m/%d/%Y'),
+#    np.nanmean(o3_naml[jet_70_100], axis=0)-np.nanmean(o3_naml, axis=0), 
+#    '$\mathregular{\delta}$ O$_\mathregular{3}$ for $\mathregular{\phi}_'+
+#    '{\mathregular{jet}}$ 70-100th percentile',    
 #    '[ppbv]', 
-#    np.linspace(-10, 10, 11), 
-#    'bwr',
-#    'northamerica_anomo3_jetlat-%s'
-#    %datetime.strftime(mtime[where_high2sigma[1]], '%m-%d-%Y'),
-#    e_n=jet_lat[where_high2sigma[1]],
-#    eerr_n=np.zeros(shape=jet_lat[where_high2sigma[1]].shape), 
-#    extent=[lng_fr.min(), lng_fr.max(), lat_fr.min(), lat_fr.max()-5], 
-#    oceanon='yes', 
-#    extend='both') 
-#map_nh(lat_naml, 
-#    lng_naml, 
-#    o3_naml[where_high2sigma[8]]-np.nanmean(o3_naml, axis=0), 
-#    '$\mathregular{\Delta}$ O$_\mathregular{3}$ for %s' 
-#    %datetime.strftime(mtime[where_high2sigma[8]], '%m/%d/%Y'),    
-#    '[ppbv]', 
-#    np.linspace(-10, 10, 11), 
+#    np.linspace(-5, 5, 11), 
 #    'bwr', 
-#    'northamerica_anomo3_jetlat-%s'
-#    %datetime.strftime(mtime[where_high2sigma[8]], '%m-%d-%Y'),
-#    e_n=jet_lat[where_high2sigma[8]],
-#    eerr_n=np.zeros(shape=jet_lat[where_high2sigma[8]].shape), 
-#    extent=[lng_fr.min(), lng_fr.max(), lat_fr.min(), lat_fr.max()-5], 
+#    'northamerica_anomo3_jet_jetp70p100',
+#    e_n=np.nanmean(lat_jet_naml[jet_70_100],axis=0), 
+#    eerr_n=np.nanstd(lat_jet_naml[jet_70_100],axis=0), 
+#    extent=[lng_naml.min(), lng_naml.max(), lat_naml.min(), lat_naml.max()-5], 
 #    oceanon='yes', 
-#    extend='both')     
-#map_nh(lat_naml, 
-#    lng_naml, 
-#    o3_naml[where_low2sigma[0]]-np.nanmean(o3_naml, axis=0), 
-#    '$\mathregular{\Delta}$ O$_\mathregular{3}$ for %s' 
-#    %datetime.strftime(mtime[where_low2sigma[0]], '%m/%d/%Y'),
-#    '[ppbv]', 
-#    np.linspace(-10, 10, 11), 
-#    'bwr', 
-#    'northamerica_anomo3_jetlat-%s'
-#    %datetime.strftime(mtime[where_low2sigma[0]], '%m-%d-%Y'),
-#    e_n=jet_lat[where_low2sigma[0]],
-#    eerr_n=np.zeros(shape=jet_lat[where_low2sigma[0]].shape), 
-#    extent=[lng_fr.min(), lng_fr.max(), lat_fr.min(), lat_fr.max()-5], 
-#    oceanon='yes', 
-#    extend='both')     
-#map_nh(lat_naml, 
-#    lng_naml, 
-#    o3_naml[where_low2sigma[3]]-np.nanmean(o3_naml, axis=0), 
-#    '$\mathregular{\Delta}$ O$_\mathregular{3}$ for %s' 
-#    %datetime.strftime(mtime[where_low2sigma[3]], '%m/%d/%Y'),
-#    '[ppbv]',
-#    np.linspace(-10, 10, 11), 
-#    'bwr', 
-#    'northamerica_anomo3_jetlat-%s'
-#    %datetime.strftime(mtime[where_low2sigma[3]], '%m-%d-%Y'),
-#    e_n=jet_lat[where_low2sigma[3]],
-#    eerr_n=np.zeros(shape=jet_lat[where_low2sigma[3]].shape), 
-#    extent=[lng_fr.min(), lng_fr.max(), lat_fr.min(), lat_fr.max()-5], 
-#    oceanon='yes', 
-#    extend='both')    
+#    extend='both')
     
 """PLOT MEAN GLOBAL FIELDS AND CORRELATIONS"""
 ## Mean O3
@@ -2122,59 +2163,6 @@ except NameError:
 #    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
 #                'edjetlocation_t2medjet_%.2d.jpg'%day, dpi=200)
 #    plt.show()
-
-
-"""PLOT MEAN LOCATION OF JET STREAM (MAX U WINDS AT 500 HPA) AND 
-   O3, dO3/dT, and r(O3, T) WITHIN +/- 10 DEGREES OF JET STREAM""" 
-#U500_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(U500, 
-#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)
-#o3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(o3_n, 
-#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)
-#do3dt_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(do3dt_n, 
-#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)   
-#r_t2mo3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(
-#    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)      
-#land_nhml = globalo3_calculate.find_grid_overland(lat_nhml, lng_nhml)   
-#lat_jet_nhml, o3_jet_nhml = globalo3_calculate.find_field_atjet(o3_nhml, 
-#    U500_nhml, lat_nhml, lng_nhml, 10, anom=True)
-#lat_jet_nhml, do3dt_jet_nhml = globalo3_calculate.find_field_atjet(do3dt_nhml, 
-#    U500_nhml, lat_nhml, lng_nhml, 10)
-#lat_jet_nhml, r_t2mo3_jet_nhml = globalo3_calculate.find_field_atjet(
-#    r_t2mo3_nhml, U500_nhml, lat_nhml, lng_nhml, 10) 
-## O3 anomaly in vicinity of jet 
-#edjetlocation_fieldatedjet(lat_nhml, 
-#    lng_nhml,
-#    lat_jet_nhml, 
-#    np.nanmean(o3_jet_nhml, axis=0),
-#    'bwr', 
-#    r'$\mathregular{\Delta}$ O$_{\mathregular{3}}$ [ppbv]',  
-#    np.linspace(-14., 14., 8), 
-#    'o3anom_jet', 
-#    'gmictm_%d-%d'%(years[0], years[-1]), 
-#    skiplng=6)
-## dO3/dT in vicinity of jet
-#edjetlocation_fieldatedjet(lat_nhml, 
-#    lng_nhml,
-#    lat_jet_nhml, 
-#    do3dt_jet_nhml,
-#    'Reds', 
-#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
-#    np.linspace(0, 2, 6),
-#    'do3dt_jet', 
-#    'gmictm_%d-%d'%(years[0], years[-1]), 
-#    skiplng=6)
-## r(T, O3) in vicinity of jet
-#edjetlocation_fieldatedjet(lat_nhml, 
-#    lng_nhml,
-#    lat_jet_nhml, 
-#    r_t2mo3_jet_nhml,
-#    'bwr', 
-#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
-#    np.linspace(-1, 1, 11),
-#    'rt2mo3_jet', 
-#    'gmictm_%d-%d'%(years[0], years[-1]), 
-#    skiplng=6)
-
 
 """PLOT DO3/DT AND MEAN U500"""
 #clevs = np.linspace(0, 3, 7)
