@@ -22,6 +22,8 @@ Revision History
     18062019 -- 'open_geos_c1sd' modified to handle datasets with no vertical
                 coordinates (i.e., MSLP) and transport output arrays such that 
                 time is the first dimension
+    16062019 -- function 'open_merra2_specifieddomain' moved from 
+                transporto3_open and edited 
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -113,9 +115,9 @@ def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
             # Extract trace gas concentrations for month 
             gas_month = infile.variables['const_overpass'][:,gas_where,0,
                                         latmin:latmax+1,lngmin:lngmax+1]
-            # Drop leap days from analysis
-            if (calendar.isleap(year)==True) and (month == 'feb'):
-                gas_month = gas_month[:-1]
+#            # Drop leap days from analysis
+#            if (calendar.isleap(year)==True) and (month == 'feb'):
+#                gas_month = gas_month[:-1]
             # GMI simulation 'HindcastFFIgac2' only has 30 days in 
             # December 2008 (wtf?) unlike all over Hindcast simulations. 
             # For this simulation, repeat 30 December values for 31 December
@@ -268,7 +270,7 @@ def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin,
         months_int.append(list(calendar.month_abbr).index(month.title()))
     # Loop through measuring period    
     for year in years:
-        PATH_MERRA = '/Users/ghkerr/phd/globalo3/data/MERRA-2/%d/'%year        
+        PATH_MERRA = '/Users/ghkerr/phd/globalo3/data/MERRA-2/%d/inst1_2d_asm_Nx/'%year        
         for month in months_int:
             # Open monthly overpass2 file 
             infile = Dataset(PATH_MERRA+'MERRA2_300.inst1_2d_asm_Nx.%d%.2d.SUB.nc'
@@ -290,9 +292,9 @@ def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin,
                 lng = lng[lngmin:lngmax+1]           
             # Extract 2-meter temperatures for the month
             t2m_month = infile.variables['T2M'][:]
-            # Drop leap days from analysis
-            if (calendar.isleap(year)==True) and (month == 2):
-                t2m_month = t2m_month[:-1]
+#            # Drop leap days from analysis
+#            if (calendar.isleap(year)==True) and (month == 2):
+#                t2m_month = t2m_month[:-1]
             # Roll grid similar to longitude grid
             t2m_month = np.roll(t2m_month, int(t2m_month.shape[-1]/2)-1, axis = 2)
             t2m_month = t2m_month[:,latmin:latmax+1,lngmin:lngmax+1]
@@ -733,8 +735,9 @@ def open_geos_c1sd(years, varname, levmax, levmin, lngmin, latmax, lngmax,
     Returns
     -------
     var : numpy.ndarray
-        Model output for specified variable, if columnsum = True then shape is
-        [time, lat, lng] if False then shape is [time, press, lat, lng]
+        Model output for specified variable, units of ppbv, if columnsum = True 
+        then shape is [time, lat, lng] if False then shape is [time, press, 
+        lat, lng]
     lat : numpy.ndarray
         Model latitude coordinates, units of degrees north, [lat,]
     lng : numpy.ndarray
@@ -791,6 +794,127 @@ def open_geos_c1sd(years, varname, levmax, levmin, lngmin, latmax, lngmax,
         var = ds[varname].values
         lat = ds.latitude.values
         lng = ds.longitude.values
+        var = var*1e9
         print('%s for %d-%d loaded in '%(varname, years[0], years[-1])+
               '%.2f seconds!'%(time.time() - start_time))
         return var.T, lat, lng
+    
+def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin, 
+    latmax, lngmax, latmin, dailyavg='yes'): 
+    """load MERRA-2 reanalysis over the specified measuring period and spatial 
+    domain for desired variable (n.b. the function works assuming that the 
+    input .nc file contains variables for a particular level).
+    
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period, [years,]
+    months : list
+        Three letter abbreviations (lowercase) for months in measuring period
+    hours : list 
+        Hours (in Zulu time) during which reanalysis data, n.b., for 
+        inst3_3d_asm_Np collection, output is 3-hourly (0, 3, 9, etc.), 
+        [hours,]
+    var : str
+        MERRA-2 met field variable in collection, n.b. for inst3_3d_asm_Np
+        collection stored locally, variables H, OMEGA, QV, SLP, T, U, V
+        available
+    collection : str
+        The name of the MERRA-2 collection (e.g., inst3_3d_asm_Np)
+    lngmin : float
+        Longitude coordinate of the left side (minimum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmax : float 
+        Latitude coordinate of the top side (maximum) of the bounding box 
+        containing the focus region, units of degrees north    
+    lngmax : float 
+        Longitude coordinate of the right side (maximum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmin : float
+        Latitude coordinate of the bottom side (minimum) of the bounding box 
+        containing the focus region, units of degrees north           
+    dailyavg : str
+        If 'yes' a daily average over the hours specified in variable 'hours'
+        is calculated. 
+
+    Returns
+    -------
+    var : numpy.ndarray
+         MERRA-2 output for specified variable, if argument 'dailyavg' is 'yes' 
+         shape is [days, lat, lng] and if 'dailyavg' is 'no' shape is 
+         [days*hours, lat, lng]
+    mtime : pandas.core.indexes.datetimes.DatetimeIndex
+        Timestamps of dates for which MERRA-2 data is desired, [days,]
+    lat : numpy.ndarray
+        MERRA-2 latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        MERRA-2 longitude coordinates, units of degrees east, [lng,]
+    """
+    import time
+    start_time = time.time()
+    import os
+    import numpy as np
+    import pandas as pd
+    import xarray as xr
+    import fnmatch
+    from time import strptime
+    # Convert month abbrevations to integers
+    months_str = []
+    for m in months:
+        months_str.append(str(strptime(m,'%b').tm_mon).zfill(2))    
+    # Search files for years, months of interest
+    infiles = []
+    for year in years: 
+        PATH_METFIELDS = '/Users/ghkerr/phd/globalo3/data/MERRA-2/%d/%s/'%(
+                year, collection)
+        infilesty = [PATH_METFIELDS+fn for fn in os.listdir(PATH_METFIELDS) if
+                     any(fn.__contains__(str(year)+m) for m in months_str)]
+        infilesty.sort()
+        infiles+=infilesty
+    # Open multiple NetCDF files and store in Dataset
+    ds = xr.open_mfdataset(infiles, concat_dim='time')
+    varname = ds[var].long_name
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading MERRA-2 %s...' %varname)
+    # Extract relevant variable 
+    ds = ds[[var]]
+    # Subset Dataset with respect to spatial coordinates
+    ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
+            lon=(ds.dims['lon']//2-1), roll_coords=True)
+    ds = ds[var].sel(lat=slice(latmin, latmax), 
+                lon=slice(lngmin, lngmax))
+    # Convert np.datetime64 to DatetimeIndex
+    dt = pd.to_datetime(ds.time.data)
+    # Find relevant hours and subset Dataset
+    dt_where = np.where(np.in1d(dt.hour, hours)==True)[0]
+    dt = dt[dt_where]
+    # Select reanalysis at time of interest and sample appropriate level (if)
+    # appropriate)
+    try:
+        ds.lev
+    except AttributeError:
+        ds = ds.isel(time=dt_where)       
+    else: 
+        ds = ds.isel(time=dt_where, lev=0)
+    # Sort by time
+    ds = ds.sortby('time')
+    # Produce daily average
+    if dailyavg == 'yes':
+        ds = ds.resample({'time': '1D'}).mean(dim='time')
+        # Resampling adds time dimensions to smooth out the discontinuous time
+        # series (i.e., examining JJA 2008-2010 will add in September through 
+        # May values for years); find indices of days not in JAA
+        months_int = []
+        for m in months:
+            months_int.append(strptime(m,'%b').tm_mon)        
+        season = np.where(np.in1d(ds.time.dt.month.values, 
+            np.array(months_int)) == True)[0]
+        ds = ds.isel(time=season)
+    # Extract
+    var = ds.values
+    mtime = pd.to_datetime(ds.time.values)
+    lat = ds.lat.values
+    lng = ds.lon.values
+    print('MERRA-2 %s for %d-%d loaded in %.2f seconds!'%(varname, years[0],
+          years[-1], time.time() - start_time))
+    return var, mtime, lat, lng    
