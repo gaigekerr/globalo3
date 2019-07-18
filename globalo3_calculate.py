@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Module calculates statistical analysis of GMI outpu and MERRA-2 and emissions
+Module calculates statistical analysis of GMI output and MERRA-2 and emissions
 data across the global domain.
 
 Revision History
@@ -26,6 +26,14 @@ Revision History
                 not needed if examining (anti)cyclones with respect to the jet
     03072019 -- edit function 'find_grid_overland' such that basemap is larger
                 than domain to pick out land at domain edges
+    12072019 -- edited 'calculate_fieldjet_relationship' description to make it
+                clear that the difference was calculated as the difference 
+                between the jet latitude and the latitude of the grid cell of 
+                interest and to handle any field (i.e., tracer, gas, 
+                meteorological field)
+    17072019 -- changed maximum 500 hPa wind locator in 'find_field_atjet' to 
+                reflect possible NaNs in 500 hPa (on 18/1/2008 there is a NaN
+                in the U500 wind - this created issues with DJF analysis)
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -457,10 +465,10 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
     for day in np.arange(0, len(U500_fr), 1):
         U500_day = U500_fr[day]
         # Loop through longitude
-        for i in np.arange(0, len(lng_fr), 1):    
+        for i in np.arange(0, len(lng_fr), 1):  
             # U wind at 500 hPa for longitude/day of interest 
             U500_transect = U500_day[:, i]
-            U500max = np.where(U500_transect==U500_transect.max())[0][0]   
+            U500max = np.where(U500_transect==np.nanmax(U500_transect))[0][0]   
             # Find latitude of jet
             lat_jet[day, i] = lat_fr[U500max]
     del i
@@ -482,10 +490,16 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
             # Find mean latitude index of jet
             U500max = (np.abs(lat_fr-lat_jet_mean[i])).argmin()
             # Find value of field at a particular longitude at the jet's center
-            field_jetcenter = field[U500max, i]       
+            field_jetcenter = field[U500max, i]   
             # Find values above/below jet's center
             field_transect_above = field[U500max+1:U500max+jetdistance+1, i]
-            field_transect_below = field[U500max-jetdistance:U500max, i]        
+            # If the jet is in an extreme equatorward position, the operation
+            # U500max-jetdistance will yield a negative index value and 
+            # the following operation will yield no values
+            if (U500max-jetdistance) < 0:
+                field_transect_below = field[0:U500max, i]                    
+            else:  
+                field_transect_below = field[U500max-jetdistance:U500max, i]        
             # Fill output grid
             field_jet[jetdistance, i] = field_jetcenter
             field_jet[jetdistance+1:jetdistance+1+len(field_transect_above), 
@@ -553,19 +567,24 @@ def find_field_atjet(field, U500_fr, lat_fr, lng_fr, jetdistance, anom=False):
             time.time() - start_time))      
     return lat_jet, field_jet
 
-def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
-    """Given the O3 concentrations and the jet's latitude in a focus region, 
-    function determines the relationship between O3 and distance from the 
-    jet at each grid cell. This is quantified in terms of the slope (i.e., 
-    change in O3 per degree shift in the jet stream) and the correlation (i.e.,
-    the Pearson product-moment correlation coefficient calculated between O3 
-    and a grid cell's distance from the jet.)
+def calculate_fieldjet_relationship(field_fr, lat_fr, lng_fr, jetpos, lng_jet):
+    """Given a field of interest (i.e., O3, tracer, temperature) and the jet's 
+    latitude in a focus region, function determines the relationship between 
+    the field and distance from the jet at each grid cell. This is quantified 
+    in terms of the slope (i.e., change in the field per degree shift in the 
+    jet stream) and the correlation (i.e., the Pearson product-moment 
+    correlation coefficient calculated between the field and a grid cell's 
+    distance from the jet). Positive values for the correlation and the slope 
+    imply that poleward movement of the jet relative to the grid cell of 
+    interest increases value of field (due to the convention that the 
+    distance from the jet is defined as the latitude of the jet minus the 
+    latitud of the grid cell of interest).
     
     Parameters
     ----------
-    o3_fr : numpy.ndarray
-        O3 concentrations in the focus region (i.e., Northern Hemisphere), 
-        units of ppbv, [time, lat, lng]
+    field_fr : numpy.ndarray
+        Field of interest in the focus region (i.e., Northern Hemisphere), 
+        [time, lat, lng]
     lat_fr : numpy.ndarray
         Latitude coordinates of the focus region (i.e., Northern Hemisphere), 
         units of degrees north, [lat,]
@@ -585,15 +604,15 @@ def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
     Returns
     -------
     slope : numpy.ndarray
-        The slope of the linear regression of O3 versus a grid cell's distance
-        from the jet, units of ppbv deg-1, [lat, lng]
+        The slope of the linear regression of the field versus a grid cell's 
+        distance from the jet, [lat, lng]
     correl : numpy.ndarray
         The Pearson product-moment correlation coefficient calculated between 
-        O3 and a grid cell's distance from the jet, [lat, lng]
+        the field and a grid cell's distance from the jet, [lat, lng]
     """
     import numpy as np
-    # Array slope is the slope of the linear regression of surface-level O3 and 
-    # a grid cell's distance from the eddy-driven jet (positive distance is a 
+    # Array slope is the slope of the linear regression of the field and the
+    # grid cell's distance from the eddy-driven jet (positive distance is a 
     # jet north of grid cell); array correl is the correlation between the two 
     # times series
     slope = np.empty(shape=(lat_fr.shape[0],lng_fr.shape[0]))
@@ -604,7 +623,7 @@ def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
     for loci in np.arange(0,len(lat_fr),1):
         # Loop through longitudes
         for locj in np.arange(0,len(lng_fr),1):
-            o3ij = o3_fr[:, loci, locj]
+            fieldij = field_fr[:, loci, locj]
             # Latitude of eddy-driven jet at a given grid cell, found by finding 
             # a timeseries of the jet location at the longitude of interest
             jetj = jetpos[:, np.abs(lng_jet-lng_fr[locj]).argmin()]
@@ -613,11 +632,12 @@ def calculate_o3jet_relationship(o3_fr, lat_fr, lng_fr, jetpos, lng_jet):
             # Mask out NaNs to avoid ValueError; i.e., for additional 
             # information see https://stackoverflow.com/questions/13675912/
             # python-programming-numpy-polyfit-saying-nan
-            notnan = np.isfinite(diff) & np.isfinite(o3ij)
+            notnan = np.isfinite(diff) & np.isfinite(fieldij)
             if True in notnan:
-                slope[loci,locj] = np.polyfit(diff[notnan], o3ij[notnan], 1)[0]
-                correl[loci,locj] = np.corrcoef(
-                        diff[notnan], o3ij[notnan])[0,1]
+                slope[loci,locj] = np.polyfit(diff[notnan], 
+                     fieldij[notnan], 1)[0]
+                correl[loci,locj] = np.corrcoef(diff[notnan], 
+                      fieldij[notnan])[0,1]
     return slope, correl
 
 def convert_uv_tocardinal(U, V): 
