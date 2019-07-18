@@ -16,6 +16,8 @@ Revision History
     18062019 -- contour/label capability added to 'map_nh' 
     09072019 -- edit function 'edjetlocation_fieldatedjet' to handle and 
                 number of grid cells/degrees from jet center
+    17072019 -- function 'edjetlocation_fieldatedjet' name changed to 
+                'fieldatjet'
 """
 # Change font
 import sys
@@ -209,11 +211,12 @@ def map_trend(lat_n, lat_s, lng_n, lng_s, trend_n, trend_s, cbar_label,
                 'map_trend_%s.eps'%fstr)
     return
 
-def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr, 
-    contour=None, contour_levs=None, p_n=None, e_n=None, eerr_n=None, 
-    alpha=0.05, extent=None, quiver=None, oceanon='yes', extend='both'):
-    """plot desired quantity over the Northern Hemisphere (however, if variable
-    'extent' is specified, map can be tailored to any region).
+def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, 
+    hemisphere, fstr, contour=None, contour_levs=None, p_n=None, e_n=None, 
+    eerr_n=None, alpha=0.05, extent=None, quiver=None, oceanon='yes', 
+    extend='both'):
+    """plot desired quantity over the Northern or Southern hemisphere (however, 
+    if variable 'extent' is specified, map can be tailored to any region).
     
     Parameters
     ----------
@@ -233,6 +236,9 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
         Filled contour levels values
     cmap : str
         Colormap name
+    hemisphere : str
+        Focus region for output filename (i.e., 'nh' for northern hemisphere, 
+        'sh' for southern hemisphere, 'northamerica', etc.)
     fstr : str
         Output filename suffix
     contour : numpy.ndarray
@@ -279,7 +285,8 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
         ax.add_feature(cfeature.OCEAN, zorder=10, lw = 0.0, color='lightgrey')
     ax.coastlines(lw=0.25, color='k')
     if extent is None:
-        ax.set_extent([-180., 180., 0., 85.])    
+        ax.set_extent([lng_gmi_n.min()-180., lng_gmi_n.max()-180., 
+                       lat_gmi_n.min(), lat_gmi_n.max()])    
     else: 
         ax.set_extent(extent)
     # Plot filled contours
@@ -329,7 +336,7 @@ def map_nh(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, fstr,
     colorbar.set_label(cbar_label, fontsize=14)
     plt.gcf().subplots_adjust(right=0.75, hspace=-0.2)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'map_nh_%s.eps'%fstr, transparent=True)
+                'map_%s_%s.eps'%(hemisphere,fstr), transparent=True)
     return 
 
 def timeseries_seasonalo3():
@@ -1101,7 +1108,7 @@ def map_jet_centerdist(centers, lat_jet, lng_jetcoords, lat_centercoords,
     # Loop through longitudes 
     for i, lng in enumerate(lng_jetcoords):
         for day in np.arange(0, len(lat_jet), 1):
-            # Find the latitud of the jet at longitude/on day of interest
+            # Find the latitude of the jet at longitude/on day of interest
             jetlat_atlng = lat_jet[day,i]
             # Find the index cooresponding to the closest longitude in the 
             # (anti)cyclone center dataset (n.b., as long as the resolution/
@@ -1142,8 +1149,8 @@ def map_jet_centerdist(centers, lat_jet, lng_jetcoords, lat_centercoords,
                 'map_jet_centerdist_%s.eps'%kind, dpi=300)
     return 
 
-def edjetlocation_fieldatedjet(lat_fr, lng_fr, lat_jet, field_jet, cmap, 
-    cbar_label, clevs, fieldstr, fstr, skiplng=6):
+def fieldatjet(lat_fr, lng_fr, lat_jet, field_jet, cmap, cbar_label, clevs, 
+    fieldstr, fstr, skiplng=6):
     """function plots the mean position and variability (standard deviation) 
     of the eddy-driven jet on a map of the mid-latitudes of the Northern 
     Hemisphere (upper subplot) and a given field depicting a variable equator-
@@ -1207,10 +1214,10 @@ def edjetlocation_fieldatedjet(lat_fr, lng_fr, lat_jet, field_jet, cmap,
     # Roll O3 differences arond the jet so that they align with the top (map)
     # subplot
     field_jet_roll = np.roll(field_jet, int(lng_fr.shape[0]/2.), axis=1)
-    mb = axb.contourf(lng_fr, np.arange(-int((o3_jet_nhml.shape[1]-1)/2.), 
-                      int((o3_jet_nhml.shape[1]-1)/2.)+1, 1), 
-                      field_jet_roll, clevs, 
-                      cmap=plt.get_cmap(cmap), extend='both')
+    mb = axb.contourf(lng_fr, np.arange(-int((field_jet_roll.shape[0]-1)/2.), 
+                      int((field_jet_roll.shape[0]-1)/2.)+1, 1),
+                      field_jet_roll, clevs, cmap=plt.get_cmap(cmap), 
+                      extend='both')
     axb.set_xlabel('Longitude [$^{\circ}$]', fontsize=14)
     axb.set_xticks(np.linspace(0, 360, 9))
     axb.set_xticklabels([-180,-135,-90,-45,0,45,90,135,180], fontsize=12)
@@ -1241,10 +1248,15 @@ def edjetlocation_fieldatedjet(lat_fr, lng_fr, lat_jet, field_jet, cmap,
     #whereshore = np.delete(whereshore, [1,3,5,6])
     #for ws in whereshore: 
     #    axb.axvline(x=lng_fr[ws], c='k', lw=0.75)
-    plt.gcf().subplots_adjust(right=0.75, hspace=-0.1)
+    plt.gcf().subplots_adjust(right=0.75)#, hspace=-0.1)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'edjetlocation_%satedjet_%s.eps'%(fieldstr, fstr), dpi=300)
+                'fieldatjet_%s_%s.eps'%(fieldstr, fstr), dpi=300)
     return 
+
+
+
+
+
 
 import numpy as np
 from datetime import datetime
@@ -1253,165 +1265,381 @@ sys.path.append('/Users/ghkerr/phd/globalo3/')
 import globalo3_open, globalo3_calculate
 sys.path.append('/Users/ghkerr/phd/transporto3/')
 import transporto3_open
-years = [2008, 2009, 2010]
-# Define hemispheres and their O3 seasons
-latmin_n, lngmin_n, latmax_n, lngmax_n = -1., 0., 90., 360.
-months_n = ['jun', 'jul', 'aug']
+
+
+
+
+
 # Load data the first iteration only 
-try:o3_n
+try:lat_gmi_n
 except NameError:
-    # Load trace gases from + Chemistry and Transport simulations
-    lat_gmi_n, lng_gmi_n, times_n, o3_n = \
-        globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-        latmax_n, lngmin_n, lngmax_n, 'O3', 'HindcastMR2')
-    lat_gmi_n, lng_gmi_n, times_n, o3_dat_n = \
-        globalo3_open.open_overpass2_specifieddomain(years, months_n, latmin_n, 
-        latmax_n, lngmin_n, lngmax_n, 'O3', 'HindcastMR2-DiurnalAvgT')
-    # Convert trace gases from volume mixing ratio to ppbv
-    o3_n = o3_n*1e9
-    o3_dat_n = o3_dat_n*1e9  
-    # Load TOAR MDA8 O3
-    urban_mean, toartime, toarlat, toarlng = globalo3_open.open_toar(years, 
-       months_n, 'urban_mean', 2)
-    rural_mean, toartime, toarlat, toarlng = globalo3_open.open_toar(years, 
-       months_n, 'rural_mean', 2)
-    # Load MERRA-2 T2m
-    lat_merra_n, lng_merra_n, t2m_n = globalo3_open.open_merra2t2m_specifieddomain(
-        years, months_n, latmin_n, latmax_n, lngmin_n, lngmax_n)
-    # Interpolate T2m
-    t2m_n = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, lng_gmi_n, 
-        lat_merra_n, lng_merra_n, t2m_n)
-#    # Calculate relative humidity
-#    rh_n = globalo3_calculate.calculate_rh_from_q(years, 
-#        list(np.arange(0,24,1)), lngmin_n, latmax_n, lngmax_n, latmin_n)
-    # Load MERRA-2 data at 500 hPa
-    years = [2008,2009,2010]
+    # Measuring period
+    years = [2008, 2009, 2010]
+    # Hemisphere definition
+    latmin_n, lngmin_n, latmax_n, lngmax_n = -1., 0., 90., 360.
+    latmin_s, lngmin_s, latmax_s, lngmax_s = -90., 0., 1., 360.    
+    # Load Northern/Southern Hemisphere HindcastMR2 O3 for all seasons; convert 
+    # from volume mixing ratio to ppbv
+    lat_gmi_n, lng_gmi_n, times_n_djf, o3_n_djf = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['dec', 'jan', 'feb'], latmin_n, latmax_n, lngmin_n, lngmax_n, 'O3', 
+        'HindcastMR2')
+    o3_n_djf = o3_n_djf*1e9
+    lat_gmi_n, lng_gmi_n, times_n, o3_n_mam = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['mar', 'apr', 'may'], latmin_n, latmax_n, lngmin_n, lngmax_n, 'O3', 
+        'HindcastMR2')        
+    o3_n_mam = o3_n_mam*1e9        
+    lat_gmi_n, lng_gmi_n, times_n, o3_n_jja = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['jun', 'jul', 'aug'], latmin_n, latmax_n, lngmin_n, lngmax_n, 'O3', 
+        'HindcastMR2')
+    o3_n_jja = o3_n_jja*1e9        
+    lat_gmi_n, lng_gmi_n, times_n, o3_n_son = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['sep', 'oct', 'nov'], latmin_n, latmax_n, lngmin_n, lngmax_n, 'O3', 
+        'HindcastMR2')
+    o3_n_son = o3_n_son*1e9          
+    lat_gmi_s, lng_gmi_s, times_s, o3_s_djf = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['dec', 'jan', 'feb'], latmin_s, latmax_s, lngmin_s, lngmax_s, 'O3', 
+        'HindcastMR2')
+    o3_s_djf = o3_s_djf*1e9
+    lat_gmi_s, lng_gmi_s, times_s, o3_s_mam = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['mar', 'apr', 'may'], latmin_s, latmax_s, lngmin_s, lngmax_s, 'O3', 
+        'HindcastMR2')        
+    o3_s_mam = o3_s_mam*1e9        
+    lat_gmi_s, lng_gmi_s, times_s, o3_s_jja = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['jun', 'jul', 'aug'], latmin_s, latmax_s, lngmin_s, lngmax_s, 'O3', 
+        'HindcastMR2')
+    o3_s_jja = o3_s_jja*1e9        
+    lat_gmi_s, lng_gmi_s, times_s, o3_s_son = \
+        globalo3_open.open_overpass2_specifieddomain(years, 
+        ['sep', 'oct', 'nov'], latmin_s, latmax_s, lngmin_s, lngmax_s, 'O3', 
+        'HindcastMR2')
+    o3_s_son = o3_s_son*1e9  
+    # Load Northern/Southern Hemisphere MERRA-2 2-meter temperature for all 
+    # seasons
+    lat_merra_n, lng_merra_n, t2m_n_djf = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['dec', 'jan', 'feb'], latmin_n, latmax_n, lngmin_n, lngmax_n)
+    lat_merra_n, lng_merra_n, t2m_n_mam = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['mar', 'apr', 'may'], latmin_n, latmax_n, lngmin_n, lngmax_n)        
+    lat_merra_n, lng_merra_n, t2m_n_jja = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['jun', 'jul', 'aug'], latmin_n, latmax_n, lngmin_n, lngmax_n)        
+    lat_merra_n, lng_merra_n, t2m_n_son = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['sep', 'oct', 'nov'], latmin_n, latmax_n, lngmin_n, lngmax_n)    
+    lat_merra_s, lng_merra_s, t2m_s_djf = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['dec', 'jan', 'feb'], latmin_s, latmax_s, lngmin_s, lngmax_s)
+    lat_merra_s, lng_merra_s, t2m_s_mam = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['mar', 'apr', 'may'], latmin_s, latmax_s, lngmin_s, lngmax_s)        
+    lat_merra_s, lng_merra_s, t2m_s_jja = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['jun', 'jul', 'aug'], latmin_s, latmax_s, lngmin_s, lngmax_s)        
+    lat_merra_s, lng_merra_s, t2m_s_son = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, 
+        ['sep', 'oct', 'nov'], latmin_s, latmax_s, lngmin_s, lngmax_s)            
+    # Interpolate 2-meter temperature
+    t2m_n_djf = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, t2m_n_djf)
+    t2m_n_mam = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, t2m_n_mam)
+    t2m_n_jja = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, t2m_n_jja)
+    t2m_n_son = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, t2m_n_son)  
+    t2m_s_djf = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, t2m_s_djf)
+    t2m_s_mam = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, t2m_s_mam)
+    t2m_s_jja = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, t2m_s_jja)
+    t2m_s_son = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, t2m_s_son)   
+    # Load Northern/Southern Hemisphere 500 hPa MERRA-2 data for all seasons
     hours = [0,3,6,9,12,15,18,21]
-    U500, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
-        hours, 'U', 'inst3_3d_asm_Np', 'JJA_500mb.nc', lngmin_n, latmax_n, 
-        lngmax_n, latmin_n, dailyavg='yes')
-    V500, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
-        hours, 'V', 'inst3_3d_asm_Np', 'JJA_500mb.nc', lngmin_n, latmax_n, 
-        lngmax_n, latmin_n, dailyavg='yes')
-    QV500, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
-        hours, 'QV', 'inst3_3d_asm_Np', 'JJA_500mb.nc', lngmin_n, latmax_n, 
-        lngmax_n, latmin_n, dailyavg='yes')
-    # Interpolate MERRA-2 data to resolution of CTM
-    U500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
-        lng_gmi_n, lat_merra, lng_merra, U500, checkplot='yes')
-    V500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
-        lng_gmi_n, lat_merra, lng_merra, V500, checkplot='yes')
-    QV500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
-        lng_gmi_n, lat_merra, lng_merra, QV500, checkplot='yes')    
-#    # Calculate wind direction at 500 hPa
-#    DIR500 = globalo3_calculate.convert_uv_tocardinal(U500, V500) 
-    # Load EDGAR inventory     
-    lat_edgar_n, lng_edgar_n, nox_edgar_n = \
-        globalo3_open.open_edgar_specifieddomain(years, latmin_n, latmax_n, 
-        lngmin_n, lngmax_n, 'NOx')
-    # Interpolate EDGAR 
-    nox_edgar_n = globalo3_open.interpolate_edgar_to_ctmresolution(lat_gmi_n, 
-        lng_gmi_n, lat_edgar_n, lng_edgar_n, nox_edgar_n)
-    ## Load Schnell et al. (2014) O3 dataset
-    #lat_js, lng_js, o3_js = globalo3_open.open_schnello3(years, months_n, 'US')
-    # Calculate dO3/dT
-    do3dt_n = globalo3_calculate.calculate_do3dt(t2m_n, o3_n, lat_gmi_n, 
-        lng_gmi_n)
-    do3dt_dat_n = globalo3_calculate.calculate_do3dt(t2m_n, o3_dat_n, 
+    U500_n_djf, mtime_djf, lat_merra_n, lng_merra_n = \
+        globalo3_open.open_merra2_specifieddomain(years, ['dec', 'jan', 'feb'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_n, latmax_n, lngmax_n, 
+        latmin_n, dailyavg='yes')
+    U500_n_mam, mtime_mam, lat_merra_n, lng_merra_n = \
+        globalo3_open.open_merra2_specifieddomain(years, ['mar', 'apr', 'may'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_n, latmax_n, lngmax_n, 
+        latmin_n, dailyavg='yes')        
+    U500_n_jja, mtime_jja, lat_merra_n, lng_merra_n = \
+        globalo3_open.open_merra2_specifieddomain(years, ['jun', 'jul', 'aug'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_n, latmax_n, lngmax_n, 
+        latmin_n, dailyavg='yes')   
+    U500_n_son, mtime_son, lat_merra_n, lng_merra_n = \
+        globalo3_open.open_merra2_specifieddomain(years, ['sep', 'oct', 'nov'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_n, latmax_n, lngmax_n, 
+        latmin_n, dailyavg='yes')            
+    U500_s_djf, mtime_djf, lat_merra_s, lng_merra_s = \
+        globalo3_open.open_merra2_specifieddomain(years, ['dec', 'jan', 'feb'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_s, latmax_s, lngmax_s, 
+        latmin_s, dailyavg='yes')
+    U500_s_mam, mtime_mam, lat_merra_s, lng_merra_s = \
+        globalo3_open.open_merra2_specifieddomain(years, ['mar', 'apr', 'may'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_s, latmax_s, lngmax_s, 
+        latmin_s, dailyavg='yes')        
+    U500_s_jja, mtime_jja, lat_merra_s, lng_merra_s = \
+        globalo3_open.open_merra2_specifieddomain(years, ['jun', 'jul', 'aug'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_s, latmax_s, lngmax_s, 
+        latmin_s, dailyavg='yes')            
+    U500_s_son, mtime_son, lat_merra_s, lng_merra_s = \
+        globalo3_open.open_merra2_specifieddomain(years, ['sep', 'oct', 'nov'],
+        hours, 'U', 'inst3_3d_asm_Np_500hPa', lngmin_s, latmax_s, lngmax_s, 
+        latmin_s, dailyavg='yes')            
+    # Interpolate 500 hPa u-wind
+    U500_n_djf = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, U500_n_djf, checkplot='yes')
+    U500_n_mam = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, U500_n_mam, checkplot='yes')
+    U500_n_jja = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, U500_n_jja, checkplot='yes')
+    U500_n_son = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_n, 
+        lng_gmi_n, lat_merra_n, lng_merra_n, U500_n_son, checkplot='yes')
+    U500_s_djf = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, U500_s_djf, checkplot='yes')
+    U500_s_mam = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, U500_s_mam, checkplot='yes')
+    U500_s_jja = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, U500_s_jja, checkplot='yes')
+    U500_s_son = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi_s, 
+        lng_gmi_s, lat_merra_s, lng_merra_s, U500_s_son, checkplot='yes')    
+    # Calculations of dO3/dT 
+    do3dt2m_n_djf = globalo3_calculate.calculate_do3dt(t2m_n_djf, o3_n_djf, 
         lat_gmi_n, lng_gmi_n)
-#    # Calculate dO3/dRH
-#    do3drh_n = globalo3_calculate.calculate_do3dt(rh_n*100., o3_n, lat_gmi_n, 
-#        lng_gmi_n)
-    # Calculate correlation coefficients
-    r_t2mo3_n = globalo3_calculate.calculate_r(t2m_n, o3_n, lat_gmi_n, 
-        lng_gmi_n)
-    r_t2mo3_n_dat = globalo3_calculate.calculate_r(t2m_n, o3_dat_n, lat_gmi_n, 
-        lng_gmi_n)    
-#    r_rho3_n = globalo3_calculate.calculate_r(rh_n*100., o3_n, lat_gmi_n, 
-#        lng_gmi_n)
-#    r_t2mrh_n = globalo3_calculate.calculate_r(rh_n, t2m_n, lat_gmi_n, 
-#        lng_gmi_n)
-#    r_o3u500_n = globalo3_calculate.calculate_r(U500, o3_dat_n, lat_gmi_n, 
-#        lng_gmi_n)
-#    r_dirrh_n = globalo3_calculate.calculate_r(DIR500, rh_n, lat_gmi_n, 
-#        lng_gmi_n)
-#    r_dirq500_n = globalo3_calculate.calculate_r(DIR500, QV500, lat_gmi_n, 
-#        lng_gmi_n)
-#    r_diro3_n = globalo3_calculate.calculate_r(DIR500, o3_n, lat_gmi_n, 
-#        lng_gmi_n)    
-#    # Calculate trends
-#    do3dt_byyr_n, do3dt_ls_n, do3dt_lsp_n, do3dt_mk_n, do3dt_mkp_n = \
-#    globalo3_calculate.calculate_trends_do3dt(t2m_n, o3_n, lat_gmi_n, 
-#        lng_gmi_n, years)
-#    edgar_byyr_n, edgar_ls_n, edgar_lsp_n, edgar_mk_n, edgar_mkp_n = \
-#    globalo3_calculate.calculate_trends(nox_edgar_n, lat_gmi_n, lng_gmi_n, 
-#        years)
-    # Calculate eddy-driven jet position in the mid-latitudes
-    U500_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(U500, 
-        lat_gmi_n, lng_gmi_n, 0., 360., 23., 60.)
-    o3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(o3_n, 
-        lat_gmi_n, lng_gmi_n, 0., 360., 23., 60.)
-    #do3dt_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(do3dt_n, 
-    #    lat_gmi_n, lng_gmi_n, 0., 360., 23., 60.)   
-    #r_t2mo3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(
-    #    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 0., 360., 23., 60.)      
-    #land_nhml = globalo3_calculate.find_grid_overland(lat_nhml, lng_nhml)   
-    lat_jet_nhml, o3_jet_nhml = globalo3_calculate.find_field_atjet(o3_nhml, 
-        U500_nhml, lat_nhml, lng_nhml, 10, anom=True)
-    m_o3jetdist, r_o3jetdist = \
-        globalo3_calculate.calculate_o3jet_relationship(o3_n, lat_gmi_n,
-        lng_gmi_n, lat_jet_nhml, lng_nhml)
+    do3dt2m_n_mam = globalo3_calculate.calculate_do3dt(t2m_n_mam, o3_n_mam, 
+        lat_gmi_n, lng_gmi_n)    
+    do3dt2m_n_jja = globalo3_calculate.calculate_do3dt(t2m_n_jja, o3_n_jja, 
+        lat_gmi_n, lng_gmi_n)    
+    do3dt2m_n_son = globalo3_calculate.calculate_do3dt(t2m_n_son, o3_n_son, 
+        lat_gmi_n, lng_gmi_n)    
+    do3dt2m_s_djf = globalo3_calculate.calculate_do3dt(t2m_s_djf, o3_s_djf, 
+        lat_gmi_s, lng_gmi_s)
+    do3dt2m_s_mam = globalo3_calculate.calculate_do3dt(t2m_s_mam, o3_s_mam, 
+        lat_gmi_s, lng_gmi_s)    
+    do3dt2m_s_jja = globalo3_calculate.calculate_do3dt(t2m_s_jja, o3_s_jja, 
+        lat_gmi_s, lng_gmi_s)    
+    do3dt2m_s_son = globalo3_calculate.calculate_do3dt(t2m_s_son, o3_s_son, 
+        lat_gmi_s, lng_gmi_s) 
+    # Calculations of r(T, O3)
+    r_t2mo3_n_djf = globalo3_calculate.calculate_r(t2m_n_djf, o3_n_djf, 
+        lat_gmi_n, lng_gmi_n)
+    r_t2mo3_n_mam = globalo3_calculate.calculate_r(t2m_n_mam, o3_n_mam, 
+        lat_gmi_n, lng_gmi_n)    
+    r_t2mo3_n_jja = globalo3_calculate.calculate_r(t2m_n_jja, o3_n_jja, 
+        lat_gmi_n, lng_gmi_n)
+    r_t2mo3_n_son = globalo3_calculate.calculate_r(t2m_n_son, o3_n_son, 
+        lat_gmi_n, lng_gmi_n)
+    r_t2mo3_s_djf = globalo3_calculate.calculate_r(t2m_s_djf, o3_s_djf, 
+        lat_gmi_s, lng_gmi_s)
+    r_t2mo3_s_mam = globalo3_calculate.calculate_r(t2m_s_mam, o3_s_mam, 
+        lat_gmi_s, lng_gmi_s)    
+    r_t2mo3_s_jja = globalo3_calculate.calculate_r(t2m_s_jja, o3_s_jja, 
+        lat_gmi_s, lng_gmi_s)
+    r_t2mo3_s_son = globalo3_calculate.calculate_r(t2m_s_son, o3_s_son, 
+        lat_gmi_s, lng_gmi_s)
 
 """PLOT MEAN LOCATION OF JET STREAM (MAX U WINDS AT 500 HPA) AND 
    O3, dO3/dT, and r(O3, T) WITHIN +/- 10 DEGREES OF JET STREAM""" 
-#U500_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(U500, 
-#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)
-#o3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(o3_n, 
-#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)
-#do3dt_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(do3dt_n, 
-#    lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)   
-#r_t2mo3_nhml, lat_nhml, lng_nhml = globalo3_calculate.find_grid_in_bb(
-#    r_t2mo3_n, lat_gmi_n, lng_gmi_n, 0., 360., 20., 70.)      
-#land_nhml = globalo3_calculate.find_grid_overland(lat_nhml, lng_nhml)   
-#lat_jet_nhml, o3_jet_nhml = globalo3_calculate.find_field_atjet(o3_nhml, 
-#    U500_nhml, lat_nhml, lng_nhml, 20, anom=True)
-#lat_jet_nhml, do3dt_jet_nhml = globalo3_calculate.find_field_atjet(do3dt_nhml, 
-#    U500_nhml, lat_nhml, lng_nhml, 20)
-#lat_jet_nhml, r_t2mo3_jet_nhml = globalo3_calculate.find_field_atjet(
-#    r_t2mo3_nhml, U500_nhml, lat_nhml, lng_nhml, 20) 
-## O3 anomaly in vicinity of jet 
-#edjetlocation_fieldatedjet(lat_nhml, 
-#    lng_nhml,
-#    lat_jet_nhml, 
-#    np.nanmean(o3_jet_nhml, axis=0),
-#    'bwr', 
-#    r'$\mathregular{\Delta}$ O$_{\mathregular{3}}$ [ppbv]',  
-#    np.linspace(-5., 5., 11), 
-#    'o3anom_jet', 
-#    'gmictm_expandlatrange_%d-%d'%(years[0], years[-1]), 
-#    skiplng=6)
-## dO3/dT in vicinity of jet
-#edjetlocation_fieldatedjet(lat_nhml, 
-#    lng_nhml,
-#    lat_jet_nhml, 
-#    do3dt_jet_nhml,
-#    'Reds', 
-#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
-#    np.linspace(0, 2, 6),
-#    'do3dt_jet', 
-#    'gmictm_expandlatrange_%d-%d'%(years[0], years[-1]), 
-#    skiplng=6)
-## r(T, O3) in vicinity of jet
-#edjetlocation_fieldatedjet(lat_nhml, 
-#    lng_nhml,
-#    lat_jet_nhml, 
-#    r_t2mo3_jet_nhml,
-#    'bwr', 
-#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
-#    np.linspace(-1, 1, 11),
-#    'rt2mo3_jet', 
-#    'gmictm_expandlatrange_%d-%d'%(years[0], years[-1]), 
-#    skiplng=6)
+season = 'JJA' 
+o3 = o3_n_jja
+t2m = t2m_n_jja
+r_t2mo3 = r_t2mo3_n_jja
+U500 = U500_n_jja
+do3dt2m = do3dt2m_n_jja
+lat = lat_gmi_n
+lng = lng_gmi_n
+latmin = 20.
+latmax = 70.
+#latmin = -70.
+#latmax = -20.
+lngmin = 0.
+lngmax = 360.
+maparea = 'nh'
+"""PLOT MEAN LOCATION OF JET STREAM (MAX U WINDS AT 500 HPA) AND 
+   O3, dO3/dT, and r(O3, T) WITHIN +/- 10 DEGREES OF JET STREAM""" 
+# Subset fields in mid-latitudes
+U500_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(U500, lat, lng, 
+    lngmin, lngmax, latmin, latmax)
+o3_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(o3, lat, lng, 
+    lngmin, lngmax, latmin, latmax)
+t2m_ml, lat_ml, lng_nhml = globalo3_calculate.find_grid_in_bb(t2m, lat, lng, 
+    lngmin, lngmax, latmin, latmax)
+do3dt2m_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(do3dt2m, lat, 
+    lng, lngmin, lngmax, latmin, latmax)
+r_t2mo3_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(r_t2mo3, lat, 
+    lng, lngmin, lngmax, latmin, latmax)
+#land_nhml = globalo3_calculate.find_grid_overland(lat_ml, lng_ml)   
+lat_jet_ml, o3_jet_ml = globalo3_calculate.find_field_atjet(o3_ml, U500_ml, 
+    lat_ml, lng_ml, 20, anom = True)
+lat_jet_ml, t2m_jet_ml = globalo3_calculate.find_field_atjet(t2m_ml, 
+    U500_ml, lat_ml, lng_ml, 20, anom=True)
+lat_jet_ml, do3dt2m_jet_ml = globalo3_calculate.find_field_atjet(do3dt2m_ml, 
+    U500_ml, lat_ml, lng_ml, 20)
+lat_jet_ml, r_t2mo3_jet_ml = globalo3_calculate.find_field_atjet(
+    r_t2mo3_ml, U500_ml, lat_ml, lng_ml, 20) 
+# Slope and correlation of O3/jet distance and 2-meter temperature and 
+# jet distance
+m_o3jetdist, r_o3jetdist = \
+    globalo3_calculate.calculate_fieldjet_relationship(o3, lat, lng, 
+    lat_jet_ml, lng_ml)
+m_t2mjetdist, r_t2mjetdist = \
+    globalo3_calculate.calculate_fieldjet_relationship(t2m, lat, lng, 
+    lat_jet_ml, lng_ml)
+# Mean O3, mean eddy-driven jet position and variability
+map_hemisphere(lat, 
+    lng, 
+    np.mean(o3, axis=0), 
+    '%s O$_{\mathregular{3}}$' %season, 
+    '[ppbv]', 
+    np.linspace(25, 65, 11), 
+    'PuBu', 
+    maparea,
+    'meano3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# dO3/dT
+map_hemisphere(lat, 
+    lng, 
+    do3dt2m, 
+    '%s dO$_{\mathregular{3}}$/dT' %season,
+    '[ppbv K$^{\mathregular{-1}}$]', 
+    np.linspace(0, 3., 7), 
+    'Reds', 
+    maparea,
+    'do3dt2m_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# r(T, O3)
+map_hemisphere(lat,
+    lng, 
+    r_t2mo3, 
+    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
+    '[$\cdot$]', 
+    np.linspace(-1., 1., 11), 
+    'bwr', 
+    maparea,
+    'rt2mo3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# dO3/d(jet lat - lat)
+map_hemisphere(lat, 
+    lng, 
+    m_o3jetdist, 
+    '%s dO$_{\mathregular{3}}$/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)' %season, 
+    '[ppbv degree$^{\mathregular{-1}}$]', 
+    np.linspace(0.0, 0.3, 7), 
+    'gist_earth_r', 
+    maparea,
+    'do3djetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# r(jet lat - lat, O3)
+map_hemisphere(lat, 
+    lng, 
+    r_o3jetdist, 
+    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, O$_{\mathregular{3}}$)' %season, 
+    '[$\cdot$]', 
+    np.linspace(-0.6, 0.6, 13), 
+    'bwr', 
+    maparea,
+    'ro3jetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# dT/d(jet lat - lat)
+map_hemisphere(lat, 
+    lng, 
+    m_t2mjetdist, 
+    '%s dT/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)' %season, 
+    '[K degree$^{\mathregular{-1}}$]', 
+    np.linspace(0., 0.3, 7), 
+    'gist_earth_r',
+    maparea,
+    'dt2mdjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# r(jet lat - lat, O3)
+map_hemisphere(lat, 
+    lng, 
+    r_t2mjetdist, 
+    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, T)' %season, 
+    '[$\cdot$]', 
+    np.linspace(-0.6, 0.6, 13), 
+    'bwr',
+    maparea,
+    'rt2mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+    e_n=np.nanmean(lat_jet_ml,axis=0), 
+    eerr_n=np.std(lat_jet_ml,axis=0),
+    extent=[lng.min()-180., lng.max()-180., lat.min()+1, lat.max()-5])
+# O3 anomaly in vicinity of jet 
+fieldatjet(lat_ml, 
+    lng_ml, 
+    lat_jet_ml, 
+    np.nanmean(o3_jet_ml, axis=0),
+    'bwr', 
+    r'$\mathregular{\delta}$O$_{\mathregular{3}}$ [ppbv]',  
+    np.linspace(-5., 5., 6), 
+    '%s_o3anom' %maparea, 
+    '%s_%d-%d'%(season, years[0],years[-1]), 
+    skiplng=6)
+# 2-meter temperature anomaly in vicinity of jet 
+fieldatjet(lat_ml, 
+    lng_ml,
+    lat_jet_ml, 
+    np.nanmean(t2m_jet_ml, axis=0),
+    'bwr', 
+    r'$\mathregular{\delta}$T [K]',  
+    np.linspace(-3., 3., 7), 
+    '%s_t2manom' %maparea, 
+    '%s_%d-%d'%(season, years[0],years[-1]), 
+    skiplng=6)
+# dO3/dT in vicinity of jet
+fieldatjet(lat_ml, 
+    lng_ml,
+    lat_jet_ml, 
+    do3dt2m_jet_ml,
+    'Reds', 
+    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
+    np.linspace(0, 2, 6),
+    '%s_do3dt' %maparea, 
+    '%s_%d-%d'%(season, years[0],years[-1]), 
+    skiplng=6)
+# r(T, O3) in vicinity of jet
+fieldatjet(lat_ml, 
+    lng_ml,
+    lat_jet_ml, 
+    r_t2mo3_jet_ml,
+    'bwr', 
+    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
+    np.linspace(-1, 1, 11),
+    '%s_rt2mo3' %maparea, 
+    '%s_%d-%d'%(season, years[0],years[-1]), 
+    skiplng=6)
+
+"""PLOT MEAN FIELDS AND CORRELATIONS"""
+## Mean EDGAR NOx emissions
+#map_nh(lat_gmi_n, lng_gmi_n, np.mean(nox_edgar_n, axis=0), '', 
+#       'NO$_{x\:\mathregular{, EDGAR}}$ [kg m$^{\mathregular{-2}}$ '+
+#       's$^{\mathregular{-1}}$]', np.linspace(0e-10, 1e-10, 11), 'PuBu', 
+#       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), 
+#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
+#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
 
 """ O3-JET RELATIONSHIP DIFFERENCES BETWEEN STD/EMFIX SIMULATIONS """
 ## Load GMI CTM O3 from EmFix simulation
@@ -1478,15 +1706,20 @@ except NameError:
 #    skiplng=6)
 
 """O3 ANOMALIES AND JET POSITION ON DAYS WITH EQUATOR/POLEWARD JET"""
-# Find fields over North American mid-latitudes (20-70˚N, 225-300˚E)
+## Find fields over North American mid-latitudes (20-70˚N, 225-300˚E)
 #U500_naml, lat_naml, lng_naml = globalo3_calculate.find_grid_in_bb(U500, 
 #    lat_gmi_n, lng_gmi_n, 225., 300., 20., 70.)
 #o3_naml, lat_naml, lng_naml = globalo3_calculate.find_grid_in_bb(o3_n, 
 #    lat_gmi_n, lng_gmi_n, 225., 300., 20., 70.)
+#t2m_naml, lat_naml, lng_naml = globalo3_calculate.find_grid_in_bb(t2m_n, 
+#    lat_gmi_n, lng_gmi_n, 225., 300., 20., 70.)
 #land_naml = globalo3_calculate.find_grid_overland(lat_naml, lng_naml)
 #lat_jet_naml, o3_jet_naml = globalo3_calculate.find_field_atjet(o3_naml, 
 #    U500_naml, lat_naml, lng_naml, 20, anom=True)
+#lat_jet_naml, t2m_jet_naml = globalo3_calculate.find_field_atjet(t2m_naml, 
+#    U500_naml, lat_naml, lng_naml, 20, anom=True)
 #o3_anom_za = np.nanmean(o3_jet_naml, axis=2) 
+#t2m_anom_za = np.nanmean(t2m_jet_naml, axis=2) 
 #lat_jet_naml_za = np.nanmean(lat_jet_naml, axis=1)
 ## Group days into percentile categories based on the jet latitude
 #jet_0_30 = np.where(lat_jet_naml_za < np.percentile(lat_jet_naml_za, 30))[0]
@@ -1504,7 +1737,7 @@ except NameError:
 #js_30_70 = np.linspace(js_30_70c-20, js_30_70c+20, o3_anom_za.shape[1])
 #js_70_100c = lat_jet_naml_za[jet_70_100].mean()
 #js_70_100 = np.linspace(js_70_100c-20, js_70_100c+20, o3_anom_za.shape[1])
-## Plot O3 zonally-averaged anomaly about the jet and indicate mean jet 
+## Plot zonally-averaged O3 anomaly about the jet and indicate mean jet 
 ## latitude for percentile categories with vertical line
 #fig = plt.figure()
 #ax = plt.subplot2grid((1,1), (0,0))
@@ -1526,7 +1759,32 @@ except NameError:
 #plt.legend(loc=9,  ncol=3, bbox_to_anchor=(0.5, 1.15), frameon=False)
 #ax.set_xlabel('Latitude [$\mathregular{^{\circ}}$]')
 #ax.set_ylabel('$\mathregular{\delta}$O$_\mathregular{3}$ [ppbv]')
-#plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+'deltao3_latitude_naml.eps',
+#plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+'anomo3_latitude_naml.eps',
+#            dpi=300)
+#plt.show()
+## Plot zonally-averaged 2-meter temperature anomaly about the jet and indicate 
+## mean jet latitude for percentile categories with vertical line
+#fig = plt.figure()
+#ax = plt.subplot2grid((1,1), (0,0))
+#ax.plot(js_0_30, np.nanmean(t2m_anom_za[jet_0_30], axis=0), '-', lw=2, 
+#        color='#1b9e77', zorder=10,
+#        label='$\mathregular{\phi_{jet}}$ 0-30th percentile')
+#ax.axvline(x=js_0_30c, color='#1b9e77', linestyle='--', lw=1, 
+#           zorder=1)
+#ax.plot(js_30_70, np.nanmean(t2m_anom_za[jet_30_70], axis=0), '-', lw=2, 
+#        color='#d95f02', zorder=11,
+#        label='$\mathregular{\phi_{jet}}$ 30-70th percentile')
+#ax.axvline(x=js_30_70c, color='#d95f02', linestyle='--', lw=1, 
+#           zorder=1)
+#ax.plot(js_70_100, np.nanmean(t2m_anom_za[jet_70_100], axis=0), '-', lw=2,
+#        color='#7570b3', zorder=12,
+#        label='$\mathregular{\phi_{jet}}$ 70-100th percentile')
+#ax.axvline(x=js_70_100c, color='#7570b3', linestyle='--', lw=1, 
+#           zorder=1)
+#plt.legend(loc=9,  ncol=3, bbox_to_anchor=(0.5, 1.15), frameon=False)
+#ax.set_xlabel('Latitude [$\mathregular{^{\circ}}$]')
+#ax.set_ylabel('$\mathregular{\delta}$T [K]')
+#plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+'anomt2m_latitude_naml.eps',
 #            dpi=300)
 #plt.show()
 ## Map of O3 anomalies and jet latitude/variability for days where the jet 
@@ -1576,144 +1834,6 @@ except NameError:
 #    oceanon='yes', 
 #    extend='both')
     
-"""PLOT MEAN GLOBAL FIELDS AND CORRELATIONS"""
-## Mean O3
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(o3_n, axis=0), '', 
-#       'O$_{\mathregular{3}}$ [ppbv]', np.linspace(25, 65, 11), 'PuBu', 
-#       'meano3chem_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml,axis=0), 
-#       eerr_n=np.std(lat_jet_nhml,axis=0))
-## Mean EDGAR NOx emissions
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(nox_edgar_n, axis=0), '', 
-#       'NO$_{x\:\mathregular{, EDGAR}}$ [kg m$^{\mathregular{-2}}$ '+
-#       's$^{\mathregular{-1}}$]', np.linspace(0e-10, 1e-10, 11), 'PuBu', 
-#       'meanedgarnox_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## dO3/dT from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, do3dt_n, '', 
-#       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'Reds', 'do3dtchem_%d-%d_jet'%(years[0],years[-1]),
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## r(T, O3) from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n, '', 
-#    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_t2mo3chem_%d-%d_jet'%(years[0],years[-1]), 
-#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## dO3/dT from Transport
-#map_nh(lat_gmi_n, lng_gmi_n, do3dt_dat_n, '', 
-#       'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]', 
-#       np.linspace(0, 3., 7), 'Reds', 'do3dtdat_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## r(T, O3) from Transport
-#map_nh(lat_gmi_n, lng_gmi_n, r_t2mo3_n_dat, '', 
-#    r'$\it{r}\:$(T, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_t2mo3dat_%d-%d_jet'%(years[0],years[-1]), 
-#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## O3 variability from +Chemistry 
-#map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(o3_n, axis=0), '', 
-#       '$\mathregular{\sigma}_{\mathregular{O}_{\mathregular{3}}}$ [ppbv]', 
-#       np.linspace(5, 11, 7), 'PuBu', 'sigmao3chem_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0),
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Temperature variability 
-#map_nh(lat_gmi_n, lng_gmi_n, np.nanstd(t2m_n, axis=0), '', 
-#       '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
-#       np.linspace(2, 6, 9), 'PuBu', 'sigmat2m_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0),
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Correlation between O3 and distance from eddy-driven jet
-#map_nh(lat_gmi_n, lng_gmi_n, r_o3jetdist, '', 
-#       r'$\it{r}\:$(O$_\mathregular{3}$, jet distance)', 
-#       np.linspace(-0.7, 0.7, 8), 'bwr', 'r_o3jet_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Change in O3 with change in eddy-driven jet position 
-#map_nh(lat_gmi_n, lng_gmi_n, m_o3jetdist, '', 
-#       '[ppbv degree$^{\mathregular{-1}}$]', np.linspace(-0.2, 0.4, 7), 
-#       'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## dO3/dRH from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, do3drh_n, '', 
-#       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
-#       np.linspace(-0.5, 0.5, 6), 'bwr', 'do3drhchem_%d-%d_jet'%(years[0],
-#       years[-1]), e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Correlation between O3 and distance from eddy-driven jet from GMI CTM 
-#map_nh(lat_gmi_n, lng_gmi_n, r_o3jetdist, '', 
-#   r'$\it{r}\:$(O$_\mathregular{3}$, $\mathregular{\phi}_{\mathregular'+
-#   '{jet}}$ $-$ $\mathregular{\phi}$)', np.linspace(-0.7, 0.7, 8), 
-#   'bwr', 'r_o3jetdist_%d-%d_jet'%(years[0], years[-1]), 
-#   e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#   eerr_n=np.zeros(lat_jet_nhml.shape[1]), oceanon='yes')
-## Change in O3 with change in eddy-driven jet position from GMI CTM 
-#map_nh(lat_gmi_n, lng_gmi_n, m_o3jetdist, '', 
-#   r'$\mathregular{\Delta}$ O$_{\mathregular{3}}$ [ppbv $^{\circ \mathregular{-1}}$]',
-#   np.linspace(-0.2, 0.4, 7), 'gist_earth_r', 'do3djet_%d-%d_jet'%(years[0],years[-1]), 
-#       e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#       eerr_n=np.zeros(lat_jet_nhml.shape[1]), oceanon='yes')
-## r(RH, O3) from +Chemistry
-#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
-#    r'$\it{r}\:$(RH, O$_\mathregular{3}$)', np.linspace(-1., 1., 11), 'bwr', 
-#    'r_rho3chem_%d-%d_jet'%(years[0],years[-1]), 
-#    e_n=np.nanmean(lat_jet_nhml, axis=0), 
-#    eerr_n=np.zeros(lat_jet_nhml.shape[1]))
-## Old 
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(DIR500, axis=0), '', 
-#       'Wind direction$_{\mathregular{500\:hPa}}$ [$^{\circ}$]', 
-#       np.linspace(0, 360, 16), 'twilight', 
-#       'meanwinddir_%d-%d_jet'%(years[0],years[-1])) 
-#map_nh(lat_gmi_n, lng_gmi_n, do3drh_n,
-#       'dO$_{\mathregular{3}}$/dRH [ppbv %$^{\mathregular{-1}}$]', 
-#       np.linspace(-0.75, 0.75, 7), 'bwr', 'do3drh_%d-%d'%(years[0],years[-1]))
-## O3, T, RH, wind direction correlations in + Chemistry simulation
-#map_nh(lat_gmi_n, lng_gmi_n, r_rho3_n, '', 
-#    r'$\it{r}\:$(RH, O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 
-#    'bwr', 'r_rho3_%d-%d_jet'%(years[0],years[-1]))
-#map_nh(lat_gmi_n, lng_gmi_n, r_dirrh_n, '', 
-#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, RH)', 
-#       np.linspace(-0.9, 0.9, 10), 'bwr', 
-#       'r_dirrh_%d-%d_jet'%(years[0],years[-1])) 
-#map_nh(lat_gmi_n, lng_gmi_n, r_dirq500_n, '', 
-#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
-#       'q$_{\mathregular{500\:hPa}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
-#       'r_dirq500_%d-%d_jet'%(years[0],years[-1])) 
-#map_nh(lat_gmi_n, lng_gmi_n, r_diro3_n, '', 
-#       r'$\it{r}\:$(Wind direction$_{\mathregular{500\:hPa}}$, '+
-#       'O$_{\mathregular{3}}$)', np.linspace(-0.9, 0.9, 10), 'bwr', 
-#       'r_diro3_%d-%d_jet'%(years[0],years[-1]))
-## dO3/dT from + Chemistry overlaid with O3-T correlation contours
-#map_do3dt_ro3t_nh(do3dt_n, r_t2mo3_n, lat_gmi_n, lng_gmi_n, '2008-2010')
-## Plot O3-T correlation over India for + Chemistry, Transport, and difference
-#map_extent(r_t2mo3_n, lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
-#    'r(T, O$_\mathregular{3,\:+\:Chemistry}$)', np.linspace(-1.,1.,11),
-#    'bwr', 'india_r_t2mo3chem_%d-%d.eps'%(years[0],years[-1]))
-#map_extent(r_t2mo3_n_dat, lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
-#    'r(T, O$_\mathregular{3,\:Transport}$)', np.linspace(-1.,1.,11),
-#    'bwr', 'india_r_t2mo3transport_%d-%d.eps'%(years[0],years[-1]))
-#map_extent((r_t2mo3_n-r_t2mo3_n_dat), lat_gmi_n, lng_gmi_n, 65., 35., 95., 5., 
-#    'r(T, O$_\mathregular{3,\:+\:Chemistry}$) $-$ r(T, O$_\mathregular{3,'+
-#    '\:Transport}$)', np.linspace(-0.2,0.2,11), 'bwr', 
-#    'india_r_t2mo3_diffchemtransport_%d-%d.eps'%(years[0],years[-1]))
-## Plot mean U500 (eddy-driven jet) winds 
-#map_nh(lat_gmi_n, lng_gmi_n, np.mean(U500, axis=0),
-#       '<U$_{\mathregular{500\:hPa}}$> [m s$^{\mathregular{-1}}$]', 
-#       np.linspace(-10,15,11), 'PuBu', 
-#       'meanU500_%d-%d'%(years[0],years[-1]))
-## Plot 2-meter temperature variability 
-#map_nh(lat_gmi_n, lng_gmi_n, np.std(t2m_n, axis=0),
-#   '$\mathregular{\sigma}_{\mathregular{T}}$ [K]', 
-#   np.linspace(0,6,11), 'PuBu', 
-#   'stdt2m_%d-%d'%(years[0],years[-1]))
-## Plot O3 at, above, and below the mean jet position in Eastern North America
-#timeseries_o3atabovebelow_jet(o3_nhml, lat_jet_nhml, lat_nhml, lng_nhml, 
-#    269, 294)        
-        
 """LOAD AND PLOT OUTPUT FROM GEOS-C1SD"""
 #import numpy as np
 #import sys
