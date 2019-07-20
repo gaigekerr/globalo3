@@ -24,6 +24,7 @@ Revision History
                 time is the first dimension
     16062019 -- function 'open_merra2_specifieddomain' moved from 
                 transporto3_open and edited 
+    20072019 -- function 'open_merra2_cyclones' added
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -918,3 +919,111 @@ def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin,
     print('MERRA-2 %s for %d-%d loaded in %.2f seconds!'%(varname, years[0],
           years[-1], time.time() - start_time))
     return var, mtime, lat, lng    
+
+def open_merra2_cyclones(sday, eday):
+    """for a given date or range of dates, function opens netCDF files 
+    corresponding to extratropical cyclones derived from the MERRA-2 database. 
+    Although there are several variables within netCDF files, only the 
+    latitude, longitude, sea level pressure (SLP), storm ID, and fraction of 
+    land cover occupied by the cyclone are extracted. 
+    
+    From the cyclone database website: frontal boundaries are obtained using 
+    the second version of the Modern Era Retrospective Analysis for Research 
+    and Applications (MERRA-2, Gelaro et al., 2017) temperature, wind and 
+    geopotential height output. The period covered is September 2006 to 
+    December 2016, and each year of data files is contained in one TGZ archive. 
+    Each file corresponds to one 6-hourly cyclone occurrence, and the file 
+    names contain information on the cyclone, as described in the README.
+    
+    Parameters
+    ----------
+    sday : str
+        Starting day of measuring period in MM/DD/YYYY format 
+    eday : str
+        Ending day of measuring period in MM/DD/YYYY format 
+    
+    Returns
+    -------
+    cyclones : pandas.core.frame.DataFrame
+        DataFrame containing the date, fraction of land cover, latitude, 
+        longitude, SLP, and storm ID
+    
+    Notes
+    -----
+    Database of Cyclones with Warm and Cold Front Locations is found at 
+    \url{https://data.giss.nasa.gov/storms/obs-etc/}
+    
+    References
+    ----------
+    Gelaro, R., W. McCarty, M.J. Suárez, R. Todling, A. Molod, L. Takacs, 
+    C.A. Randles, A. Darmenov, M.G. Bosilovich, R. Reichle, K. Wargan, 
+    L. Coy, R. Cullather, C. Draper, S. Akella, V. Buchard, A. Conaty, A.M. da 
+    Silva, W. Gu, G. Kim, R. Koster, R. Lucchesi, D. Merkova, J.E. Nielsen, 
+    G. Partyka, S. Pawson, W. Putman, M. Rienecker, S.D. Schubert, M. 
+    Sienkiewicz, and B. Zhao, 2017: The Modern-Era Retrospective Analysis for 
+    research and Applications, version 2 (MERRA-2). J. Climate, 30, 5419-5454, 
+    doi:10.1175/JCLI-D-16-0758.1.
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading MERRA-2 cyclone database for %s-%s...' %(sday, eday))
+    import os
+    import numpy as np
+    import xarray as xr
+    import pandas as pd
+    PATH_CYCLONES = '/Users/ghkerr/Desktop/merra2fronts2008/'
+    # Formulate days in measuring period; note 
+    days_mp = pd.date_range(start = sday, end = eday)
+    # Lists to be filled with values for entire measuring period
+    lng_all, lat_all, slp_all, fracland_all, idoftrack_all, datestr_all = \
+        [],[],[],[],[], []
+    # Find files of cyclones on particular day 
+    for day in days_mp:
+        year = str(day.year)
+        month = str(day.month).zfill(2)
+        directory = PATH_CYCLONES+'%s%s/'%(year, month)
+        infiles = [directory+fn for fn in os.listdir(directory) if
+                   fn.__contains__(day.strftime('%Y%m%d'))]
+        # Open all cyclones on a particular day 
+        dropvars = ['longitude', 'latitude', 'MERRA2SLP', 'CF_hewson1km', 
+                    'CF_simmonds850', 'CF_combined', 'WF_Hewson850', 
+                    'WF_Hewson1km', 'WF_HewsonWB']
+        ds = xr.open_mfdataset(infiles, data_vars=['storm_info'],
+                               coords='minimal', drop_variables=dropvars)
+        # Extract latitude, longitude, SLP, and fraction of land cover from 
+        # variable 'storm_info' and create date entry for each cyclone
+        storm_info = ds.storm_info.values
+        lng = storm_info[0::4]
+        lat = storm_info[1::4]
+        slp = storm_info[2::4]
+        fracland = storm_info[3::4]
+        datestr = np.repeat(day.strftime('%Y-%m-%d'), len(lng))
+        # From https://portal.nccs.nasa.gov/datashare/Obs-ETC/Fronts-ETC/
+        # Readme_MERRA2fronts.pdf, the filename convention means that each 
+        # cyclone has an ID specified in the filename: e.g., 
+        # MERRA2fronts_YYYYMMDD_UT_Latstorm_Lonstorm_surfacetype_IDofTrack
+        idoftrack = [fn.split('_')[6][:-5] for fn in infiles]
+        # Append daily values to lists for entire measuring period
+        datestr_all.append(datestr)    
+        lng_all.append(lng)
+        lat_all.append(lat)
+        slp_all.append(slp)
+        fracland_all.append(fracland)
+        idoftrack_all.append(idoftrack)
+    datestr_all = np.hstack(datestr_all)
+    lng_all = np.hstack(lng_all)
+    lat_all = np.hstack(lat_all)
+    slp_all = np.hstack(slp_all)
+    fracland_all = np.hstack(fracland_all)
+    idoftrack_all = np.hstack(idoftrack_all) 
+    # Create DataFrame and fill 
+    cyclones = pd.DataFrame({'Date' : datestr_all, 
+        'Longitude' : lng_all,
+        'Latitude' : lat_all, 
+        'SLP' : slp_all,
+        'Land Cover' : fracland_all,
+        'Storm ID' : idoftrack_all})
+    print('Cyclone coordinates loaded in %.2f seconds!' %(time.time() - 
+                                                          start_time))
+    return cyclones
