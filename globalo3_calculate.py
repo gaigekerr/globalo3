@@ -34,6 +34,8 @@ Revision History
     17072019 -- changed maximum 500 hPa wind locator in 'find_field_atjet' to 
                 reflect possible NaNs in 500 hPa (on 18/1/2008 there is a NaN
                 in the U500 wind - this created issues with DJF analysis)
+    22072019 -- function 'calculate_schnell_do3dt_rto3' added
+    23072019 -- function 'calculate_obs_do3dt_rto3' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -58,6 +60,7 @@ def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
         dO3/dT, units of ppbv K-1, [lat, lng]
     """
     import numpy as np
+    np.seterr(invalid='ignore')
     import time
     start_time = time.time()
     do3dt = np.empty(o3.shape[1:])
@@ -91,6 +94,7 @@ def calculate_r(x, y, lat, lng):
         Pearson correlation coefficient between x and y, [lat, lng]
     """
     import numpy as np
+    np.seterr(invalid='ignore')    
     import time
     start_time = time.time()
     r = np.empty(y.shape[1:])
@@ -927,3 +931,151 @@ def filter_center_byjet(center, jet, lat_systemcoords, lng_systemcoords,
     #             lat_systemcoords[np.where(abovejet[d]==1.)[0]], 'ro')
     #    plt.show()            
     return abovejet, belowjet
+
+def calculate_schnell_do3dt_rto3(years, months, domain): 
+    """function opens O3 dataset from Schnell et al. (2014) for specified 
+    domain and time period, commensurate 2-meter tempratures from MERRA-2, 
+    interpolates to GMI CTM resolution, and calculates dO3/dT and r(O3, T). 
+    Note that since the CTM and MERRA data are loaded for the Northern 
+    Hemisphere, a portion of the interpolated fields need to be lobbed off. 
+
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period, [years,]
+    months : list
+        Three letter abbreviations (lowercase) for months in measuring period
+    domain : str
+        Either 'US' or 'EU'
+
+    Returns
+    -------    
+    do3dt2m : numpy.ndarray
+        dO3/dT, units of ppbv K-1, [lat, lng]    
+    r_t2mo3 : numpy.ndarray
+        Pearson correlation coefficient calculated between O3 and 2-meter 
+        temperature, [lat, lng]
+    lat_gmi : numpy.ndarray
+        GMI latitude coordinates corresponding to the Schnell et al. domain, 
+        units of degrees north, [lat,]
+    lng_gmi : numpy.ndarray
+        GMI longitude coordinates corresponding to the Schnell et al. domain, 
+        units of degrees east, [lng,]
+
+    References
+    ----------
+    [1] J. L. Schnell, C. D. Holmes, A. Jangam, and M. J. Prather, "Skill in 
+    forecasting extreme ozone pollution episodes with a global atmospheric 
+    chemistry model," Atmos. Chem. Phys., 14, 7721-7739, 2014.         
+    """
+    import numpy as np
+    import sys
+    sys.path.append('/Users/ghkerr/phd/globalo3/')
+    import globalo3_open, globalo3_calculate
+    latmin_n, lngmin_n, latmax_n, lngmax_n = -1., 0., 90., 360.
+    # Open Schnell et al. O3 data for given months, years
+    lat_schnell, lng_schnell, o3_schnell = globalo3_open.open_schnello3(years, 
+        months, domain)
+    # Load 2-meter temperatures 
+    lat_merra, lng_merra, t2m_merra = \
+        globalo3_open.open_merra2t2m_specifieddomain(years, months, latmin_n, 
+        latmax_n, lngmin_n, lngmax_n)
+#        globalo3_open.open_merra2t2m_specifieddomain(years, months, 
+#        lat_schnell.min(), lat_schnell.max(), lng_schnell.min(), 
+#        lng_schnell.max())        
+    # Load commensurate GMI O3 data (this is a "dummy" calculation; only the 
+    # latitude and longitude coordinates are needed for interpolation)
+    lat_gmi, lng_gmi, times, o3 = globalo3_open.open_overpass2_specifieddomain(
+        years, months, latmin_n, latmax_n, lngmin_n, lngmax_n, 'O3', 
+        'HindcastMR2')  
+    if domain == 'eu':
+        t2m_merra = np.roll(t2m_merra, 
+            len(lng_merra)-np.abs(lng_merra-lng_schnell[0]).argmin())
+        lng_merra = np.roll(lng_merra, 
+            len(lng_merra)-np.abs(lng_merra-lng_schnell[0]).argmin())
+        lng_gmi = np.roll(lng_gmi, 
+            len(lng_gmi)-np.abs(lng_gmi-lng_schnell[0]).argmin())
+    # Degrade O3 and temperature datasets to resolution of CTM 
+    o3_schnell = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+        lng_gmi, lat_schnell, lng_schnell, o3_schnell)
+    t2m_merra = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+        lng_gmi, lat_merra, lng_merra, t2m_merra)
+    # Calculate r(O3, T) and dO3/dT
+    do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_schnell, 
+        lat_gmi, lng_gmi)
+    r_t2mo3 = globalo3_calculate.calculate_r(t2m_merra, o3_schnell, 
+        lat_gmi, lng_gmi)
+    return do3dt2m, r_t2mo3, lat_gmi, lng_gmi
+
+def calculate_obs_do3dt_rto3(obs, t2m, times_t2m, lat_t2m, lng_t2m): 
+    """function calculates the O3-temperature relationship from observational 
+    O3 datasets and MERRA-2 2-meter temperatures. This function assumes that 
+    the time coordinates for MERRA-2 are continuous. 
+    
+    Parameters
+    ----------
+    obs : pandas.core.frame.DataFrame
+        Daily averaged O3 concentrations at individual observational sites for 
+        the specified measuring period. DataFrame contains station ID and 
+        station latitude and longitude
+    t2m : numpy.ndarray
+        Daily averaged MERRA-2 2-meter temperatures, units of K, [days, lat, 
+        lng]
+    times_t2m : pandas.core.indexes.datetimes.DatetimeIndex
+        Timestamps of dates for which MERRA-2 data is desired, [days,]
+    lat_t2m : numpy.ndarray
+        MERRA-2 latitude coordinates, units of degrees north, [lat,]
+    lng_t2m : numpy.ndarray
+        MERRA-2 longitude coordinates, units of degrees east, [lng,]
+
+    Returns
+    -------
+    r_all : list
+        r(T, O3) at observational station, [stations,]
+    do3dt_all : list 
+        dO3/dT at observational station, units of ppbv K-1, [stations,]
+    lat_all : list 
+        Latitude coorindate at observational stations, units of degrees north, 
+        [stations,]
+    lng_all : list 
+        Longitude coorindate at observational stations, units of degrees east, 
+        [stations,]
+    """
+    import time
+    start_time = time.time()    
+    import numpy as np
+    import sys
+    sys.path.append('/Users/ghkerr/phd/utils/')
+    from geo_idx import geo_idx
+    # Convert
+    times_t2m = [x.strftime('%Y-%m-%d') for x in times_t2m]
+    r_all, do3dt_all, lat_all, lng_all = [], [], [], [] 
+    # Loop through all stations represented in NAPS observaitons
+    for station_id in np.unique(obs['Station ID'].values):
+        obs_station = obs.loc[obs['Station ID'] == station_id]
+        # Only calculate r(T, O3) and dO3/dT for stations with data 
+        if (obs_station.shape[0] != 0) \
+            & (True in np.isfinite(obs_station['Latitude'].values)) \
+            & (True in np.isfinite(obs_station['Longitude'].values)) \
+            & (True in np.isfinite(obs_station['O3 (ppbv)'].values)):
+            station_lat = np.nanmean(obs_station['Latitude'].values)
+            station_lng = np.nanmean(obs_station['Longitude'].values) % 360
+            # Find closest MERRA-2 grid cell
+            lat_closest = geo_idx(station_lat, lat_t2m)
+            lng_closest = geo_idx(station_lng, lng_t2m)    
+            # Find indices of dates in O3 observations included in MERRA data
+            times_obs = np.in1d(times_t2m, obs_station.index).nonzero()[0]
+            # Select temperature on days with observations
+            t2m_inperiod = t2m[times_obs, lat_closest, lng_closest]
+            # Calculate r(T, O3) and dO3/dT 
+            idx = np.isfinite(t2m_inperiod) \
+                & np.isfinite(obs_station['O3 (ppbv)'].values)
+            do3dt_all.append(np.polyfit(t2m_inperiod[idx], 
+                             obs_station['O3 (ppbv)'].values[idx], deg=1)[0])
+            r_all.append(np.corrcoef(t2m_inperiod[idx], 
+                             obs_station['O3 (ppbv)'].values[idx])[0,1])
+            lat_all.append(station_lat)
+            lng_all.append(station_lng)
+    print('r(T, O3) and dO3/dT in calculated in %.2f seconds' 
+             %((time.time()-start_time)))            
+    return r_all, do3dt_all, lat_all, lng_all
