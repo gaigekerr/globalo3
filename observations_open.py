@@ -6,6 +6,14 @@ Created on Tue Jul 23 16:18:43 2019
 open napso3, aqs o3 on 23 july 2019
 
 @author: ghkerr
+
+Revision History
+    23072019 -- initial version created
+    23072019 -- functions 'open_napso3' and 'open_aqso3' added
+    24072019 -- function 'open_napso3' edited to reflect different nomenclature
+                for sampling hours: NAPS data begin with "hour 1" rather than 
+                0 (i.e., AQS, EMEP), so this must be taken into account 
+                when selecting hours of interest
 """
 def get_merged_csv(flist, **kwargs):
     """function reads CSV files in the list comprehension loop, this list of
@@ -100,8 +108,9 @@ def open_napso3(years, months, hours):
         # Convert missing data (-999) to NaN
         naps = naps.replace(-999, np.nan)
         # Select columns corresponding to hours of interest (local time) at 
-        # station
-        hours_str = ['Hour %d'%x for x in hours]
+        # station; since the NAPS observations are indicated by hour starting
+        # at 1 (rather than 0), subtract 1
+        hours_str = ['Hour %d'%(x-1) for x in hours]
         naps_hours = naps[hours_str]
         # Form row-wise daily average for a subset of columns with missing 
         # values and add to O3 column 
@@ -187,3 +196,129 @@ def open_aqso3(years, months, hours):
     print('AQS O3 for %d-%d loaded in '%(years[0], years[-1])+
           '%.2f seconds!'%(time.time() - start_time))          
     return aqs_allyr
+
+def open_emepo3(years, months, hours): 
+    """function opens European Monitoring and Evaluation Programme (EMEP)
+    hourly O3 observations and extracts observations from the specified 
+    measuring period. Note that this function assumes that observations were
+    recorded at local time, not UTC. 
+    
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period
+    months : list
+        Months (integers with Jan = 1, Feb = 2, etc.) for the season of 
+        interest
+    hours : list 
+        Hours over which hourly O3 observations are averaged, units of local 
+        time
+        
+    Returns
+    -------
+    emep : pandas.core.frame.DataFrame
+        Daily averaged O3 concentrations at individual EMEP sites for the 
+        specified measuring period. DataFrame contains EMEP ID and site 
+        latitude and longitude        
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading EMEP O3 ...') 
+    import re
+    import glob
+    import pandas as pd
+    import numpy as np
+    #https://stackoverflow.com/questions/33997361
+    def dms2dd(s):
+        # example: s = """0°51'56.29"S"""
+        degrees, minutes, seconds, direction = re.split('[°\'"]+', s)
+        dd = float(degrees) + float(minutes)/60 + float(seconds)/(60*60);
+        if direction in ('S','W'):
+            dd*= -1
+        return dd
+    PATH_EMEP = '/Users/ghkerr/phd/observations/o3/EMEP/'
+    # Open EMEP siting information 
+    stations = pd.read_csv(PATH_EMEP+'EMEP_stations.csv', header = 0, 
+                           sep = '\s+')
+    # Convert degree/minute/second siting to decimal degrees
+    stations['latitude'] = stations['latitude'].apply(dms2dd)
+    stations['longitude'] = stations['longitude'].apply(dms2dd)
+    # Column names, dtypes for O3 observation files
+    dtype = {'Start Hour' : np.str, 'End Hour' : np.str,
+             'Concentration' : np.str, 'Dummy' : np.str, 
+             'Validity' : np.str}
+    emep=pd.DataFrame()
+    # Loop through years and open all site files
+    for year in [2008, 2009, 2010]:
+        files_ty = glob.glob(PATH_EMEP + 'all_o3_%s/'%year + '*_%s.dat'%year)
+        files_ty_all = []
+        for filename in files_ty:
+            print(filename)
+            # Find station ID, station latitude, and station longitude based 
+            # on filename
+            station_ID = filename.split('/')[-1]       
+            station_ID = station_ID.split('_')[0]
+            station_lat = stations.loc[stations['Code'] == station_ID
+                                       ]['latitude'].values[0]
+            station_lng = stations.loc[stations['Code'] == station_ID
+                                       ]['longitude'].values[0]
+            df = pd.read_csv(filename, dtype = dtype, index_col = None, 
+                             header = None, sep='\s+',
+                             names = list(dtype.keys()), skiprows = 3)
+            # Add station ID and siting information to DataFrame
+            df['Latitude'] = station_lat
+            df['Longitude'] = station_lng
+            df['Station ID'] = station_ID        
+            files_ty_all.append(df)
+        files_ty_all = pd.concat(files_ty_all, axis=0, ignore_index=True)
+        emep=emep.append(files_ty_all,ignore_index=True)
+    # Convert O3 from string to float
+    emep['Concentration'] = emep['Concentration'].astype(float)
+    # Convert missing data to NaN (n.b. most missing data is indicated
+    # as 999.0 but some is 9999., etc)
+    emep = emep.replace(999., np.nan)
+    emep = emep.replace(999.99, np.nan)
+    emep = emep.replace(9999., np.nan)    
+    # Split time column into two columns (date and hour)
+    emep['Date Local'], emep['Hour'] = emep['Start Hour'].str.split('T').str
+    # Drop rows with NaNs (otherwise an error is raised when setting the date 
+    # as the index)
+    emep = emep[pd.notnull(emep['Hour'])]
+    # Set date column as index, rename
+    emep.index = pd.to_datetime(emep['Date Local'])
+    emep.index.names = ['Date Local']
+    # Convert O3 from µg/m3 to ppbv
+    # n.b., this conversion assumes an ambient pressure of 1 atmosphere and a 
+    # temperature of 25 degrees Celsius. If this is the case, for O3 
+    # 1 ppb = 2.00 μg/m3
+    # The general equation is μg/m3 = (ppb)*(12.187)*(M)/(273.15 + °C), where
+    # M is the molecular weight of the gaseous pollutant. An atmospheric 
+    # pressure of 1 atmosphere is assumed.
+    #/www2.dmu.dk/AtmosphericEnvironment/Expost/database/docs/PPM_conversion.pdf
+    emep['Concentration'] = emep['Concentration']/2.    
+    # Select months in measuring period     
+    emep = emep.loc[emep.index.month.isin(months)]
+    # Drop columns that are not needed
+    del emep['End Hour'], emep['Dummy'], emep['Start Hour'], \
+        emep['Date Local'], emep['Validity']
+    # Select hours of interest (n.b. if overpass2 time (13:00-14:00 local time)
+    # is needed, we'd select hour 13 in the 'Hour' column (originally 'Start
+    # Hour'). 
+    hours_str = ['%s:00:00'%str(x).zfill(2) for x in hours]
+    emep = emep.loc[emep['Hour'].isin(hours_str)]
+    # Find daily averaged values 
+    emep = emep.groupby(['Date Local', 'Station ID']).mean()
+    # Rename O3 column 
+    emep = emep.rename(columns={'Concentration' : 'O3 (ppbv)'})
+    # Turn MultiIndex to column
+    emep.reset_index(inplace = True)
+    # Make date index 
+    emep.set_index('Date Local', inplace = True)
+    # Convert index to string
+    emep.index = [x.strftime('%Y-%m-%d') for x in emep.index]            
+    # Convert longitude from (-180-180) to (0-360)
+    emep['Longitude'] = emep['Longitude']%360.     
+    print('EMEP O3 for %d-%d loaded in '%(years[0], years[-1])+
+          '%.2f seconds!'%(time.time() - start_time))     
+    return emep
