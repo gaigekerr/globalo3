@@ -36,6 +36,11 @@ Revision History
                 in the U500 wind - this created issues with DJF analysis)
     22072019 -- function 'calculate_schnell_do3dt_rto3' added
     23072019 -- function 'calculate_obs_do3dt_rto3' added
+    25072019 -- function 'ctm_obs_bias' added
+    01082019 -- function 'calculate_obs_do3dt_rto3' changed to 
+                'calculate_obs_o3_temp_jet' and code added to calculate O3-jet
+                relationship from observed O3 and jet (from reanalysis)
+    12082019 -- function 'calculate_r_significance' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -1007,7 +1012,8 @@ def calculate_schnell_do3dt_rto3(years, months, domain):
         lat_gmi, lng_gmi)
     return do3dt2m, r_t2mo3, lat_gmi, lng_gmi
 
-def calculate_obs_do3dt_rto3(obs, t2m, times_t2m, lat_t2m, lng_t2m): 
+def calculate_obs_o3_temp_jet(obs, t2m, times_t2m, lat_t2m, lng_t2m, lat_jet, 
+    lng_ml): 
     """function calculates the O3-temperature relationship from observational 
     O3 datasets and MERRA-2 2-meter temperatures. This function assumes that 
     the time coordinates for MERRA-2 are continuous. 
@@ -1027,16 +1033,27 @@ def calculate_obs_do3dt_rto3(obs, t2m, times_t2m, lat_t2m, lng_t2m):
         MERRA-2 latitude coordinates, units of degrees north, [lat,]
     lng_t2m : numpy.ndarray
         MERRA-2 longitude coordinates, units of degrees east, [lng,]
-
+    lat_jet : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[days, lng]    
+    lng_ml : numpy.ndarray
+        Longitude coordinates corresponding to the jet dataset, units of 
+        degrees east, [lng,]
+        
     Returns
     -------
     r_all : list
-        r(T, O3) at observational station, [stations,]
+        r(T, O3) at each observational station, [stations,]
     do3dt_all : list 
-        dO3/dT at observational station, units of ppbv K-1, [stations,]
+        dO3/dT at each observational station, units of ppbv K-1, [stations,]
+    ro3jet : list
+        r(jet lat - lat, O3) at each observational station, [stations,]
+    djetdo3 : list
+        dO3/d(jet lat - lat) at each observational station, units of ppbv 
+        degree-1, [stations,]
     lat_all : list 
-        Latitude coorindate at observational stations, units of degrees north, 
-        [stations,]
+        Latitude coorindate at each observational stations, units of degrees 
+        north, [stations,]
     lng_all : list 
         Longitude coorindate at observational stations, units of degrees east, 
         [stations,]
@@ -1050,6 +1067,7 @@ def calculate_obs_do3dt_rto3(obs, t2m, times_t2m, lat_t2m, lng_t2m):
     # Convert
     times_t2m = [x.strftime('%Y-%m-%d') for x in times_t2m]
     r_all, do3dt_all, lat_all, lng_all = [], [], [], [] 
+    ro3jet, djetdo3 = [], []    
     # Loop through all stations represented in NAPS observaitons
     for station_id in np.unique(obs['Station ID'].values):
         obs_station = obs.loc[obs['Station ID'] == station_id]
@@ -1062,7 +1080,11 @@ def calculate_obs_do3dt_rto3(obs, t2m, times_t2m, lat_t2m, lng_t2m):
             station_lng = np.nanmean(obs_station['Longitude'].values) % 360
             # Find closest MERRA-2 grid cell
             lat_closest = geo_idx(station_lat, lat_t2m)
-            lng_closest = geo_idx(station_lng, lng_t2m)    
+            lng_closest = geo_idx(station_lng, lng_t2m)   
+            # Find closest grid cell in jet longitude dataset 
+            lng_jet_closest = geo_idx(station_lng, lng_ml)   
+            # Timeseries of jet latitude for a given longitude
+            lat_jet_closest = lat_jet[:, lng_jet_closest]
             # Find indices of dates in O3 observations included in MERRA data
             times_obs = np.in1d(times_t2m, obs_station.index).nonzero()[0]
             # Select temperature on days with observations
@@ -1074,8 +1096,132 @@ def calculate_obs_do3dt_rto3(obs, t2m, times_t2m, lat_t2m, lng_t2m):
                              obs_station['O3 (ppbv)'].values[idx], deg=1)[0])
             r_all.append(np.corrcoef(t2m_inperiod[idx], 
                              obs_station['O3 (ppbv)'].values[idx])[0,1])
+            # Calculate r(jet lat-lat, O3) and dO3/d(jet lat-lat)
+            lat_jet_closest = lat_jet_closest[times_obs]
+            idx = np.isfinite(lat_jet_closest) \
+                & np.isfinite(obs_station['O3 (ppbv)'].values)     
+            djetdo3.append(np.polyfit(lat_jet_closest[idx] - station_lat, 
+                             obs_station['O3 (ppbv)'].values[idx], deg=1)[0])
+            ro3jet.append(np.corrcoef(lat_jet_closest[idx] - station_lat, 
+                             obs_station['O3 (ppbv)'].values[idx])[0,1])
             lat_all.append(station_lat)
             lng_all.append(station_lng)
-    print('r(T, O3) and dO3/dT in calculated in %.2f seconds' 
-             %((time.time()-start_time)))            
-    return r_all, do3dt_all, lat_all, lng_all
+    print('Observational O3, temperature, jet metrics in calculated ' + 
+          'in %.2f seconds' %((time.time()-start_time)))            
+    return r_all, do3dt_all, ro3jet, djetdo3, lat_all, lng_all
+
+def ctm_obs_bias(obs_lat, obs_lng, obs_field, ctm_lat, ctm_lng, ctm_field): 
+    """function calculates mean bias between CTM and observational datasets
+    by selecting CTM grid cell containing observational site and determining
+    the simple difference (i.e., CTM - observations, so positive values would
+    indicate that the CTM is biased high). Note that the input array for the 
+    CTM must be 2D, so CTM output with a time dimensions should be averaged 
+    before finding the mean bias. 
+    
+    Parameters
+    ----------
+    obs_lat : list
+        Latitude coordinates of observational stations, units of degrees north, 
+        [stations,]
+    obs_lng : list
+        Longitude coordinates of observational stations, units of degrees east, 
+        [stations,]    
+    obs_field : list
+        Field of interest at each observational station, [stations,]
+    ctm_lat : numpy.ndarray
+        Gridded latitude coordinates of CTM, units of degrees north, [lat,]
+    ctm_lng : numpy.ndarray
+        Gridded longitude coordinates of CTM, units of degrees east, [lng,]        
+    ctm_field : numpy.ndarray
+        Gridded field of interest from CTM, [lat, lng]
+        
+    Returns
+    -------
+    bias_all : list
+        CTM-observation bias; order of biases corresponds to the order of the 
+        input latitude and longitude coordinates for the observational 
+        stations, [stations,]
+    """
+    import sys
+    sys.path.append('/Users/ghkerr/phd/utils/')
+    from geo_idx import geo_idx
+    # Determine and plot mean bias 
+    i = 0
+    bias_all = []
+    for ilat, ilng in zip(obs_lat, obs_lng): 
+        # loop through CASTNet sites and find nearest GMI grid cell
+        ctm_lat_near = geo_idx(ilat, ctm_lat)
+        ctm_lng_near = geo_idx(ilng, ctm_lng)
+        # Field at each CTM grid cell 
+        ctm_near_obs = ctm_field[ctm_lat_near, ctm_lng_near]
+        obs_atsite = obs_field[i]
+        bias_atsite = (ctm_near_obs-obs_atsite)
+        bias_all.append(bias_atsite)
+        i = i + 1
+    return bias_all
+
+def calculate_r_significance(x, y, r, lat, lng):
+    """function calculates the lag-1 autocorrelation (rho1) of the dependent 
+    variable (y), and thereafter calculates the effective sample size, n', 
+    where n' = n * ((1-rho1)/(1+rho1)). 
+    The critical value for the one-sided t-test is found for the given 
+    effective sample size and compared with the test statistic given the 
+    observed correlation.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Independent variable [time, lat, lng]
+    y : numpy.ndarray
+        Dependent variable [time, lat, lng]
+    r : numpy.ndarray     
+        Pearson correlation coefficient between x and y, [lat, lng]        
+    lat : numpy.ndarray
+        Gridded latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Gridded longitude coordinates, units of degrees east, [lng,]        
+        
+    Returns
+    -------
+    significance : numpy.ndarray
+        NaN for significant correlation at the alpha = 0.05 level and 1 for 
+        insigificant correlation at the alpha = 0.05 level, [lat, lng]
+    """    
+    import numpy as np
+    from scipy import stats
+    import pandas as pd
+    np.seterr(invalid='ignore')    
+    import time
+    start_time = time.time()
+    alpha = 0.05
+    rho1 = np.empty(y.shape[1:])
+    # Lag-1 autocorrelation coefficient
+    for i,ilat in enumerate(lat):
+        for j,ilng in enumerate(lng):
+            rho1[i,j] = pd.Series.autocorr(pd.Series(y[:, i, j]), lag=1)
+    # Effective sample size (from Wilks)
+    neff = len(y)*((1-rho1)/(1+rho1))
+    # Determine the appropriate t value 
+    # (from http://janda.org/c10/Lectures/topic06/L24-significanceR.htm)
+    t = r*np.sqrt((neff-2.)/(1.-r**2))
+    # Get the critical t test statistic (adapted from 
+    # https://stackoverflow.com/questions/19339305/python-function-to-get-the-t-statistic)
+    cv = np.empty(y.shape[1:])
+    # Second argument is the degrees of freedom for entering 
+    # the t-distribution is N - 2
+    for i,ilat in enumerate(lat):
+        for j,ilng in enumerate(lng):
+            cv[i,j] = stats.t.ppf(1-alpha, neff[i,j]-2.)
+    # For the given degrees of freedom for a one-tailed test, see which 
+    # grid nodes lie below the critical value. If this is the case, the null
+    # hypothesis of no relationship (r = 0) cannot be rejected
+    where_insignificant = np.where(np.abs(t) < cv)
+    # Create grid for significance where np.nan refers to a grid cell that IS 
+    # significant at the alpha = 0.05 level and 1 corresponds to a grid cell 
+    # that is NOT significant at that level
+    significance = np.empty(y.shape[1:])
+    significance[:] = np.nan
+    significance[where_insignificant[0], where_insignificant[1]] = 1.
+    print('significance of correlation coefficient in calculated '+
+          'in %.2f seconds'%((time.time()-start_time)))    
+    return significance
