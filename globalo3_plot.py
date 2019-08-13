@@ -10,7 +10,7 @@ Revision History
                 cells with statistically significant values
     03022019 -- function 'timeseries_seasonalo3' added
     19022019 -- map functions changed to just focus on Northern Hemisphere
-    23042019 North American r(T, O3)-- function 'timeseries_o3atabovebelow_jet' added
+    23042019 -- function 'timeseries_o3atabovebelow_jet' added
     26052019 -- function 'map_jet_centerdist' added
     17062019 -- function 'edjetlocation_fieldatedjet' added
     18062019 -- contour/label capability added to 'map_nh' 
@@ -18,6 +18,8 @@ Revision History
                 number of grid cells/degrees from jet center
     17072019 -- function 'edjetlocation_fieldatedjet' name changed to 
                 'fieldatjet'
+    13082019 -- change scatterpoints/hatching in function 'map_hemisphere' to 
+                reflect significance
 """
 # Change font
 import sys
@@ -212,8 +214,8 @@ def map_trend(lat_n, lat_s, lng_n, lng_s, trend_n, trend_s, cbar_label,
     return
 
 def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, 
-    hemisphere, fstr, contour=None, contour_levs=None, p_n=None, e_n=None, 
-    eerr_n=None, alpha=0.05, extent=None, quiver=None, oceanon='yes', 
+    hemisphere, fstr, contour=None, contour_levs=None, e_n=None, eerr_n=None, 
+    hatch=None, hatch_freq=None, extent=None, quiver=None, oceanon='yes', 
     extend='both'):
     """plot desired quantity over the Northern or Southern hemisphere (however, 
     if variable 'extent' is specified, map can be tailored to any region).
@@ -246,17 +248,16 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
         atop filled contours
     contour_levs : numpy.ndarray
         Contour level values
-    p_n : numpy.ndarray or NoneType
-        If type(p_n) is numpy.ndarray, gridded values less than the 
-        significance level (alpha) are plotted as scatterpoints
     e_n : numpy.ndarray or NoneType
         If type(e_n) is numpy.ndarray, values are plotted as scatterpoints
     eerr_n : numpy.ndarray or NoneType
         If type(eerr_n) is numpy.ndarray, values are plotted as errorbars 
         on the scatterpoints of e_n
-    alpha : int
-        The significance level, the probability of rejecting the null 
-        hypothesis p-values are less than alpha
+    hatch : numpy.ndarray or NoneType
+        If type(hatch) is numpy.ndarray, grid cells equal to 1 are hatched and 
+        values equal to NaN are left empty, [lat, lng]
+    hatch_freq : list
+        Hatching type (i.e., +, /, o, etc.) and frequency
     extent : list or NoneType
         The extent (x0, x1, y0, y1) of the map in the given coordinate system    
     quiver : tuple or NoneType
@@ -272,8 +273,9 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
     -------
     None              
     """
-    import copy
     import numpy as np
+    import matplotlib as mpl
+    mpl.rcParams['hatch.linewidth'] = 0.3     
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
@@ -291,24 +293,21 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
         ax.set_extent(extent)
     # Plot filled contours
     cmap = plt.get_cmap(cmap)
-    mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap=cmap, extend='both', 
+    mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap=cmap, extend=extend, 
                      transform=ccrs.PlateCarree())
     # If specified, add contours and labels. 
     if contour is None: pass
     else:
         cs = ax.contour(lng_n, lat_n, contour, contour_levs, colors = 'k', 
-                        transform=ccrs.PlateCarree())
-        plt.clabel(cs, fontsize=10, inline=1, fmt = '%1.0f')
-    # If specified, add stippling (e.g., for statistical significance)
-    if p_n is None: pass
+                        linewidths = 0.75,
+                        transform=ccrs.PlateCarree(), zorder = 15)
+        plt.clabel(cs, fontsize=10, inline=1, fmt = '%1.0f', zorder = 15)
+    # If specified, add hatching (e.g., for significance)
+    if hatch is None: pass
     else:
-        p_n = copy.deepcopy(p_n)
-        p_n[p_n >= alpha] = np.nan
-        p_n[np.isnan(p_n) == False] = 5.
-        lng_n_gridded, lat_n_gridded = np.meshgrid(lng_n, lat_n)
-        ax.scatter(lng_n_gridded[1::2,::3], lat_n_gridded[1::2,::3], 
-                   s=p_n[1::2,::3], facecolor='k', lw=0, marker='.', 
-                   transform=ccrs.PlateCarree())
+        # Hatching for significance
+        ax.contourf(lng_n, lat_n, hatch, hatches = hatch_freq, colors = 'none', 
+                    transform = ccrs.PlateCarree())
     # If specified add scatterplots (e.g., for location of eddy-driven jet)
     if e_n is None: pass
     else:
@@ -337,7 +336,8 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
     colorbar.set_label(cbar_label, fontsize=14)
     plt.gcf().subplots_adjust(right=0.75, hspace=-0.2)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'map_%s_%s.eps'%(hemisphere, fstr), transparent=True)
+        'map_%s_%s.png'%(hemisphere, fstr), #transparent = True, 
+        dpi = 350)
     return 
 
 def timeseries_seasonalo3():
@@ -1271,49 +1271,41 @@ def fieldatjet(lat_fr, lng_fr, lat_jet, field_jet, cmap, cbar_label, clevs,
                 'fieldatjet_%s_%s.eps'%(fieldstr, fstr), dpi=300)
     return 
 
-def zonalavg_byregion_rt2mo3_do3dt2m(r_t2mo3, do3dt2m, lat_gmi, lng_gmi, r_aqs, 
-    do3dt2m_aqs, lat_aqs, lng_aqs, r_naps, do3dt2m_naps, lat_naps, lng_naps, 
-    r_emep, do3dt2m_emep, lat_emep, lng_emep, lng_ml, lat_jet_ml, fstr): 
-    """find zonally-averaged mean values and variability of dO3/dT and r(T, O3)
-    in Western North America, Eastern North America, Europe, and East Asia
-    from both CTM simulations and observations and plot as a functino of 
+def zonalavg_byregion(field, lat_gmi, lng_gmi, field_aqs, lat_aqs, lng_aqs, 
+    field_naps, lat_naps, lng_naps, field_emep, lat_emep, lng_emep, lng_ml, 
+    lat_jet_ml, label, units, yticks, fstr): 
+    """find zonally-averaged mean values of field of interest (i.e., r(T, O3) 
+    or dO3/dT in Western North America, Eastern North America, Europe, and East 
+    Asia from both CTM simulations and observations and plot as a function of 
     latitude alongside the mean position and variability of the eddy-driven 
     jet. 
     
     Parameters
     ----------
-    r_t2mo3 : numpy.ndarray     
-        Pearson correlation coefficient between temperature and O3, [lat, lng]        
-    do3dt2m : numpy.ndarray     
-        Northern Hemisphere dO3/dT, units of ppbv K-1, [lat, lng]
+    field : numpy.ndarray     
+        Field of interest from CTM simulation, [lat, lng]        
     lat_gmi : numpy.ndarray
         GMI CTM latitude coordinates, units of degrees north, [lat,]
     lng_gmi : numpy.ndarray
         GMI CTM longitude coordinates, units of degrees east, [lng,]
-    r_aqs : list
-        r(T, O3) at each AQS station, [stations,]
-    do3dt_aqs : list 
-        dO3/dT at each AQS station, units of ppbv K-1, [stations,]
+    field_aqs : list
+        Field of interest at each AQS station, [stations,]
     lat_aqs : list 
         Latitude coorindate at each AQS station, units of degrees north, 
         [stations,]
     lng_aqs : list 
         Longitude coorindate at each AQS station, units of degrees east, 
         [stations,]
-    r_naps : list
-        r(T, O3) at each NAPS station, [stations,]
-    do3dt_naps : list 
-        dO3/dT at each NAPS station, units of ppbv K-1, [stations,]
+    field_naps : list
+        Field of interest at each NAPS station, [stations,]
     lat_naps : list 
         Latitude coorindate at each NAPS station, units of degrees north, 
         [stations,]
     lng_naps : list 
         Longitude coorindate at each NAPS station, units of degrees east, 
         [stations,]        
-    r_emep : list
-        r(T, O3) at each EMEP station, [stations,]
-    do3dt_emep : list 
-        dO3/dT at each EMEP station, units of ppbv K-1, [stations,]
+    field_emep : list
+        Field of interest at each EMEP station, [stations,]
     lat_emep : list 
         Latitude coorindate at each EMEP station, units of degrees north, 
         [stations,]
@@ -1327,6 +1319,12 @@ def zonalavg_byregion_rt2mo3_do3dt2m(r_t2mo3, do3dt2m, lat_gmi, lng_gmi, r_aqs,
         The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
         in the Northern Hemisphere mid-latitudes, units of degrees north, 
         [time, lng]
+    label : str
+        Name of field for y-axis label and legend
+    units : str
+        Units of quantity for y-axis label
+    yticks : numpy.ndarray
+        Y-ticks
     fstr : str
         Output filename suffix (should specify season, years)  
 
@@ -1338,97 +1336,78 @@ def zonalavg_byregion_rt2mo3_do3dt2m(r_t2mo3, do3dt2m, lat_gmi, lng_gmi, r_aqs,
     import matplotlib.pyplot as plt
     import sys
     sys.path.append('/Users/ghkerr/phd/GMI/')
-    from geo_idx import geo_idx
-    # Find quantities (model, model error, and observations) in regions and 
+    from geo_idx import geo_idx    
+    # Find quantity (model, model error, and observations) in regions and 
     # calculate land-based zonally-averaged quantities
     # Western North America
-    do3dt2m_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
-        do3dt2m, lat_gmi, lng_gmi, 235., 260., 25., 70.) 
-    r_t2mo3_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
-        r_t2mo3, lat_gmi, lng_gmi, 235., 260., 25., 70.) 
+    field_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
+        field, lat_gmi, lng_gmi, 235., 260., 25., 70.) 
     wna_left = geo_idx(235., lng_ml)
     wna_right = geo_idx(260., lng_ml)
     lat_jet_wna = lat_jet_ml[:, wna_left:wna_right+1]
     lat_jet_err_wna = np.nanstd(np.nanmean(lat_jet_wna, axis = 1))
     lat_jet_mean_wna = np.nanmean(lat_jet_wna)
     land_wna = globalo3_calculate.find_grid_overland(lat_wna, lng_wna)
-    do3dt2m_err_wna = np.nanstd(do3dt2m_wna*land_wna, axis=1)
-    do3dt2m_wna = np.nanmean(do3dt2m_wna*land_wna, axis=1)
-    r_t2mo3_err_wna = np.nanstd(r_t2mo3_wna*land_wna, axis=1)
-    r_t2mo3_wna = np.nanmean(r_t2mo3_wna*land_wna, axis=1)
+    field_err_wna = 2*np.nanstd(field_wna*land_wna, axis=1)
+    field_wna = np.nanmean(field_wna*land_wna, axis=1)
     aqs_wna = np.where((np.array(lat_aqs) < 70.) &
                        (np.array(lat_aqs) > 25.) &
                        (np.array(lng_aqs) > 235.) &
                        (np.array(lng_aqs) < 260.))[0]
-    do3dt2m_aqs_wna = np.array(do3dt2m_aqs)[aqs_wna]
-    r_aqs_wna = np.array(r_aqs)[aqs_wna]
+    field_aqs_wna = np.array(field_aqs)[aqs_wna]
     lat_aqs_wna = np.array(lat_aqs)[aqs_wna]
     naps_wna = np.where((np.array(lat_naps) < 70.) &
                         (np.array(lat_naps) > 25.) &
                         (np.array(lng_naps) > 235.) &
                         (np.array(lng_naps) < 260.))[0]
-    do3dt2m_naps_wna = np.array(do3dt2m_naps)[naps_wna]
-    r_naps_wna = np.array(r_naps)[naps_wna]
+    field_naps_wna = np.array(field_naps)[naps_wna]
     lat_naps_wna = np.array(lat_naps)[naps_wna]
     # Eastern North America
-    do3dt2m_ena, lat_ena, lng_ena = globalo3_calculate.find_grid_in_bb(
-        do3dt2m, lat_gmi, lng_gmi, 260., 295., 25., 70.)
-    r_t2mo3_ena, lat_ena, lng_ena = globalo3_calculate.find_grid_in_bb(
-        r_t2mo3, lat_gmi, lng_gmi, 260., 295., 25., 70.) 
+    field_ena, lat_ena, lng_ena = globalo3_calculate.find_grid_in_bb(
+        field, lat_gmi, lng_gmi, 260., 295., 25., 70.)
     ena_left = geo_idx(260., lng_ml)
     ena_right = geo_idx(295., lng_ml)
     lat_jet_ena = lat_jet_ml[:, ena_left:ena_right+1]
     lat_jet_err_ena = np.nanstd(np.nanmean(lat_jet_ena, axis = 1))
     lat_jet_mean_ena = np.nanmean(lat_jet_ena)
     land_ena = globalo3_calculate.find_grid_overland(lat_ena, lng_ena)
-    do3dt2m_err_ena = np.nanstd(do3dt2m_ena*land_ena, axis=1)
-    do3dt2m_ena = np.nanmean(do3dt2m_ena*land_ena, axis=1)
-    r_t2mo3_err_ena = np.nanstd(r_t2mo3_ena*land_ena, axis=1)
-    r_t2mo3_ena = np.nanmean(r_t2mo3_ena*land_ena, axis=1)
+    field_err_ena = 2*np.nanstd(field_ena*land_ena, axis=1)
+    field_ena = np.nanmean(field_ena*land_ena, axis=1)
     aqs_ena = np.where((np.array(lat_aqs) < 70.) &
                        (np.array(lat_aqs) > 25.) &
                        (np.array(lng_aqs) > 260.) &
                        (np.array(lng_aqs) < 295.))[0]
-    do3dt2m_aqs_ena = np.array(do3dt2m_aqs)[aqs_ena]
-    r_aqs_ena = np.array(r_aqs)[aqs_ena]
+    field_aqs_ena = np.array(field_aqs)[aqs_ena]
     lat_aqs_ena = np.array(lat_aqs)[aqs_ena]
     naps_ena = np.where((np.array(lat_naps) < 70.) &
                         (np.array(lat_naps) > 25.) &
                         (np.array(lng_naps) > 260.) &
                         (np.array(lng_naps) < 295.))[0]
-    do3dt2m_naps_ena = np.array(do3dt2m_naps)[naps_ena]
-    r_naps_ena = np.array(r_naps)[naps_ena]
+    field_naps_ena = np.array(field_naps)[naps_ena]
     lat_naps_ena = np.array(lat_naps)[naps_ena]
     # Europe (since Europe crosses the prime meridian, finding grid cells over
     # 0 deg longitude will not work, so find European domain in two steps)
-    do3dt2m_eu1, lat_eu1, lng_eu1 = globalo3_calculate.find_grid_in_bb(
-        do3dt2m, lat_gmi, lng_gmi, 350., 360., 25., 70.) 
-    r_t2mo3_eu1, lat_eu1, lng_eu1 = globalo3_calculate.find_grid_in_bb(
-        r_t2mo3, lat_gmi, lng_gmi, 350., 360., 25., 70.) 
+    field_eu1, lat_eu1, lng_eu1 = globalo3_calculate.find_grid_in_bb(
+        field, lat_gmi, lng_gmi, 350., 360., 25., 70.) 
     eu1_left = geo_idx(350., lng_ml)
     eu1_right = geo_idx(360., lng_ml)
     lat_jet_eu1 = lat_jet_ml[:, eu1_left:eu1_right+1]
     land_eu1 = globalo3_calculate.find_grid_overland(lat_eu1, lng_eu1)
-    do3dt2m_eu2, lat_eu2, lng_eu2 = globalo3_calculate.find_grid_in_bb(
-        do3dt2m, lat_gmi, lng_gmi, 0., 30., 25., 70.) 
-    r_t2mo3_eu2, lat_eu2, lng_eu2 = globalo3_calculate.find_grid_in_bb(
-        r_t2mo3, lat_gmi, lng_gmi, 0., 30., 25., 70.) 
+    field_eu2, lat_eu2, lng_eu2 = globalo3_calculate.find_grid_in_bb(
+        field, lat_gmi, lng_gmi, 0., 30., 25., 70.) 
     eu2_left = geo_idx(0., lng_ml)
     eu2_right = geo_idx(30., lng_ml)
     lat_jet_eu2 = lat_jet_ml[:, eu2_left:eu2_right+1]
     land_eu2 = globalo3_calculate.find_grid_overland(lat_eu2, lng_eu2)
     # Concatenate
-    do3dt2m_eu = np.hstack([do3dt2m_eu1, do3dt2m_eu2])
-    r_t2mo3_eu = np.hstack([r_t2mo3_eu1, r_t2mo3_eu2])
+    field_eu = np.hstack([field_eu1, field_eu2])
     lat_jet_eu = np.hstack([lat_jet_eu1, lat_jet_eu2])
     lat_jet_err_eu = np.nanstd(np.nanmean(lat_jet_eu, axis = 1))
     lat_jet_mean_eu = np.nanmean(lat_jet_eu)
     land_eu = np.hstack([land_eu1, land_eu2])
     lat_eu = lat_eu1
-    do3dt2m_err_eu = np.nanstd(do3dt2m_eu*land_eu, axis=1)
-    do3dt2m_eu = np.nanmean(do3dt2m_eu*land_eu, axis=1)
-    r_t2mo3_err_eu = np.nanstd(r_t2mo3_eu*land_eu, axis=1)
-    r_t2mo3_eu = np.nanmean(r_t2mo3_eu*land_eu, axis=1)
+    field_err_eu = 2*np.nanstd(field_eu*land_eu, axis=1)
+    field_eu = np.nanmean(field_eu*land_eu, axis=1)
     emep_eu1 = np.where((np.array(lat_emep) < 70.) &
                         (np.array(lat_emep) > 25.) &
                         (np.array(lng_emep) > 350.) &
@@ -1438,147 +1417,100 @@ def zonalavg_byregion_rt2mo3_do3dt2m(r_t2mo3, do3dt2m, lat_gmi, lng_gmi, r_aqs,
                         (np.array(lng_emep) > 0.) &
                         (np.array(lng_emep) < 30.))[0]
     emep_eu = np.hstack([emep_eu1, emep_eu2])
-    do3dt2m_emep_eu = np.array(do3dt2m_emep)[emep_eu]
-    r_emep_eu = np.array(r_emep)[emep_eu]
+    field_emep_eu = np.array(field_emep)[emep_eu]
     lat_emep_eu = np.array(lat_emep)[emep_eu]
     # East Asia 
-    do3dt2m_asia, lat_asia, lng_asia = globalo3_calculate.find_grid_in_bb(
-        do3dt2m, lat_gmi, lng_gmi, 90., 125., 25., 70.) 
-    r_t2mo3_asia, lat_asia, lng_asia = globalo3_calculate.find_grid_in_bb(
-        r_t2mo3, lat_gmi, lng_gmi, 90., 125., 25., 70.) 
+    field_asia, lat_asia, lng_asia = globalo3_calculate.find_grid_in_bb(
+        field, lat_gmi, lng_gmi, 90., 125., 25., 70.) 
     asia_left = geo_idx(90., lng_ml)
     asia_right = geo_idx(125., lng_ml)
     lat_jet_asia = lat_jet_ml[:, asia_left:asia_right+1]
     lat_jet_err_asia = np.nanstd(np.nanmean(lat_jet_asia, axis = 1))
     lat_jet_mean_asia = np.nanmean(lat_jet_asia)
     land_asia = globalo3_calculate.find_grid_overland(lat_asia, lng_asia)
-    do3dt2m_err_asia = np.nanstd(do3dt2m_asia*land_asia, axis=1)
-    do3dt2m_asia = np.nanmean(do3dt2m_asia*land_asia, axis=1)
-    r_t2mo3_err_asia = np.nanstd(r_t2mo3_asia*land_asia, axis=1)
-    r_t2mo3_asia = np.nanmean(r_t2mo3_asia*land_asia, axis=1)
+    field_err_asia = 2*np.nanstd(field_asia*land_asia, axis=1)
+    field_asia = np.nanmean(field_asia*land_asia, axis=1)
     # Plotting
     fig = plt.figure(figsize=(6.5, 6.))
     ax1 = plt.subplot2grid((4,2), (0,0), colspan = 2)
     ax2 = plt.subplot2grid((4,2), (1,0), colspan = 2)
     ax3 = plt.subplot2grid((4,2), (2,0), colspan = 2)
     ax4 = plt.subplot2grid((4,2), (3,0), colspan = 2)
-    color_r = '#EF9802'
-    color_do3dt2m = '#A2C3E0'
-    color_jet = 'k' #'#3F79B7'
-    # Western North America r(T, O3)
-    ax1.text(0.98, 0.06, 'Western North America', ha = 'right', 
-             transform=ax1.transAxes, fontsize=12)
-    p1, = ax1.plot(lat_wna, r_t2mo3_wna, ls = '-', lw = 2, color = color_r, 
-             zorder = 5)
-    p2 = ax1.fill_between(lat_wna, r_t2mo3_wna-r_t2mo3_err_wna,
-                     r_t2mo3_wna+r_t2mo3_err_wna, color = color_r, alpha = 0.2,
-                     zorder = 5)
-    ax1.plot(lat_aqs_wna, r_aqs_wna, 'o', color = color_r, markersize=1, 
-             zorder = 2)
-    p3, = ax1.plot(lat_naps_wna, r_naps_wna, 'o', color = color_r, markersize=1, 
-             zorder = 2)
-    # Western North America dO3/dT
-    ax1b = ax1.twinx()
-    p4, = ax1b.plot(lat_wna, do3dt2m_wna, ls = '-', lw = 2, color = color_do3dt2m, zorder = 5)
-    p5 = ax1b.fill_between(lat_wna, do3dt2m_wna-do3dt2m_err_wna,
-                     do3dt2m_wna+do3dt2m_err_wna, color = color_do3dt2m, alpha = 0.2, zorder = 5)
-    p6, = ax1b.plot(lat_aqs_wna, do3dt2m_aqs_wna, 'o', color = color_do3dt2m, 
-              markersize=1, zorder = 2)
-    ax1b.plot(lat_naps_wna, do3dt2m_naps_wna, 'o', color = color_do3dt2m, 
-              markersize=1, zorder = 2)
-    # Western North America eddy-driven jet
-    p7 = ax1.errorbar(lat_jet_mean_wna, 0., xerr=[lat_jet_err_wna], fmt='o', 
-                 color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, 
-                 zorder = 20)#, label = 'Eddy-driven jet')
-    ax1.set_zorder(ax1b.get_zorder()+1)
-    ax1.patch.set_visible(False)
-    # Add legend
-    ax1.legend([p3, (p1, p2), p6, (p4, p5), p7], 
-        ['Observed $r\:$(T, O$_{\mathregular{3}}$)', 
-         'Modeled $r\:$(T, O$_{\mathregular{3}}$) $\mathregular{\pm}$ 1$\mathregular{\sigma}$', 
-         'Observed dO$_{\mathregular{3}}$/dT', 
-         'Modeled dO$_{\mathregular{3}}$/dT $\mathregular{\pm}$ 1$\mathregular{\sigma}$',
-         'Eddy-driven jet'], loc = 2, ncol = 2, bbox_to_anchor=(0.05, 1.75), 
-         frameon=False)
-    # Eastern North America r(T, O3)
-    ax2.text(0.98, 0.06, 'Eastern North America', ha = 'right', 
-             transform=ax2.transAxes, fontsize=12)
-    ax2.plot(lat_ena, r_t2mo3_ena, ls = '-', lw = 2, color = color_r, zorder = 5)
-    ax2.fill_between(lat_ena, r_t2mo3_ena-r_t2mo3_err_ena,
-                     r_t2mo3_ena+r_t2mo3_err_ena, color = color_r, alpha = 0.2, zorder = 5)
-    ax2.plot(lat_aqs_ena, r_aqs_ena, 'o', color = color_r, markersize=1, zorder = 2)
-    ax2.plot(lat_naps_ena, r_naps_ena, 'o', color = color_r, markersize=1, zorder = 2)
-    # Eastern North America dO3/dT
-    ax2b = ax2.twinx()
-    ax2b.plot(lat_ena, do3dt2m_ena, ls = '-', lw = 2, color = color_do3dt2m, 
-              zorder = 15)
-    ax2b.fill_between(lat_ena, do3dt2m_ena-do3dt2m_err_ena,
-                     do3dt2m_ena+do3dt2m_err_ena, color = color_do3dt2m, 
-                     alpha = 0.2, zorder = 5)
-    ax2b.plot(lat_aqs_ena, do3dt2m_aqs_ena, 'o', color = color_do3dt2m, 
-              markersize=1, zorder = 2)
-    ax2b.plot(lat_naps_ena, do3dt2m_naps_ena, 'o', color = color_do3dt2m, 
-              markersize=1, zorder = 2)
-    # Eastern North America eddy-driven jet
-    ax2.errorbar(lat_jet_mean_ena, 0., xerr=[lat_jet_err_ena], fmt='o', 
-                 color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, 
-                 zorder = 20)
-    ax2.set_zorder(ax2b.get_zorder()+1)
-    ax2.patch.set_visible(False)
-    # Europe r(T, O3)
-    ax3.text(0.98, 0.06, 'Europe', ha = 'right', 
-             transform=ax3.transAxes, fontsize=12)
-    ax3.plot(lat_eu, r_t2mo3_eu, ls = '-', lw = 2, color = color_r, zorder = 5)
-    ax3.fill_between(lat_eu, r_t2mo3_eu-r_t2mo3_err_eu,
-                     r_t2mo3_eu+r_t2mo3_err_eu, color = color_r, alpha = 0.2, 
-                     zorder = 5)
-    ax3.plot(lat_emep_eu, r_emep_eu, 'o', color = color_r, markersize=1, zorder = 2)
-    # Europe dO3/dT
-    ax3b = ax3.twinx()
-    ax3b.plot(lat_eu, do3dt2m_eu, ls = '-', lw = 2, color = color_do3dt2m, 
-              zorder = 15)
-    ax3b.fill_between(lat_eu, do3dt2m_eu-do3dt2m_err_eu,
-                     do3dt2m_eu+do3dt2m_err_eu, color = color_do3dt2m, 
-                     alpha = 0.2, zorder = 5)
-    ax3b.plot(lat_emep_eu, do3dt2m_emep_eu, 'o', color = color_do3dt2m, 
-              markersize=1, zorder = 2)
-    # Europe eddy-driven jet
-    ax3.errorbar(lat_jet_mean_eu, 0., xerr=[lat_jet_err_eu], fmt='o', 
-                 color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, 
-                 zorder = 20)
-    ax3.set_zorder(ax3b.get_zorder()+1)
-    ax3.patch.set_visible(False)
-    # East Asia r(T, O3)
-    ax4.text(0.98, 0.06, 'East Asia', ha = 'right', 
-             transform=ax4.transAxes, fontsize=12)
-    ax4.plot(lat_asia, r_t2mo3_asia, ls = '-', lw = 2, color = color_r, zorder = 5)
-    ax4.fill_between(lat_asia, r_t2mo3_asia-r_t2mo3_err_asia,
-                     r_t2mo3_asia+r_t2mo3_err_asia, color = color_r, alpha = 0.2, 
-                     zorder = 5)
-    # East Asia dO3/dT
-    ax4b = ax4.twinx()
-    ax4b.plot(lat_asia, do3dt2m_asia, ls = '-', lw = 2, color = color_do3dt2m, 
-              zorder = 15)
-    ax4b.fill_between(lat_asia, do3dt2m_asia-do3dt2m_err_asia,
-                     do3dt2m_asia+do3dt2m_err_asia, color = color_do3dt2m, 
-                     alpha = 0.2, zorder = 5)
-    # East Asia eddy-driven jet
-    ax4.errorbar(lat_jet_mean_asia, 0., xerr=[lat_jet_err_asia], fmt='o', 
-                 color=color_jet, ecolor=color_jet, elinewidth=2, capsize=2, 
-                 zorder = 10)
+    color_r = '#EF9802' #'#A2C3E0'
+    color_jet = 'k'
     for ax in [ax1, ax2, ax3, ax4]: 
         ax.set_xlim([25, 70])
         ax.set_xticks(np.linspace(25, 70, 10))
         ax.set_xticklabels([])
-        ax.set_ylim([-1, 1])
+        ax.set_ylim([yticks[0], yticks[-1]])
+        ax.set_yticks(yticks)
+        # Add horizontal line for field = 0
+        ax.axhline(y = 0.0, color = 'lightgrey', lw = 2., linestyle = '--')        
     ax4.set_xticklabels([ '25', '', '35', '', '45', '', '55', '', '65', ''])    
-    ax4.set_xlabel('Latitude [$^{\mathregular{\circ}}$N]', fontsize=14)
-    ax2.set_ylabel('$r\:$(T, O$_{\mathregular{3}}$) [$\cdot$]', fontsize=14, 
-                   y = -0.15)
-    ax2b.set_ylabel('dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',
-                    fontsize=14, labelpad = 20, y = -0.2, rotation=270)
+    ax4.set_xlabel('Latitude [$^{\mathregular{\circ}}$N]', fontsize = 14)
+    ax2.set_ylabel('%s %s'%(label, units), fontsize = 14, y = -0.15)    
+    # Western North America
+    ax1.text(0.98, 0.8, 'Western North America', ha = 'right', 
+             transform=ax1.transAxes, fontsize = 12, zorder = 20)
+    p1, = ax1.plot(lat_wna, field_wna, ls = '-', lw = 2, color = color_r, 
+             zorder = 5)
+    p2 = ax1.fill_between(lat_wna, field_wna-field_err_wna,
+        field_wna+field_err_wna, color = color_r, alpha = 0.2, zorder = 5)
+    ax1.plot(lat_aqs_wna, field_aqs_wna, 'o', color = color_r, markersize = 1, 
+             zorder = 2)
+    p3, = ax1.plot(lat_naps_wna, field_naps_wna, 'o', color = color_r, 
+        markersize = 1, zorder = 2)
+    # Western North America eddy-driven jet
+    p7 = ax1.errorbar(lat_jet_mean_wna, 0., xerr=[lat_jet_err_wna], 
+        fmt = 'o', color = color_jet, ecolor = color_jet, elinewidth = 2, 
+        capsize = 3, zorder = 20)
+    # Add legend
+    leg = ax1.legend([p3, (p1, p2), p7], 
+        ['Observed %s' %label, 
+         'Modeled %s $\mathregular{\pm}$ 2$\mathregular{\sigma}$' %label, 
+         'Eddy-driven jet'], loc = 6, ncol = 3, bbox_to_anchor=(-0.12, 1.3), 
+         frameon=False)
+    # Change the marker size manually for observations
+    leg.legendHandles[0]._legmarker.set_markersize(5)
+    # Eastern North America
+    ax2.text(0.98, 0.8, 'Eastern North America', ha = 'right', 
+        transform=ax2.transAxes, fontsize = 12, zorder = 20)
+    ax2.plot(lat_ena, field_ena, ls = '-', lw = 2, color = color_r, zorder = 5)
+    ax2.fill_between(lat_ena, field_ena-field_err_ena, field_ena+field_err_ena, 
+        color = color_r, alpha = 0.2, zorder = 5)
+    ax2.plot(lat_aqs_ena, field_aqs_ena, 'o', color = color_r, markersize = 1, 
+        zorder = 2)
+    ax2.plot(lat_naps_ena, field_naps_ena, 'o', color = color_r, 
+        markersize = 1, zorder = 2)
+    # Eastern North America eddy-driven jet
+    ax2.errorbar(lat_jet_mean_ena, 0., xerr = [lat_jet_err_ena], fmt = 'o', 
+        color = color_jet, ecolor = color_jet, elinewidth = 2, capsize = 3, 
+        zorder = 20)
+    # Europe
+    ax3.text(0.98, 0.8, 'Europe', ha = 'right', transform = ax3.transAxes, 
+        fontsize = 12, zorder = 20)
+    ax3.plot(lat_eu, field_eu, ls = '-', lw = 2, color = color_r, zorder = 5)
+    ax3.fill_between(lat_eu, field_eu-field_err_eu, field_eu+field_err_eu, 
+        color = color_r, alpha = 0.2, zorder = 5)
+    ax3.plot(lat_emep_eu, field_emep_eu, 'o', color = color_r, markersize=1, 
+        zorder = 2)
+    # Europe eddy-driven jet
+    ax3.errorbar(lat_jet_mean_eu, 0., xerr=[lat_jet_err_eu], fmt = 'o', 
+        color=color_jet, ecolor=color_jet, elinewidth = 2, capsize = 3, 
+        zorder = 20)
+    # East Asia
+    ax4.text(0.98, 0.8, 'East Asia', ha = 'right', transform = ax4.transAxes, 
+        fontsize = 12, zorder = 20)
+    ax4.plot(lat_asia, field_asia, ls = '-', lw = 2, color = color_r, 
+        zorder = 5)
+    ax4.fill_between(lat_asia, field_asia-field_err_asia,
+        field_asia+field_err_asia, color = color_r, alpha = 0.2, zorder = 5)
+    # East Asia eddy-driven jet
+    ax4.errorbar(lat_jet_mean_asia, 0., xerr = [lat_jet_err_asia], 
+        fmt = 'o', color = color_jet, ecolor = color_jet, elinewidth = 2, 
+        capsize = 2, zorder = 10)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'zonalavg_byregion_rt2mo3_do3dt2m_%s.png' %fstr, dpi = 300)
+                'zonalavg_byregion_%s.png' %fstr, dpi = 300)
     return
 
 import numpy as np
@@ -1590,16 +1522,21 @@ try:lat_gmi
 except NameError:
     years = [2008, 2009, 2010]
     hours = [14]
-    season = 'SON'
-    months = [9, 10, 11]
-    months_str = ['sep', 'oct', 'nov']
+    season = 'JJA'
+    months = [6, 7, 8]
+    months_str = ['jun', 'jul', 'aug']
     # Hemisphere definition
     latmin, lngmin, latmax, lngmax = -1., 0., 90., 360.
-    # Load Northern Hemisphere GMI CTM O3
+    # Load Northern Hemisphere HindcastMR2 GMI CTM O3 
     lat_gmi, lng_gmi, times_gmi, o3_gmi = \
         globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
         latmax, lngmin, lngmax, 'O3', 'HindcastMR2')
-    o3_gmi = o3_gmi*1e9        
+    o3_gmi = o3_gmi*1e9
+    # Load Northern Hemisphere HindcastMR2-DiurnalAvgT GMI CTM O3 
+    lat_gmi, lng_gmi, times_gmi, o3_transport_gmi = \
+        globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
+        latmax, lngmin, lngmax, 'O3', 'HindcastMR2-DiurnalAvgT')
+    o3_transport_gmi = o3_transport_gmi*1e9    
     # Load Northern Hemisphere 2-meter temperatures
     lat_merra, lng_merra, t2m_merra = \
         globalo3_open.open_merra2t2m_specifieddomain(years, months_str, latmin, 
@@ -1615,36 +1552,10 @@ except NameError:
     # Interpolate 500 hPa u-wind
     U500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
         lng_gmi, lat_merra, lng_merra, U500, checkplot='yes')
-    # Load observational datasets
-    naps = observations_open.open_napso3(years, months, hours)
-    aqs = observations_open.open_aqso3(years, months, hours)
-    emep = observations_open.open_emepo3(years, months, hours)
-    # Calculate dO3/dT and r(T, O3) from model and observational datasets
+    # Calculate dO3/dT and r(T, O3) from model
     do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_gmi, lat_gmi, 
         lng_gmi)
-    r_t2mo3 = globalo3_calculate.calculate_r(t2m_merra, o3_gmi, lat_gmi, lng_gmi)
-    r_naps, do3dt2m_naps, lat_naps, lng_naps = \
-        globalo3_calculate.calculate_obs_do3dt_rto3(naps, t2m_merra, times_gmi, 
-        lat_gmi, lng_gmi)
-    r_aqs, do3dt2m_aqs, lat_aqs, lng_aqs = \
-        globalo3_calculate.calculate_obs_do3dt_rto3(aqs, t2m_merra, times_gmi, 
-        lat_gmi, lng_gmi)    
-    r_emep, do3dt2m_emep, lat_emep, lng_emep = \
-        globalo3_calculate.calculate_obs_do3dt_rto3(emep, t2m_merra, times_gmi, 
-        lat_gmi, lng_gmi)    
-    # Find bias 
-    r_naps_bias = globalo3_calculate.ctm_obs_bias(lat_naps, lng_naps, r_naps, 
-        lat_gmi, lng_gmi, r_t2mo3)
-    do3dt2m_naps_bias = globalo3_calculate.ctm_obs_bias(lat_naps, lng_naps, 
-        do3dt2m_naps, lat_gmi, lng_gmi, do3dt2m)
-    r_aqs_bias = globalo3_calculate.ctm_obs_bias(lat_aqs, lng_aqs, r_aqs, 
-        lat_gmi, lng_gmi, r_t2mo3)
-    do3dt2m_aqs_bias = globalo3_calculate.ctm_obs_bias(lat_aqs, lng_aqs, 
-        do3dt2m_aqs, lat_gmi, lng_gmi, do3dt2m)
-    r_emep_bias = globalo3_calculate.ctm_obs_bias(lat_emep, lng_emep, r_emep, 
-        lat_gmi, lng_gmi, r_t2mo3)
-    do3dt2m_emep_bias = globalo3_calculate.ctm_obs_bias(lat_emep, lng_emep, 
-        do3dt2m_emep, lat_gmi, lng_gmi, do3dt2m)
+    r_t2mo3 = globalo3_calculate.calculate_r(t2m_merra, o3_gmi, lat_gmi, lng_gmi)    
     # Subset fields in mid-latitudes
     U500_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(U500, lat_gmi, 
         lng_gmi, 0., 360., 20., 70.)
@@ -1672,305 +1583,456 @@ except NameError:
         lng_gmi, lat_jet_ml, lng_ml)
     m_t2mjetdist, r_t2mjetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(t2m_merra, lat_gmi, 
-        lng_gmi, lat_jet_ml, lng_ml)    
+        lng_gmi, lat_jet_ml, lng_ml)        
+    # Load observational datasets
+    naps = observations_open.open_napso3(years, months, hours)
+    aqs = observations_open.open_aqso3(years, months, hours)
+    emep = observations_open.open_emepo3(years, months, hours)
+    # Calculate dO3/dT and r(T, O3) from observational datasets
+    r_t2mo3 = globalo3_calculate.calculate_r(t2m_merra, o3_gmi, lat_gmi, 
+        lng_gmi)
+    r_t2mo3_transport = globalo3_calculate.calculate_r(t2m_merra, 
+        o3_transport_gmi, lat_gmi, lng_gmi)
+    r_naps, do3dt2m_naps, ro3jet_naps, do3djet_naps, lat_naps, lng_naps = \
+        globalo3_calculate.calculate_obs_o3_temp_jet(naps, t2m_merra, 
+        times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
+    r_aqs, do3dt2m_aqs, ro3jet_aqs, do3djet_aqs, lat_aqs, lng_aqs = \
+        globalo3_calculate.calculate_obs_o3_temp_jet(aqs, t2m_merra, 
+        times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)    
+    r_emep, do3dt2m_emep, ro3jet_emep, do3djet_emep, lat_emep, lng_emep = \
+        globalo3_calculate.calculate_obs_o3_temp_jet(emep, t2m_merra, 
+        times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
+    # Find bias 
+    r_naps_bias = globalo3_calculate.ctm_obs_bias(lat_naps, lng_naps, r_naps, 
+        lat_gmi, lng_gmi, r_t2mo3)
+    do3dt2m_naps_bias = globalo3_calculate.ctm_obs_bias(lat_naps, lng_naps, 
+        do3dt2m_naps, lat_gmi, lng_gmi, do3dt2m)
+    r_aqs_bias = globalo3_calculate.ctm_obs_bias(lat_aqs, lng_aqs, r_aqs, 
+        lat_gmi, lng_gmi, r_t2mo3)
+    do3dt2m_aqs_bias = globalo3_calculate.ctm_obs_bias(lat_aqs, lng_aqs, 
+        do3dt2m_aqs, lat_gmi, lng_gmi, do3dt2m)
+    r_emep_bias = globalo3_calculate.ctm_obs_bias(lat_emep, lng_emep, r_emep, 
+        lat_gmi, lng_gmi, r_t2mo3)
+    do3dt2m_emep_bias = globalo3_calculate.ctm_obs_bias(lat_emep, lng_emep, 
+        do3dt2m_emep, lat_gmi, lng_gmi, do3dt2m)
+
+
+
+
+
+
+
+
+    
+
+
+
+
+# Significance (alpha = 0.05) of O3-temperature correlation
+#significance_r_t2mo3 = globalo3_calculate.calculate_r_significance(t2m_merra, 
+#    o3_gmi, r_t2mo3, lat_gmi, lng_gmi)
+#significance_r_t2mo3_transport = globalo3_calculate.calculate_r_significance(
+#    t2m_merra, o3_transport_gmi, r_t2mo3_transport, lat_gmi, lng_gmi)
+## Regions where O3-temperature correlation was significant in HindcastMR2
+## but not significant in HindcastMR2-DiurnalAvgT
+#diff = np.where(np.logical_and(significance_r_t2mo3 != 1., 
+#    significance_r_t2mo3_transport == 1.))
+#significance_diff = np.empty(r_t2mo3.shape)
+#significance_diff[:] = np.nan
+#significance_diff[diff[0], diff[1]] = 1.
+
+
+
+
+
+
+
+
+
 
 maparea = 'nh'
-# Mean O3, mean eddy-driven jet position and variability
-map_hemisphere(lat_gmi, 
-    lng_gmi, 
-    np.mean(o3_gmi, axis=0), 
-    '%s O$_{\mathregular{3}}$' %season, 
-    '[ppbv]', 
-    np.linspace(25, 65, 11), 
-    'PuBu', 
-    maparea,
-    'meano3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
- dO3/dT
-map_hemisphere(lat_gmi, 
-    lng_gmi,
-    do3dt2m, 
-    '%s dO$_{\mathregular{3}}$/dT' %season,
-    '[ppbv K$^{\mathregular{-1}}$]', 
-    np.linspace(-2, 2., 9), 
-    'bwr', 
-    maparea,
-    'do3dt2m_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
-# r(T, O3)
-map_hemisphere(lat_gmi, 
-    lng_gmi, 
-    r_t2mo3, 
-    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
-    '[$\cdot$]', 
-    np.linspace(-1., 1., 11), 
-    'bwr', 
-    maparea,
-    'rt2mo3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
+## Mean O3, mean eddy-driven jet position and variability
+#map_hemisphere(lat_gmi, 
+#    lng_gmi, 
+#    np.mean(o3_gmi, axis=0), 
+#    '%s O$_{\mathregular{3}}$' %season, 
+#    '[ppbv]', 
+#    np.linspace(25, 65, 11), 
+#    'PuBu', 
+#    maparea,
+#    'meano3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## dO3/dT
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    do3dt2m, 
+#    '%s dO$_{\mathregular{3}}$/dT' %season,
+#    '[ppbv K$^{\mathregular{-1}}$]', 
+#    np.linspace(-2, 2., 9), 
+#    'bwr', 
+#    maparea,
+#    'do3dt2m_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## r(T, O3)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi, 
+#    r_t2mo3, 
+#    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
+#    '[$\cdot$]', 
+#    np.linspace(-1., 1, 9),
+#    'bwr', 
+#    maparea,
+#    'rt2mo3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n = np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n = np.std(lat_jet_ml,axis=0),
+#    hatch = significance_r_t2mo3,
+#    hatch_freq = ['//////'],
+#    extent = [lng_gmi.min()-180., lng_gmi.max()-180., 
+#              lat_gmi.min()+1, lat_gmi.max()-5], 
+#    extend='neither')
+## r(T, O3) from HindcastMR2-DiurnalAvgT
+#map_hemisphere(lat_gmi, 
+#    lng_gmi, 
+#    (r_t2mo3_transport - r_t2mo3), 
+#    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
+#    '[$\cdot$]', 
+#    np.linspace(-0.5, 0.5, 9),
+#    'bwr', 
+#    maparea,
+#    'rt2mo3_transport_%s_%d-%d'%(season, years[0],years[-1]), 
+#    hatch = significance_diff,
+#    hatch_freq = ['////////////'],
+#    extent = [lng_gmi.min()-180., lng_gmi.max()-180., 
+#              lat_gmi.min()+1, lat_gmi.max()-5], 
+#    extend='both')
 # dO3/d(jet lat - lat)
-map_hemisphere(lat_gmi, 
-    lng_gmi,
-    m_o3jetdist, 
-    '%s dO$_{\mathregular{3}}$/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)' %season, 
-    '[ppbv degree$^{\mathregular{-1}}$]', 
-    np.linspace(-0.3, 0.3, 7), 
-    'bwr', 
-    maparea,
-    'do3djetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
-# r(jet lat - lat, O3)
-map_hemisphere(lat_gmi, 
-    lng_gmi,
-    r_o3jetdist, 
-    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, O$_{\mathregular{3}}$)' %season, 
-    '[$\cdot$]', 
-    np.linspace(-0.7, 0.7, 8), 
-    'bwr', 
-    maparea,
-    'ro3jetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
-# dT/d(jet lat - lat)
-map_hemisphere(lat_gmi, 
-    lng_gmi,
-    m_t2mjetdist, 
-    '%s dT/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)' %season, 
-    '[K degree$^{\mathregular{-1}}$]', 
-    np.linspace(-0.1, 0.4, 11), 
-    'gist_earth',
-    maparea,
-    'dt2mdjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
-# r(jet lat - lat, O3)
-map_hemisphere(lat_gmi, 
-    lng_gmi,
-    r_t2mjetdist, 
-    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, T)' %season, 
-    '[$\cdot$]', 
-    np.linspace(-0.7, 0.7, 8), 
-    'bwr',
-    maparea,
-    'rt2mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-    e_n=np.nanmean(lat_jet_ml,axis=0), 
-    eerr_n=np.std(lat_jet_ml,axis=0),
-    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
-# O3 anomaly in vicinity of jet 
-fieldatjet(lat_ml, 
-    lng_ml, 
-    lat_jet_ml, 
-    np.nanmean(o3_jet_ml, axis=0),
-    'bwr', 
-    r'$\mathregular{\delta}$O$_{\mathregular{3}}$ [ppbv]',  
-    np.linspace(-5., 5., 6), 
-    '%s_o3anom' %maparea, 
-    '%s_%d-%d'%(season, years[0],years[-1]), 
-    skiplng=6)
-# 2-meter temperature anomaly in vicinity of jet 
-fieldatjet(lat_ml, 
-    lng_ml,
-    lat_jet_ml, 
-    np.nanmean(t2m_jet_ml, axis=0),
-    'bwr', 
-    r'$\mathregular{\delta}$T [K]',  
-    np.linspace(-3., 3., 7), 
-    '%s_t2manom' %maparea, 
-    '%s_%d-%d'%(season, years[0],years[-1]), 
-    skiplng=6)
-# dO3/dT in vicinity of jet
-fieldatjet(lat_ml, 
-    lng_ml,
-    lat_jet_ml, 
-    do3dt2m_jet_ml,
-    'Reds', 
-    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
-    np.linspace(0, 2, 6),
-    '%s_do3dt' %maparea, 
-    '%s_%d-%d'%(season, years[0],years[-1]), 
-    skiplng=6)
-# r(T, O3) in vicinity of jet
-fieldatjet(lat_ml, 
-    lng_ml,
-    lat_jet_ml, 
-    r_t2mo3_jet_ml,
-    'bwr', 
-    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
-    np.linspace(-1, 1, 11),
-    '%s_rt2mo3' %maparea, 
-    '%s_%d-%d'%(season, years[0],years[-1]), 
-    skiplng=6)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    m_o3jetdist, 
+#    '%s dO$_{\mathregular{3}}$/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)' %season, 
+#    '[ppbv degree$^{\mathregular{-1}}$]', 
+#    np.linspace(-0.3, 0.3, 7), 
+#    'bwr', 
+#    maparea,
+#    'do3djetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## r(jet lat - lat, O3)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    r_o3jetdist, 
+#    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, O$_{\mathregular{3}}$)' %season, 
+#    '[$\cdot$]', 
+#    np.linspace(-0.7, 0.7, 8), 
+#    'bwr', 
+#    maparea,
+#    'ro3jetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## dT/d(jet lat - lat)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    m_t2mjetdist, 
+#    '%s dT/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)' %season, 
+#    '[K degree$^{\mathregular{-1}}$]', 
+#    np.linspace(-0.2, 0.3, 11), 
+#    'gist_earth',
+#    maparea,
+#    'dt2mdjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## r(jet lat - lat, O3)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    r_t2mjetdist, 
+#    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, T)' %season, 
+#    '[$\cdot$]', 
+#    np.linspace(-0.7, 0.7, 8), 
+#    'bwr',
+#    maparea,
+#    'rt2mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## O3 anomaly in vicinity of jet 
+#fieldatjet(lat_ml, 
+#    lng_ml, 
+#    lat_jet_ml, 
+#    np.nanmean(o3_jet_ml, axis=0),
+#    'bwr', 
+#    r'$\mathregular{\delta}$O$_{\mathregular{3}}$ [ppbv]',  
+#    np.linspace(-5., 5., 6), 
+#    '%s_o3anom' %maparea, 
+#    '%s_%d-%d'%(season, years[0],years[-1]), 
+#    skiplng=6)
+## 2-meter temperature anomaly in vicinity of jet 
+#fieldatjet(lat_ml, 
+#    lng_ml,
+#    lat_jet_ml, 
+#    np.nanmean(t2m_jet_ml, axis=0),
+#    'bwr', 
+#    r'$\mathregular{\delta}$T [K]',  
+#    np.linspace(-3., 3., 7), 
+#    '%s_t2manom' %maparea, 
+#    '%s_%d-%d'%(season, years[0],years[-1]), 
+#    skiplng=6)
+## dO3/dT in vicinity of jet
+#fieldatjet(lat_ml, 
+#    lng_ml,
+#    lat_jet_ml, 
+#    do3dt2m_jet_ml,
+#    'Reds', 
+#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
+#    np.linspace(0, 2, 6),
+#    '%s_do3dt' %maparea, 
+#    '%s_%d-%d'%(season, years[0],years[-1]), 
+#    skiplng=6)
+## r(T, O3) in vicinity of jet
+#fieldatjet(lat_ml, 
+#    lng_ml,
+#    lat_jet_ml, 
+#    r_t2mo3_jet_ml,
+#    'bwr', 
+#    'dO$_{\mathregular{3}}$/dT [ppbv K$^{\mathregular{-1}}$]',  
+#    np.linspace(-1, 1, 11),
+#    '%s_rt2mo3' %maparea, 
+#    '%s_%d-%d'%(season, years[0],years[-1]), 
+#    skiplng=6)
 
 """MODEL-OBSERVATION COMPARISON"""
-# North American r(T, O3)
-map_extent([-170, -50, 24, 60], 
-    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
-    '[$\mathregular{\cdot}$]', 
-    'bwr', 
-    np.linspace(-1., 1, 9),
-    'northamerica',
-    'rt2mo3_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_ctm=lat_gmi, 
-    lng_ctm=lng_gmi, 
-    field_ctm=r_t2mo3, 
-    lat_obs=np.hstack((lat_naps, lat_aqs)), 
-    lng_obs=np.hstack((lng_naps, lng_aqs)), 
-    field_obs=np.hstack((r_naps, r_aqs)))
-# North American r(T, O3) bias
-map_extent([-170, -50, 24, 60], 
-    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
-    '[$\mathregular{\cdot}$]', 
-    'bwr', 
-    np.linspace(-.5, .5, 6),
-    'northamerica',
-    'rt2mo3bias_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_obs=np.hstack((lat_naps, lat_aqs)), 
-    lng_obs=np.hstack((lng_naps, lng_aqs)), 
-    field_obs=np.hstack((r_naps_bias, r_aqs_bias)), 
-    extend='both')
-# North American dO3/dT
-map_extent([-170, -50, 24, 60], 
-    '%s dO$_{\mathregular{3}}$/dT' %season,
-    '[ppbv K$^{\mathregular{-1}}$]',
-    'Reds', 
-    np.linspace(0., 2.5, 6),
-    'northamerica',
-    'do3dt2m_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_ctm=lat_gmi, 
-    lng_ctm=lng_gmi, 
-    field_ctm=do3dt2m, 
-    lat_obs=np.hstack((lat_naps, lat_aqs)), 
-    lng_obs=np.hstack((lng_naps, lng_aqs)), 
-    field_obs=np.hstack((do3dt2m_naps, do3dt2m_aqs)), 
-    extend='both')
-# North American dO3/dT bias
-map_extent([-170, -50, 24, 60], 
-    '%s dO$_{\mathregular{3}}$/dT' %season,
-    '[ppbv K$^{\mathregular{-1}}$]',
-    'bwr', 
-    np.linspace(-1., 1., 6),
-    'northamerica',
-    'do3dt2mbias_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_obs=np.hstack((lat_naps, lat_aqs)), 
-    lng_obs=np.hstack((lng_naps, lng_aqs)), 
-    field_obs=np.hstack((do3dt2m_naps_bias, do3dt2m_aqs_bias)), 
-    extend='both')
-# European r(T, O3)
-map_extent([-14, 37, 28, 70], 
-    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
-    '[$\mathregular{\cdot}$]', 
-    'bwr', 
-    np.linspace(-1., 1., 9),
-    'europe',
-    'rt2mo3_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_ctm=lat_gmi, 
-    lng_ctm=lng_gmi, 
-    field_ctm=r_t2mo3,
-    lat_obs=lat_emep,
-    lng_obs=lng_emep, 
-    field_obs=r_emep)
-# European r(T, O3) bias
-map_extent([-14, 37, 28, 70], 
-    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
-    '[$\mathregular{\cdot}$]', 
-    'bwr', 
-    np.linspace(-.5, .5, 6),
-    'europe',
-    'rt2mo3bias_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_obs=lat_emep,
-    lng_obs=lng_emep, 
-    field_obs=r_emep_bias,
-    extend='both')
-# European dO3/dT
-map_extent([-14, 37, 28, 70], 
-    '%s dO$_{\mathregular{3}}$/dT' %season,
-    '[ppbv K$^{\mathregular{-1}}$]',
-    'Reds', 
-    np.linspace(0., 2.5, 6),
-    'europe',
-    'do3dt2m_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_ctm=lat_gmi, 
-    lng_ctm=lng_gmi, 
-    field_ctm=do3dt2m, 
-    lat_obs=lat_emep,
-    lng_obs=lng_emep, 
-    field_obs=do3dt2m_emep,
-    extend='both')
-# European dO3/dT bias
-map_extent([-14, 37, 28, 70], 
-    '%s dO$_{\mathregular{3}}$/dT' %season,
-    '[ppbv K$^{\mathregular{-1}}$]',
-    'bwr', 
-    np.linspace(-1., 1., 6),
-    'europe',
-    'do3dt2mbias_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
-    lat_obs=lat_emep,
-    lng_obs=lng_emep, 
-    field_obs=do3dt2m_emep_bias,
-    extend='both')
-# Zonally-averaged model/observations comparison 
-zonalavg_byregion_rt2mo3_do3dt2m(r_t2mo3, 
-    do3dt2m, 
-    lat_gmi, 
-    lng_gmi, 
-    r_aqs, 
-    do3dt2m_aqs, 
-    lat_aqs, 
-    lng_aqs, 
-    r_naps, 
-    do3dt2m_naps, 
-    lat_naps, 
-    lng_naps, 
-    r_emep, 
-    do3dt2m_emep, 
-    lat_emep, 
-    lng_emep, 
-    lng_ml, 
-    lat_jet_ml, 
-    '%s_%d-%d' %(season, years[0], years[-1]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## North American r(T, O3)
+#map_extent([-170, -50, 24, 60], 
+#    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
+#    '[$\mathregular{\cdot}$]', 
+#    'bwr', 
+#    np.linspace(-1., 1, 9),
+#    'northamerica',
+#    'rt2mo3_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_ctm=lat_gmi, 
+#    lng_ctm=lng_gmi, 
+#    field_ctm=r_t2mo3, 
+#    lat_obs=np.hstack((lat_naps, lat_aqs)), 
+#    lng_obs=np.hstack((lng_naps, lng_aqs)), 
+#    field_obs=np.hstack((r_naps, r_aqs)))
+## North American r(T, O3) bias
+#map_extent([-170, -50, 24, 60], 
+#    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
+#    '[$\mathregular{\cdot}$]', 
+#    'bwr', 
+#    np.linspace(-.5, .5, 6),
+#    'northamerica',
+#    'rt2mo3bias_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_obs=np.hstack((lat_naps, lat_aqs)), 
+#    lng_obs=np.hstack((lng_naps, lng_aqs)), 
+#    field_obs=np.hstack((r_naps_bias, r_aqs_bias)), 
+#    extend='both')
+## North American dO3/dT
+#map_extent([-170, -50, 24, 60], 
+#    '%s dO$_{\mathregular{3}}$/dT' %season,
+#    '[ppbv K$^{\mathregular{-1}}$]',
+#    'bwr', 
+#    np.linspace(-2.5, 2.5, 11),
+#    'northamerica',
+#    'do3dt2m_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_ctm=lat_gmi, 
+#    lng_ctm=lng_gmi, 
+#    field_ctm=do3dt2m, 
+#    lat_obs=np.hstack((lat_naps, lat_aqs)), 
+#    lng_obs=np.hstack((lng_naps, lng_aqs)), 
+#    field_obs=np.hstack((do3dt2m_naps, do3dt2m_aqs)), 
+#    extend='both')
+## North American dO3/dT bias
+#map_extent([-170, -50, 24, 60], 
+#    '%s dO$_{\mathregular{3}}$/dT' %season,
+#    '[ppbv K$^{\mathregular{-1}}$]',
+#    'bwr', 
+#    np.linspace(-1., 1., 6),
+#    'northamerica',
+#    'do3dt2mbias_gmi_aqsnaps_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_obs=np.hstack((lat_naps, lat_aqs)), 
+#    lng_obs=np.hstack((lng_naps, lng_aqs)), 
+#    field_obs=np.hstack((do3dt2m_naps_bias, do3dt2m_aqs_bias)), 
+#    extend='both')
+## European r(T, O3)
+#map_extent([-14, 37, 28, 70], 
+#    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
+#    '[$\mathregular{\cdot}$]', 
+#    'bwr', 
+#    np.linspace(-1., 1., 9),
+#    'europe',
+#    'rt2mo3_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_ctm=lat_gmi, 
+#    lng_ctm=lng_gmi, 
+#    field_ctm=r_t2mo3,
+#    lat_obs=lat_emep,
+#    lng_obs=lng_emep, 
+#    field_obs=r_emep)
+## European r(T, O3) bias
+#map_extent([-14, 37, 28, 70], 
+#    '%s $r\:$(T, O$_{\mathregular{3}}$)' %season, 
+#    '[$\mathregular{\cdot}$]', 
+#    'bwr', 
+#    np.linspace(-.5, .5, 6),
+#    'europe',
+#    'rt2mo3bias_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_obs=lat_emep,
+#    lng_obs=lng_emep, 
+#    field_obs=r_emep_bias,
+#    extend='both')
+## European dO3/dT
+#map_extent([-14, 37, 28, 70], 
+#    '%s dO$_{\mathregular{3}}$/dT' %season,
+#    '[ppbv K$^{\mathregular{-1}}$]',
+#    'bwr', 
+#    np.linspace(-2.5, 2.5, 11),
+#    'europe',
+#    'do3dt2m_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_ctm=lat_gmi, 
+#    lng_ctm=lng_gmi, 
+#    field_ctm=do3dt2m, 
+#    lat_obs=lat_emep,
+#    lng_obs=lng_emep, 
+#    field_obs=do3dt2m_emep,
+#    extend='both')
+## European dO3/dT bias
+#map_extent([-14, 37, 28, 70], 
+#    '%s dO$_{\mathregular{3}}$/dT' %season,
+#    '[ppbv K$^{\mathregular{-1}}$]',
+#    'bwr', 
+#    np.linspace(-1., 1., 6),
+#    'europe',
+#    'do3dt2mbias_gmi_emep_%s_%d-%d' %(season, years[0], years[-1]),
+#    lat_obs=lat_emep,
+#    lng_obs=lng_emep, 
+#    field_obs=do3dt2m_emep_bias,
+#    extend='both')
+## Zonally-averaged modeled/observed r(T, O3)
+#zonalavg_byregion(r_t2mo3, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    r_aqs, 
+#    lat_aqs, 
+#    lng_aqs, 
+#    r_naps, 
+#    lat_naps, 
+#    lng_naps, 
+#    r_emep, 
+#    lat_emep, 
+#    lng_emep, 
+#    lng_ml, 
+#    lat_jet_ml, 
+#    '$r\:$(T, O$_{\mathregular{3}}$)', 
+#    '[$\cdot$]',
+#    np.linspace(-1, 1, 5),
+#    'r_t2mo3_%s_%d-%d' %(season, years[0], years[-1]))
+## Zonally-averaged modeled/observed dO3/dT
+#zonalavg_byregion(do3dt2m, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    do3dt2m_aqs, 
+#    lat_aqs, 
+#    lng_aqs, 
+#    do3dt2m_naps, 
+#    lat_naps, 
+#    lng_naps, 
+#    do3dt2m_emep, 
+#    lat_emep, 
+#    lng_emep, 
+#    lng_ml, 
+#    lat_jet_ml, 
+#    'dO$_{\mathregular{3}}$/dT',
+#    '[ppbv K$^{\mathregular{-1}}$]',
+#    np.linspace(-1, 3, 5),
+#    'do3dt2m_%s_%d-%d' %(season, years[0], years[-1]))
+## Zonally-averaged modeled/observed dO3/d(jet lat - lat)
+#zonalavg_byregion(m_o3jetdist, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    do3djet_aqs, 
+#    lat_aqs, 
+#    lng_aqs, 
+#    do3djet_naps, 
+#    lat_naps,
+#    lng_naps,
+#    do3djet_emep,
+#    lat_emep,
+#    lng_emep,
+#    lng_ml, 
+#    lat_jet_ml, 
+#    'dO$_{\mathregular{3}}$/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)',
+#    '[ppbv degree$^{\mathregular{-1}}$]',
+#    np.linspace(-0.2, 0.4, 5),
+#    'do3djetdist_%s_%d-%d' %(season, years[0], years[-1]))
+## Zonally-averaged modeled/observed r(jet lat - lat, O3)
+#zonalavg_byregion(r_o3jetdist, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    ro3jet_aqs,
+#    lat_aqs, 
+#    lng_aqs,
+#    ro3jet_naps,
+#    lat_naps, 
+#    lng_naps, 
+#    ro3jet_emep,
+#    lat_emep,
+#    lng_emep,
+#    lng_ml, 
+#    lat_jet_ml, 
+#    'r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, O$_{\mathregular{3}}$)',
+#    '[$\cdot$]',
+#    np.linspace(-0.7, 0.7, 8), 
+#    'ro3jetdist_%s_%d-%d' %(season, years[0], years[-1]))
+## Zonally-averaged modeled/observed dT/d(jet lat - lat)
+#zonalavg_byregion(m_t2mjetdist, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    [], 
+#    [], 
+#    [],
+#    [],
+#    [],
+#    [],
+#    [],
+#    [],
+#    [],
+#    lng_ml, 
+#    lat_jet_ml, 
+#    'dT/d($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$)',
+#    '[K degree$^{\mathregular{-1}}$]',
+#    np.linspace(-0.2, 0.4, 5),
+#    'dt2mdjetdist_%s_%d-%d' %(season, years[0], years[-1]))
+## Zonally-averaged modeled/observed r(jet lat - lat, O3)
+#zonalavg_byregion(r_t2mjetdist,
+#    lat_gmi, 
+#    lng_gmi, 
+#    [], 
+#    [], 
+#    [],
+#    [],
+#    [],
+#    [],
+#    [],
+#    [],
+#    [],
+#    lng_ml, 
+#    lat_jet_ml, 
+#    'r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, T)',
+#    '[$\cdot$]',
+#    np.linspace(-0.7, 0.7, 8), 
+#    'rt2mjetdist_%s_%d-%d' %(season, years[0], years[-1]))
 
 """O3-CYCLONE RELATIONSHIP FROM GISS MERRA-2 CYCLONE DATABASE""" 
 #cyclones = globalo3_open.open_merra2_cyclones('06/01/2008', '08/31/2008')
@@ -2080,8 +2142,8 @@ zonalavg_byregion_rt2mo3_do3dt2m(r_t2mo3,
 #r_t2mo3 = r_t2mo3_n_jja
 #U500 = U500_n_jja
 #do3dt2m = do3dt2m_n_jja
-#lat = lat_gmi_n
-#lng = lng_gmi_n
+#lat = lat_gmi
+#lng = lng_gmi
 #latmin = 20.
 #latmax = 70.
 #latmin = -70.
