@@ -41,6 +41,11 @@ Revision History
                 'calculate_obs_o3_temp_jet' and code added to calculate O3-jet
                 relationship from observed O3 and jet (from reanalysis)
     12082019 -- function 'calculate_r_significance' added
+    18082019 -- function 'calculate_fieldjet_relationship' edited to return the
+                daily difference in the latitude of the jet and the latitude of
+                each grid cell for use to determine significance of O3-T-jet 
+                distance calculations
+    20082019 -- function 'field_binner' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -618,16 +623,23 @@ def calculate_fieldjet_relationship(field_fr, lat_fr, lng_fr, jetpos, lng_jet):
     correl : numpy.ndarray
         The Pearson product-moment correlation coefficient calculated between 
         the field and a grid cell's distance from the jet, [lat, lng]
+    diff : numpy.ndarray
+        The difference between the latitude of the jet and the latitude of 
+        each grid cell, units of degrees, [time, lat, lng]
     """
     import numpy as np
     # Array slope is the slope of the linear regression of the field and the
     # grid cell's distance from the eddy-driven jet (positive distance is a 
     # jet north of grid cell); array correl is the correlation between the two 
-    # times series
+    # times series; array diff is the difference in each grid cell's distance 
+    # from the jet
     slope = np.empty(shape=(lat_fr.shape[0],lng_fr.shape[0]))
     slope[:] = np.nan
     correl = np.empty(shape=(lat_fr.shape[0],lng_fr.shape[0]))
     correl[:] = np.nan
+    diff = np.empty(shape=(len(field_fr), lat_fr.shape[0],
+                           lng_fr.shape[0]))
+    diff[:] = np.nan
     # Loop through latitudes
     for loci in np.arange(0,len(lat_fr),1):
         # Loop through longitudes
@@ -637,17 +649,19 @@ def calculate_fieldjet_relationship(field_fr, lat_fr, lng_fr, jetpos, lng_jet):
             # a timeseries of the jet location at the longitude of interest
             jetj = jetpos[:, np.abs(lng_jet-lng_fr[locj]).argmin()]
             # Difference in grid cell's latitude and the latitude of the jet
-            diff = jetj-lat_fr[loci]
+            diffij = jetj-lat_fr[loci]
+            # Add timeseries difference in grid cell
+            diff[:,loci,locj] = diffij
             # Mask out NaNs to avoid ValueError; i.e., for additional 
             # information see https://stackoverflow.com/questions/13675912/
             # python-programming-numpy-polyfit-saying-nan
-            notnan = np.isfinite(diff) & np.isfinite(fieldij)
+            notnan = np.isfinite(diffij) & np.isfinite(fieldij)
             if True in notnan:
-                slope[loci,locj] = np.polyfit(diff[notnan], 
+                slope[loci,locj] = np.polyfit(diffij[notnan], 
                      fieldij[notnan], 1)[0]
-                correl[loci,locj] = np.corrcoef(diff[notnan], 
+                correl[loci,locj] = np.corrcoef(diffij[notnan], 
                       fieldij[notnan])[0,1]
-    return slope, correl
+    return slope, correl, diff
 
 def convert_uv_tocardinal(U, V): 
     """calculate the wind direction using the typical meteorological convention
@@ -1225,3 +1239,82 @@ def calculate_r_significance(x, y, r, lat, lng):
     print('significance of correlation coefficient in calculated '+
           'in %.2f seconds'%((time.time()-start_time)))    
     return significance
+
+def field_binner(lat_ctm, lng_ctm, lat_field, lng_field, val_field, 
+    numbbox_lat, numbbox_lng, operation): 
+    """for a given field (i.e., O3 observations, cyclone centers, etc.) 
+    function bins values into grid boxes of the specified size and calculates
+    the mean values, variability, or frequency of the field in each bin. 
+    
+    Parameters
+    ----------    
+    lat_ctm : numpy.ndarray
+        Gridded latitude coordinates of CTM, units of degrees north, [lat,]
+    lng_ctm : numpy.ndarray
+        Gridded longitude coordinates of CTM, units of degrees east, [lng,]        
+    lat_field : numpy.ndarray
+        Latitude coordinates corresponding to observations, units of degrees
+        north, [no. obs.,]
+    lng_field : numpy.ndarray
+        Longitude coordinates corresponding to observations, units of degrees
+        east, [no. obs.,]        
+    val_field : numpy.ndarray
+        Observational values, [no. obs.,] (n.b., if the frequency of the field 
+        is desired, 'val_field' should be an array of 1s and operation = 'sum')
+    numbbox_lat : int
+        The number of bins into which the CTM latitude array will be 
+        discretized    
+    numbbox_lng : int
+        The number of bins into which the CTM longitude array will be 
+        discretized        
+    operation : str
+        The operation performed on 'val_field' in every bin ('mean', 'std', 
+        or 'sum')
+        
+    Returns
+    -------        
+    field_coarse : numpy.ndarray
+        The specified operation performed over the binned field, [lat_bin, 
+        lng_bin,]
+    lat_coarse : numpy.ndarray
+        The latitude array corresponding to the binned field, units of degrees
+        north, [lat_bin,]
+    lng_coarse : numpy.ndarray
+        The longitude array corresponding to the binned field, units of degrees
+        east, [lng_bin,]    
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Binning observations and calculating %s...' %operation)
+    import numpy as np
+    lat_bounds = np.linspace(lat_ctm[0], lat_ctm[-1], numbbox_lat)
+    lng_bounds = np.linspace(lng_ctm[0], lng_ctm[-1], numbbox_lng)
+    # "Regridded" (binned coarser) arrays
+    field_coarse = np.empty(shape=(lat_bounds.shape[0]-1, 
+        lng_bounds.shape[0]-1))
+    field_coarse[:] = np.nan
+    lat_coarse = np.empty(shape=(lat_bounds.shape[0]-1))
+    lat_coarse[:] = np.nan
+    lng_coarse = np.empty(shape=(lng_bounds.shape[0]-1))
+    lng_coarse[:] = np.nan
+    # Loop through coarse latitude and longitude 
+    for iidx in np.arange(0, len(lat_coarse), 1):
+        for jidx in np.arange(0, len(lng_coarse), 1):
+            # Bounding box 
+            left = lng_bounds[jidx]
+            right = lng_bounds[jidx+1] 
+            up = lat_bounds[iidx+1]
+            down = lat_bounds[iidx]
+            in_bb = np.where((lat_field > down) & (lat_field <= up) & 
+                             (lng_field > left) & (lng_field <= right))[0]
+            lat_coarse[iidx] = np.mean((down, up))
+            lng_coarse[jidx] = np.mean((left, right))        
+            if operation == 'mean':
+                field_coarse[iidx, jidx] = np.nanmean(val_field[in_bb])            
+            elif operation == 'std':        
+                field_coarse[iidx, jidx] = np.nanstd(val_field[in_bb])
+            elif operation == 'sum':        
+                field_coarse[iidx, jidx] = np.nansum(val_field[in_bb])
+    print('Observations binned in %.2f seconds!' %(time.time() - start_time))                
+    return field_coarse, lat_coarse, lng_coarse
