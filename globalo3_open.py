@@ -25,6 +25,13 @@ Revision History
     16062019 -- function 'open_merra2_specifieddomain' moved from 
                 transporto3_open and edited 
     20072019 -- function 'open_merra2_cyclones' added
+    22072019 -- edited function 'interpolate_merra_to_ctmresolution' to 
+                indicate grid cells outside of domain as NaNs
+    23072019 -- function 'open_napso3' added 
+    13082019 -- function 'open_geos_c1sd' removed and replaced with 
+                'open_m2g_c90'
+    20082019 -- cyclones' longitude converted from (-180˚-180˚) to (0˚-360˚) in 
+                function 'open_merra2_cyclones'
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -76,7 +83,7 @@ def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
     import datetime, calendar
     import time
     import sys
-    sys.path.append('/Users/ghkerr/phd/GMI/')
+    sys.path.append('/Users/ghkerr/phd/utils/')
     from geo_idx import geo_idx
     start_time = time.time()
     gas_all = []
@@ -403,6 +410,14 @@ def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
     import xesmf as xe
     import time
     start_time = time.time()
+    # Using xESMF yields no problems if the input and output domains cover the
+    # exact same range, however, if one domain is smaller than other (or vice
+    # versa), all values outside this range are set to 0.0. This is a problem 
+    # when plotting: I cannot simply set all values that are 0.0 to NaNs as 
+    # some values might be real. Therefore, I got around this with the 
+    # following: https://github.com/JiaweiZhuang/xESMF/issues/15
+    C = np.pi*np.e**5
+    t2m = t2m + C
     # Interpolate finer grid (MERRA-2) to the resolution of the CTM
     grid_in = {'lon':lng_merra,'lat':lat_merra}
     # Output grid has a coarser resolution
@@ -411,6 +426,11 @@ def interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, lng_merra,
     regridder = xe.Regridder(grid_in,grid_out,'bilinear')
     regridder.clean_weight_file()
     t2m_interp = regridder(t2m)
+    # To get around the aforementioned issue of 0.0 being placed for regions
+    # outside the domain
+    t2m_interp[t2m_interp==0.0] = np.nan
+    t2m_interp = t2m_interp - C
+    t2m = t2m - C
     if checkplot == 'yes':
         import matplotlib.pyplot as plt        
         # Check to ensure that interpolation worked
@@ -525,7 +545,7 @@ def open_schnello3(years, months, domain):
     import calendar
     import xarray as xr
     start_time = time.time()
-    PATH_OBS = '/Users/ghkerr/phd/globalo3/data/'
+    PATH_OBS = '/Users/ghkerr/phd/globalo3/data/observations/schnell/'
     ds = xr.open_dataset(PATH_OBS+'mda8.surfO3.%s.2000.2009.nc'%domain)
     whereyear = np.where(np.in1d(ds.time.dt.year, np.array(years)) == 
                          True)[0]
@@ -544,7 +564,7 @@ def open_schnello3(years, months, domain):
     print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
           'Schnell et al. (2014) gridded O3 for %d-%d loaded in %.2f seconds' 
           %(years[0], years[-1],(time.time()-start_time)))
-    return lat.data, lng.data, o3.data
+    return lat.data, lng.data, np.swapaxes(o3.data, 2, 1)
 
 def open_merra2_rh2mvars(years, hours, lngmin, latmax, lngmax, latmin):
     """Using function "open_merra2," function opens the components needed 
@@ -694,12 +714,12 @@ def open_toar(years, months, varname, res):
              years[-1], time.time() - start_time))
     return var, ttime, lat, lng
 
-def open_geos_c1sd(years, varname, levmax, levmin, lngmin, latmax, lngmax, 
+def open_m2g_c90(years, varname, levmax, levmin, lngmin, latmax, lngmax, 
     latmin, columnmean=False):
-    """function opens daily summertime (JJA) output from variable of interest 
-    from GEOS-C1SD simulations for summers in specified measuring period and 
-    for the pressure level(s) of interest. Function can also compute the 
-    column-averaged value 
+    """function opens daily output for the specified months and years for the
+    CCMI tracer of interest from MERRA2-GMI (Replay) M2G_c90 simulations for 
+    the region and pressure level(s) of interest. If specified, function can 
+    also compute the column-averaged value.
 
     Parameters
     ----------
@@ -737,68 +757,59 @@ def open_geos_c1sd(years, varname, levmax, levmin, lngmin, latmax, lngmax,
     -------
     var : numpy.ndarray
         Model output for specified variable, units of ppbv, if columnsum = True 
-        then shape is [time, lat, lng] if False then shape is [time, press, 
+        then shape is [time, lat, lng] if False then shape is [time, lev, 
         lat, lng]
     lat : numpy.ndarray
         Model latitude coordinates, units of degrees north, [lat,]
     lng : numpy.ndarray
         Model numpy.ndarray coordinates, units of degrees east, [lng,]    
-    pressure : numpy.ndarray
-        Model pressure levels, units of hPa, [press]
+    lev : numpy.ndarray
+        Model pressure levels, units of hPa, [lev]
     """
     import time
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading %s from MERRA2-GMI M2G_c90 simulation...' %varname)
     start_time = time.time()
     import os
     import numpy as np
     import xarray as xr
-    PATH_TRACER = '/Users/ghkerr/phd/globalo3/data/GSFC/'
     # Search for appropriate files given variable of interested specified in 
     # varname
-    infiles = [PATH_TRACER+fn for fn in os.listdir(PATH_TRACER) if 
-               any(ext in fn for ext in [str(y) for y in years])]
-    infiles = [fn for fn in infiles if varname+'_' in fn]
-    infiles.sort()
+    infiles = []
+    for year in years:
+        PATH_TRACER = '/Users/ghkerr/phd/globalo3/data/GMI/M2G_c90/%d/'%year
+        infiles_ty = [PATH_TRACER+fn for fn in os.listdir(PATH_TRACER) if 
+            any(ext in fn for ext in [str(y) for y in years])]
+        infiles_ty.sort()
+        infiles.append(infiles_ty)
+    infiles = list(np.hstack(infiles))
     # Open multiple NetCDF files and store in Dataset
     ds = xr.open_mfdataset(infiles, concat_dim='time')
-    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
-          'Loading %s from GEOS-C1SD simulation...' %varname)
     # Extract relevant variable 
     ds = ds[[varname]]
-    ds = ds.assign_coords(longitude=(ds.longitude % 360)).roll(
-            longitude=(ds.dims['longitude']//2), roll_coords=True)
+    ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
+        lon = (ds.dims['lon']//2-1), roll_coords = True)
     # Subset Dataset with respect to spatial coordinates 
-    ds = ds.sel(latitude=slice(latmin, latmax), 
-                longitude=slice(lngmin, lngmax))
-    # Sample appropriate level if pressure coordinates exist (i.e., for 
-    # surface pressure fields there are no vertical coordinates)
-    try:
-        ds.pressure
-        ds = ds.sel(pressure=slice(levmax,levmin))
-        # Extract
-        var = ds[varname].values
-        lat = ds.latitude.values
-        lng = ds.longitude.values
-        pressure = ds.pressure.values
-        # If specified, average variable over all pressure levels (i.e., if 
-        # column-averaged mixing ratios for a tracer is desired)
-        if (columnmean == True) and (len(pressure) > 1):
-            pressure_dim = var.shape.index(pressure.shape[0])
-            var = np.nanmean(var, axis=pressure_dim)
-        elif (columnmean == True) and (len(pressure) == 1):
-            var = var[:,:,0]
-        print('%d-%d hPa %s for %d-%d loaded in '%(pressure[0], pressure[-1], 
-              varname, years[0], years[-1])+'%.2f seconds!'
-              %(time.time() - start_time))
-        return var.T, lat, lng, pressure        
-    except AttributeError:
-        # Extract
-        var = ds[varname].values
-        lat = ds.latitude.values
-        lng = ds.longitude.values
-        var = var*1e9
-        print('%s for %d-%d loaded in '%(varname, years[0], years[-1])+
-              '%.2f seconds!'%(time.time() - start_time))
-        return var.T, lat, lng
+    ds = ds.sel(lat = slice(latmin, latmax), lon = slice(lngmin, lngmax))
+    # Sample appropriate level if pressure coordinates exist 
+    ds = ds.sel(lev = slice(levmax,levmin))
+    # Extract
+    var = ds[varname].values
+    lat = ds.lat.values
+    lng = ds.lon.values
+    lev = ds.lev.values
+    # If specified, average variable over all pressure levels (i.e., if 
+    # column-averaged mixing ratios for a tracer is desired)
+    if (columnmean == True) and (len(lev) > 1):
+        lev_dim = var.shape.index(lev.shape[0])
+        var = np.nanmean(var, axis = lev_dim)
+    elif (columnmean == True) and (len(lev) == 1):
+        var = var[:,:,0]
+    var = var*1e9
+    print('%d-%d hPa %s for %d-%d loaded in '%(lev[0], lev[-1], 
+          varname, years[0], years[-1])+'%.2f seconds!'
+          %(time.time() - start_time))
+    return var, lat, lng, lev     
     
 def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin, 
     latmax, lngmax, latmin, dailyavg='yes'): 
@@ -920,7 +931,7 @@ def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin,
           years[-1], time.time() - start_time))
     return var, mtime, lat, lng    
 
-def open_merra2_cyclones(sday, eday):
+def open_merra2_cyclones(sday, eday, months_str):
     """for a given date or range of dates, function opens netCDF files 
     corresponding to extratropical cyclones derived from the MERRA-2 database. 
     Although there are several variables within netCDF files, only the 
@@ -941,6 +952,8 @@ def open_merra2_cyclones(sday, eday):
         Starting day of measuring period in MM/DD/YYYY format 
     eday : str
         Ending day of measuring period in MM/DD/YYYY format 
+    months_str : list
+        Three letter abbreviations (lowercase) for months in measuring period
     
     Returns
     -------
@@ -951,7 +964,7 @@ def open_merra2_cyclones(sday, eday):
     Notes
     -----
     Database of Cyclones with Warm and Cold Front Locations is found at 
-    \url{https://data.giss.nasa.gov/storms/obs-etc/}
+    https://data.giss.nasa.gov/storms/obs-etc/
     
     References
     ----------
@@ -968,13 +981,25 @@ def open_merra2_cyclones(sday, eday):
     start_time = time.time()
     print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
           'Loading MERRA-2 cyclone database for %s-%s...' %(sday, eday))
+    from time import strptime
     import os
     import numpy as np
     import xarray as xr
     import pandas as pd
-    PATH_CYCLONES = '/Users/ghkerr/Desktop/merra2fronts2008/'
-    # Formulate days in measuring period; note 
+    PATH_CYCLONES = '/Users/ghkerr/phd/globalo3/data/cyclones/'
+    # Convert month abbrevations to integers
+    months = []
+    for m in months_str:
+        months.append(strptime(m,'%b').tm_mon) 
+    # Formulate days in measuring period
     days_mp = pd.date_range(start = sday, end = eday)
+    # Filter out days in range that are not in the season of interest (i.e., 
+    # if the start date is 06/01/2008 and the end date is 08/31/2009 and only 
+    # JJA cyclones are desired, then this could remove September 2008 - May 
+    # 2009 dates from the range) 
+    inrange = np.where(np.in1d(np.array(days_mp.month), 
+        np.array(months)) == True)[0]
+    days_mp = days_mp[inrange]
     # Lists to be filled with values for entire measuring period
     lng_all, lat_all, slp_all, fracland_all, idoftrack_all, datestr_all = \
         [],[],[],[],[], []
@@ -982,7 +1007,8 @@ def open_merra2_cyclones(sday, eday):
     for day in days_mp:
         year = str(day.year)
         month = str(day.month).zfill(2)
-        directory = PATH_CYCLONES+'%s%s/'%(year, month)
+        directory = PATH_CYCLONES+'/merra2fronts%s/'%(year)+\
+            '%s%s/'%(year, month)
         infiles = [directory+fn for fn in os.listdir(directory) if
                    fn.__contains__(day.strftime('%Y%m%d'))]
         # Open all cyclones on a particular day 
@@ -1012,7 +1038,9 @@ def open_merra2_cyclones(sday, eday):
         fracland_all.append(fracland)
         idoftrack_all.append(idoftrack)
     datestr_all = np.hstack(datestr_all)
+    # Convert longitude from (-180-180) to (0-360)
     lng_all = np.hstack(lng_all)
+    lng_all = lng_all % 360
     lat_all = np.hstack(lat_all)
     slp_all = np.hstack(slp_all)
     fracland_all = np.hstack(fracland_all)
