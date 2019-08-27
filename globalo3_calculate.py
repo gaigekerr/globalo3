@@ -46,6 +46,7 @@ Revision History
                 each grid cell for use to determine significance of O3-T-jet 
                 distance calculations
     20082019 -- function 'field_binner' added
+    25082019 -- function 'segregate_cyclones_bylat' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -585,7 +586,7 @@ def calculate_fieldjet_relationship(field_fr, lat_fr, lng_fr, jetpos, lng_jet):
     """Given a field of interest (i.e., O3, tracer, temperature) and the jet's 
     latitude in a focus region, function determines the relationship between 
     the field and distance from the jet at each grid cell. This is quantified 
-    in terms of the slope (i.e., change in the field per degree shift in the 
+    in terms of the slope (i.e., changea in the field per degree shift in the 
     jet stream) and the correlation (i.e., the Pearson product-moment 
     correlation coefficient calculated between the field and a grid cell's 
     distance from the jet). Positive values for the correlation and the slope 
@@ -1318,3 +1319,135 @@ def field_binner(lat_ctm, lng_ctm, lat_field, lng_field, val_field,
                 field_coarse[iidx, jidx] = np.nansum(val_field[in_bb])
     print('Observations binned in %.2f seconds!' %(time.time() - start_time))                
     return field_coarse, lat_coarse, lng_coarse
+
+def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times): 
+    """function identifies cyclone locations on days when the eddy-driven jet
+    is "extreme" poleward (> 70th percentile) and equatorward (< 30th 
+    percentile). These operations are done locally, meaning that the poleward 
+    and equatorward positions of the jet are indentified using the timeseries 
+    for each longitudinal band and thereafter finding cyclones within these 
+    bands. The position and variability of the jet on these extreme days is 
+    also saved. 
+
+    Parameters
+    ----------
+    cyclones : pandas.core.frame.DataFrame
+        DataFrame containing the date, fraction of land cover, latitude, 
+        longitude, SLP, and storm ID
+    field : numpy.ndarray
+        3D (tyx) field that will be parsed on days with "extreme" poleward
+        and equatorward jet. 
+    lng_jet : numpy.ndarray
+        The longitude dataset corresponding to the latitude of the jet, [lng]
+    lat_jet : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng]
+    times : numpy.ndarray
+        datetime.date objects corresponding to every day in measuring period, 
+        [time,]        
+
+    Returns
+    -------
+    lowthresh_lat_cyclone : numpy.ndarray
+        Latitudes of cylones on days where the jet is "extreme" equatorward 
+        (n.b., "extreme" refers to < 30th percentile), units of degrees north
+    lowthresh_lng_cyclone : numpy.ndarray
+        Longitude of cylones on days where the jet is "extreme" equatorward, 
+        units of degrees east
+    highthresh_lat_cyclone : list
+        Latitudes of cylones on days where the jet is "extreme" poleward, 
+        (n.b., "extreme" refers to > 70th percentile), units of degrees north    
+    highthresh_lng_cyclone : list
+        Longitude of cylones on days where the jet is "extreme" poleward, 
+        units of degrees east    
+    lowthresh_lat_jet : list
+        The mean latitude of the eddy-driven jet on days when it is 
+        "extreme" equatorward, [lng]
+    lowthresh_lat_jet_var : list
+        The variability of the latitude of the eddy-driven jet on days when 
+        it is "extreme" equatorward, [lng]    
+    highthresh_lat_jet : list
+        The mean latitude of the eddy-driven jet on days when it is 
+        "extreme" poleward, [lng]    
+    highthresh_lat_jet_var : list
+        The variability of the latitude of the eddy-driven jet on days when 
+        it is "extreme" poleward, [lng]     
+    pwjet_field_anom : numpy.ndarray
+        The anomaly of the field of interest on days when the jet is "extreme" 
+        poleward, [lat, lng]    
+    eqjet_field_anom : numpy.ndarray   
+        The anomaly of the field of interest on days when the jet is "extreme" 
+        equatorward, [lat, lng]    
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Separating cyclones on days with equator/poleward jet...')
+    import numpy as np
+    lowthresh_lng_cyclone, lowthresh_lat_cyclone = [], []
+    highthresh_lng_cyclone, highthresh_lat_cyclone = [], []
+    lowthresh_lat_jet, lowthresh_lat_jet_var = [], []
+    highthresh_lat_jet, highthresh_lat_jet_var = [], []
+    # Return empty arrays to fill with value of 3D (tyx) field on days with 
+    # poleward/equatorward jet 
+    pwjet_field_anom = np.empty(shape=field.shape[1:])
+    pwjet_field_anom[:] = np.nan
+    eqjet_field_anom = np.empty(shape=field.shape[1:])
+    eqjet_field_anom[:] = np.nan    
+    # Resolution of longitudes corresponding to jet dataset 
+    res_lng = np.diff(lng_jet[1:-1]).mean()
+    for ilng in np.arange(0, len(lng_jet), 1):
+        # Find threshold (latitude) for what qualifies as an "extreme" poleward
+        # or equatoward jet at a particular longitude
+        highthresh_ilng = np.percentile(lat_jet[:,ilng], 70)
+        lowthresh_ilng = np.percentile(lat_jet[:,ilng], 30)
+        highthresh_days = np.where(lat_jet[:,ilng] > highthresh_ilng)[0]
+        lowthresh_days = np.where(lat_jet[:,ilng] < lowthresh_ilng)[0]
+        # Mean values of the field on days when the jet extreme poleward or 
+        # equatorward at longitude 
+        pwjet_field_anom[:, ilng] = (
+            np.nanmean(field[highthresh_days, :, ilng], axis=0)-
+            np.nanmean(field[:, :, ilng], axis=0))
+        eqjet_field_anom[:, ilng] = (
+            np.nanmean(field[lowthresh_days, :, ilng], axis=0)-
+            np.nanmean(field[:, :, ilng], axis=0))    
+        # Find mean jet latitude and its variability on days when jet is 
+        # extreme poleward or equatorward at longitude of interest
+        lowthresh_lat_jet.append(np.nanmean(lat_jet[lowthresh_days,ilng]))
+        lowthresh_lat_jet_var.append(np.nanstd(lat_jet[lowthresh_days,ilng]))
+        highthresh_lat_jet.append(np.nanmean(lat_jet[highthresh_days,ilng]))
+        highthresh_lat_jet_var.append(np.nanstd(lat_jet[highthresh_days,ilng]))
+        # Dates ('YYYY-mm-dd' format) when jet is extreme poleward or 
+        # equatorward at longitude of interest
+        highthresh_days = [x.strftime('%Y-%m-%d') for x in 
+            times[highthresh_days]]
+        lowthresh_days = [x.strftime('%Y-%m-%d') for x in 
+            times[lowthresh_days]]
+        # Find cyclones at (near) longitude (here near is defined as the 
+        # area within +/- the longitude of interest and half its resolution) on 
+        # day of interest
+        highthresh_cyclones = cyclones.loc[
+            (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
+            (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
+            (cyclones['Date'].isin(highthresh_days))]
+        highthresh_lng_cyclone.append(
+            highthresh_cyclones['Longitude'].values)
+        highthresh_lat_cyclone.append(
+            highthresh_cyclones['Latitude'].values)                    
+        lowthresh_cyclones = cyclones.loc[
+            (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
+            (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
+            (cyclones['Date'].isin(lowthresh_days))]    
+        lowthresh_lng_cyclone.append(
+            lowthresh_cyclones['Longitude'].values)
+        lowthresh_lat_cyclone.append(
+            lowthresh_cyclones['Latitude'].values)
+    lowthresh_lat_cyclone = np.hstack(lowthresh_lat_cyclone) 
+    lowthresh_lng_cyclone = np.hstack(lowthresh_lng_cyclone) 
+    highthresh_lat_cyclone = np.hstack(highthresh_lat_cyclone) 
+    highthresh_lng_cyclone = np.hstack(highthresh_lng_cyclone) 
+    print('Cyclones separated in %.2f seconds!' %(time.time() - start_time))                    
+    return (lowthresh_lat_cyclone, lowthresh_lng_cyclone, 
+        highthresh_lat_cyclone, highthresh_lng_cyclone, lowthresh_lat_jet, 
+        lowthresh_lat_jet_var, highthresh_lat_jet, highthresh_lat_jet_var,
+        pwjet_field_anom, eqjet_field_anom)
