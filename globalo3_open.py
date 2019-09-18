@@ -32,6 +32,7 @@ Revision History
                 'open_m2g_c90'
     20082019 -- cyclones' longitude converted from (-180˚-180˚) to (0˚-360˚) in 
                 function 'open_merra2_cyclones'
+    18092019 -- function 'open_merra2pblh_specifieddomain' added
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -261,7 +262,7 @@ def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin,
     lng : numpy.ndarray
         MERRA-2 longitude coordinates, units of degrees east, [lng,]
     t2m_all : numpy.ndarray
-        Daily maximum 2-meter temperatures, [time, lat, lng]
+        Daily maximum 2-meter temperatures, units of K, [time, lat, lng]
     """
     import numpy as np
     from netCDF4 import Dataset
@@ -300,9 +301,6 @@ def open_merra2t2m_specifieddomain(years, months, latmin, latmax, lngmin,
                 lng = lng[lngmin:lngmax+1]           
             # Extract 2-meter temperatures for the month
             t2m_month = infile.variables['T2M'][:]
-#            # Drop leap days from analysis
-#            if (calendar.isleap(year)==True) and (month == 2):
-#                t2m_month = t2m_month[:-1]
             # Roll grid similar to longitude grid
             t2m_month = np.roll(t2m_month, int(t2m_month.shape[-1]/2)-1, axis = 2)
             t2m_month = t2m_month[:,latmin:latmax+1,lngmin:lngmax+1]
@@ -1055,3 +1053,83 @@ def open_merra2_cyclones(sday, eday, months_str):
     print('Cyclone coordinates loaded in %.2f seconds!' %(time.time() - 
                                                           start_time))
     return cyclones
+
+def open_merra2pblh_specifieddomain(years, months, latmin, latmax, lngmin, 
+    lngmax):
+    """load daily mean PBL height from MERRA-2 over the specified spatial and
+    temporal domains.
+    
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period
+    months : list
+        Three letter abbreviations (lowercase) for months in measuring period
+    latmin : float    
+        Latitude (degrees north) of bottom edge of bounding box for focus 
+        region. For this parameter and others defining the bounding box, 
+        function finds the closest index to bounding box edges
+    latmax : float
+        Latitude (degrees north) of upper edge of bounding box for focus region
+    lngmin : float
+        Longitude (degrees east, 0-360) of left edge of bounding box for focus 
+        region        
+    lngmax : float
+        Longitude (degrees east, 0-360) of right edge of bounding box for focus 
+        region
+        
+    Returns
+    -------
+    lat : numpy.ndarray
+        MERRA-2 latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        MERRA-2 longitude coordinates, units of degrees east, [lng,]
+    t2m_all : numpy.ndarray
+        Daily mean PBL height, units of m, [time, lat, lng]
+    """
+    import numpy as np
+    from netCDF4 import Dataset
+    import calendar
+    import time
+    import sys
+    sys.path.append('/Users/ghkerr/phd/GMI/')
+    from geo_idx import geo_idx
+    start_time = time.time()
+    months_int = []
+    pblh_all = []
+    # Convert month abbreviations to integers
+    for month in months:
+        months_int.append(list(calendar.month_abbr).index(month.title()))
+    # Loop through measuring period    
+    for year in years:
+        PATH_MERRA = '/Users/ghkerr/phd/meteorology/data/tavg1_2d_flx_Nx/Y%d/'%year
+        for month in months_int:
+            # Open monthly overpass2 file 
+            infile = Dataset(PATH_MERRA+'MERRA2_300.tavg1_2d_flx_Nx.%d%.2d.nc'
+                             %(year,month),'r')        
+            if (month==months_int[0]) and (year==years[0]):
+                lat = infile.variables['lat'][:]
+                lng = infile.variables['lon'][:]
+                # Convert longitude from (-180-180) to (0-360)
+                lng = lng % 360
+                # Shift this grid such that it spans (0-360) rather than 
+                # (180-360, 0-180)
+                lng = np.roll(lng,int(lng.shape[0]/2)-1)
+                latmin = geo_idx(latmin,lat)
+                latmax = geo_idx(latmax,lat)
+                lngmin = geo_idx(lngmin,lng)
+                lngmax = geo_idx(lngmax,lng)
+                # Restrict coordinates over focus region 
+                lat = lat[latmin:latmax+1]
+                lng = lng[lngmin:lngmax+1]           
+            # Extract PBL height for the month
+            pblh_month = infile.variables['PBLH'][:]
+            # Roll grid similar to longitude grid
+            pblh_month = np.roll(pblh_month, int(pblh_month.shape[-1]/2)-1, 
+                axis=2)
+            pblh_month = pblh_month[:,latmin:latmax+1,lngmin:lngmax+1]
+            pblh_all.append(pblh_month)
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
+          'MERRA-2 PBLH for %d-%d loaded in %.2f seconds' %(years[0],years[-1],
+          (time.time()-start_time)))
+    return lat, lng, np.vstack(pblh_all)
