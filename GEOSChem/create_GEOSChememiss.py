@@ -105,4 +105,22 @@ inventory_new = xr.Dataset(
            'End_Time': inventory.End_Time,
            'Delta_Time': inventory.Delta_Time,
            'CDO': inventory.CDO})
+# Fill in missing attribute data for variables 
+# For lon
+inventory_new.lon.attrs['long_name'] = inventory.lon.long_name
+inventory_new.lon.attrs['units'] = inventory.lon.units
+# For lat
+inventory_new.lat.attrs['standard_name'] = inventory.lat.standard_name
+inventory_new.lat.attrs['long_name'] = inventory.lat.long_name
+inventory_new.lat.attrs['units'] = inventory.lat.units
+inventory_new.lat.attrs['axis'] = inventory.lat.axis
+# For time
+inventory_new.time.attrs['standard_name'] = inventory.time.standard_name
+# For tracers
+inventory_new.TROPIC_50.attrs['long_name'] = 'TROPIC_50'
+inventory_new.MIDLAT_50.attrs['long_name'] = 'MIDLAT_50'
+inventory_new.POLAR_50.attrs['long_name'] = 'POLAR_50'
+inventory_new.TROPIC_50.attrs['units'] = 'kg/m2/s'
+inventory_new.MIDLAT_50.attrs['units'] = 'kg/m2/s'
+inventory_new.POLAR_50.attrs['units'] = 'kg/m2/s'
 inventory_new.to_netcdf(INVENTORYPATH+'tracers_ghk.annual.geos.2x25.nc')
