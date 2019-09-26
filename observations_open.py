@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 23 16:18:43 2019
-
-open napso3, aqs o3 on 23 july 2019
-
-@author: ghkerr
+Function opens PM2.5 and O3 observations from various observational networks
+and cleans data to a format useable for calculating the O3-temperature 
+relationship. 
 
 Revision History
     23072019 -- initial version created
@@ -14,6 +12,7 @@ Revision History
                 for sampling hours: NAPS data begin with "hour 1" rather than 
                 0 (i.e., AQS, EMEP), so this must be taken into account 
                 when selecting hours of interest
+    26092019 -- function 'open_chinao3' added
 """
 def get_merged_csv(flist, **kwargs):
     """function reads CSV files in the list comprehension loop, this list of
@@ -188,7 +187,7 @@ def open_aqso3(years, months, hours):
     # Turn MultiIndex to column
     aqs_allyr.reset_index(inplace = True)
     # Make date index 
-    aqs_allyr.set_index('Date Local', inplace = True)
+    aqs_allyr.set_index('Date Local', inplace=True)
     # Rename O3 column and convert from ppm to ppb
     aqs_allyr = aqs_allyr.rename(columns=
                                  {'Sample Measurement' : 'O3 (ppbv)'})
@@ -254,7 +253,6 @@ def open_emepo3(years, months, hours):
         files_ty = glob.glob(PATH_EMEP + 'all_o3_%s/'%year + '*_%s.dat'%year)
         files_ty_all = []
         for filename in files_ty:
-            print(filename)
             # Find station ID, station latitude, and station longitude based 
             # on filename
             station_ID = filename.split('/')[-1]       
@@ -312,9 +310,9 @@ def open_emepo3(years, months, hours):
     # Rename O3 column 
     emep = emep.rename(columns={'Concentration' : 'O3 (ppbv)'})
     # Turn MultiIndex to column
-    emep.reset_index(inplace = True)
+    emep.reset_index(inplace=True)
     # Make date index 
-    emep.set_index('Date Local', inplace = True)
+    emep.set_index('Date Local', inplace=True)
     # Convert index to string
     emep.index = [x.strftime('%Y-%m-%d') for x in emep.index]            
     # Convert longitude from (-180-180) to (0-360)
@@ -322,3 +320,118 @@ def open_emepo3(years, months, hours):
     print('EMEP O3 for %d-%d loaded in '%(years[0], years[-1])+
           '%.2f seconds!'%(time.time() - start_time))     
     return emep
+
+def open_chinao3(years, months, hours, cityavg=False): 
+    """Hourly O3 from Chinese cities for  2016-2017 was shared by Ke Li from 
+    his recent paper. In addition to be stored locally, data is also stored on 
+    Dropbox. 
+    Site latitudes and longitudes: 
+        https://www.dropbox.com/s/643cjir13u2ppkw/sta_lon_lat.txt?dl=0
+    O3 observations:     
+        https://www.dropbox.com/s/yx8mntdlc77mnhk/ozone_16-17.zip?dl=0
+    Site cities: 
+        https://www.dropbox.com/s/s0eaxe76boywphd/staname?dl=0
+    Funciton opens data and siting information and extracts O3 observations
+    for the hours and months of interest. If specified, the function also 
+    averages observations over Chinese cities to obtain daily average city-wide 
+    O3 concentrations. 
+
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period
+    months : list
+        Months (integers with Jan = 1, Feb = 2, etc.) for the season of 
+        interest
+    hours : list 
+        Hours over which hourly O3 observations are averaged, units of local 
+        time
+    cityavg : bool
+        Default False; if True, function averages daily O3 observations over 
+        cities to produce a daily, city-wide average measurement
+        
+    Returns
+    -------
+    o3df : pandas.core.frame.DataFrame
+        Daily-averaged O3 concentrations at individual sites or city-wide 
+        averages for the specified measuring period. DataFrame contains 
+        city name and site latitude and longitude    
+    
+    References
+    ----------
+    Li, K., Jacob, D. J., Liao, H., Shen, L., Zhang, Q., and Bates, K. H., 
+    (2019). Anthropogenic drivers of 2013–2017 trends in summer surface ozone 
+    in China. PNAS, 116(2). doi:10.1073/pnas.1812168116
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading Chinese O3 ...') 
+    import xarray as xr
+    import pandas as pd
+    import numpy as np
+    PATH_CHINA = '/Users/ghkerr/phd/observations/o3/china/'
+    infiles = xr.open_mfdataset(PATH_CHINA+'site/'+'china_sites_*.nc',
+        concat_dim='time')
+    o3 = infiles.o3.values
+    # Data from Ke Li is for 2016-2017
+    date_range = pd.date_range(start='01/01/2016', end='12/31/2017')
+    date_range = np.array([x.strftime('%Y-%m-%d') for x in date_range])
+    # Dimensions are (days in measuring period, hours, no. sites). From what
+    # I can tell, the time is in local time; i.e., a visual inspection of 
+    # the diurnal cycle of np.nanmean(o3, axis=0)[:, site] yields diurnal 
+    # curves with peaks around 15 hours. 
+    # Extract O3 at hour(s) of interest. This assumes that hours are in 
+    # military time; i.e., 0 = 12am, 13 = 1pm, etc. 
+    o3 = o3[:, np.array(hours)]
+    # Compute daily average
+    o3 = np.nanmean(o3, axis=1)
+    o3_shape = o3.shape
+    # Stack O3 observations such that first 731 elements represent the 
+    # observed O3 at the first station, etc
+    o3 = np.hstack(o3.T)
+    # Repeat date range over the number of stations
+    date_range = np.tile(date_range, o3_shape[1])
+    # Open Chinese siting information
+    siting = pd.read_csv(PATH_CHINA+'sta_lon_lat.txt', header=None,
+                           sep = '\t')
+    cities = pd.read_csv(PATH_CHINA+'staname', header=None)
+    # Rename the columns
+    siting.columns = ['Longitude', 'Latitude']
+    cities.columns = ['Cities']
+    # Extract siting information and repeat similar to the date range
+    lat = siting['Latitude'].values
+    lat = np.repeat(lat, o3_shape[0])
+    lng = siting['Longitude'].values
+    lng = np.repeat(lng, o3_shape[0])
+    cities = cities['Cities'].values
+    cities = np.repeat(cities, o3_shape[0])
+    # Create DataFrame in the same format as DataFrame for EMEP, NAPS, AQS, 
+    # etc.; n.b., in this case since Chinese sites don't have site IDs, the 
+    # DataFrame column "Station ID" is the name of the city that the site
+    # is located in 
+    o3df = pd.DataFrame(np.array([date_range, cities, lat, lng, o3]).T, 
+        columns=['Date', 'Station ID', 'Latitude', 'Longitude', 'O3 (ppbv)'])
+    # Convert from object to float; set date as index
+    o3df.index = pd.to_datetime(o3df['Date'])
+    o3df.index.names = ['Date']
+    del o3df['Date']
+    o3df['O3 (ppbv)'] = o3df['O3 (ppbv)'].astype(float)
+    o3df['Latitude'] = o3df['Latitude'].astype(float)
+    o3df['Longitude'] = o3df['Longitude'].astype(float)
+    # Select months in measuring period     
+    o3df = o3df.loc[o3df.index.month.isin(months)]
+    # If optional parameter "cityavg" is True, all stations located in a given 
+    # city will be averaged such that there is one daily average concentration 
+    # per city per day
+    if cityavg==True: 
+        o3df = o3df.groupby(['Station ID', o3df.index]).mean()
+        # Turn MultiIndex to column
+        o3df.reset_index(inplace=True)
+        # Make date index 
+        o3df.set_index('Date', inplace=True)
+    # Convert index to string
+    o3df.index = [x.strftime('%Y-%m-%d') for x in o3df.index]                    
+    print('Chinese O3 for %d-%d loaded in '%(years[0], years[-1])+
+          '%.2f seconds!'%(time.time() - start_time))            
+    return o3df
