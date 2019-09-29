@@ -33,6 +33,7 @@ Revision History
     20082019 -- cyclones' longitude converted from (-180˚-180˚) to (0˚-360˚) in 
                 function 'open_merra2_cyclones'
     18092019 -- function 'open_merra2pblh_specifieddomain' added
+    29092019 -- function 'open_merra2u_specifieddomain' added
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -724,7 +725,7 @@ def open_m2g_c90(years, varname, levmax, levmin, lngmin, latmax, lngmax,
     years : list
         Year or range of years in measuring period, [years,]
     varname : str
-        Variable of interest from GSFC/Held-Suarez runs. Options include
+        Variable of interest from simulations. Options include
         ps (surface pressure), u (wind), t (temperature), co50 (CO emissions
         over mainly Asia with a 50 day life time), co25 (same as co50 but with 
         a 25 day lifetime), nh50 (fixed mixing ratio at the surface between 
@@ -927,7 +928,7 @@ def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin,
     lng = ds.lon.values
     print('MERRA-2 %s for %d-%d loaded in %.2f seconds!'%(varname, years[0],
           years[-1], time.time() - start_time))
-    return var, mtime, lat, lng    
+    return var, mtime, lat, lng 
 
 def open_merra2_cyclones(sday, eday, months_str):
     """for a given date or range of dates, function opens netCDF files 
@@ -1087,6 +1088,8 @@ def open_merra2pblh_specifieddomain(years, months, latmin, latmax, lngmin,
     t2m_all : numpy.ndarray
         Daily mean PBL height, units of m, [time, lat, lng]
     """
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading MERRA-2 PBL height...' %varname)    
     import numpy as np
     from netCDF4 import Dataset
     import calendar
@@ -1130,6 +1133,104 @@ def open_merra2pblh_specifieddomain(years, months, latmin, latmax, lngmin,
             pblh_month = pblh_month[:,latmin:latmax+1,lngmin:lngmax+1]
             pblh_all.append(pblh_month)
     print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
-          'MERRA-2 PBLH for %d-%d loaded in %.2f seconds' %(years[0],years[-1],
-          (time.time()-start_time)))
+        'MERRA-2 PBLH for %d-%d loaded in %.2f seconds!' %(years[0], years[-1],
+        (time.time()-start_time)))
     return lat, lng, np.vstack(pblh_all)
+
+def open_merra2u_specifieddomain(years, varname, levmax, levmin, lngmin, 
+    latmax, lngmax, latmin, columnmean=False):
+    """function opens daily mean MERRA2 inst3_3d_asm_Np fields (3d, 3-Hourly,
+    Instantaneous, Pressure-Level, Assimilation, Assimilated Meteorological 
+    Fields) for the specified months and years. The variable of interest 
+    (either U or V) is extracted for the region and pressure level(s) of 
+    interest. If specified, function can also compute the column-averaged 
+    value.
+
+    Parameters
+    ----------
+    years : list
+        Year or range of years in measuring period, [years,]
+    varname : str
+        Variable of interest from GSFC/Held-Suarez runs. Options include
+        ps (surface pressure), u (wind), t (temperature), co50 (CO emissions
+        over mainly Asia with a 50 day life time), co25 (same as co50 but with 
+        a 25 day lifetime), nh50 (fixed mixing ratio at the surface between 
+        30 and 50˚N with a 50 day lifetime), st80_25 (fixed mixing ratio in the 
+        stratosphere, < 80 hPa, and 25 day lifetime in the troposphere).
+    levmax : int/float
+        Desired pressure level closest to the surface; n.b. function finds 
+        pressure level closest to value in coordinates
+    levmin : int/float
+        Desired pressure level aloft 
+    lngmin : float
+        Longitude coordinate of the left side (minimum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmax : float 
+        Latitude coordinate of the top side (maximum) of the bounding box 
+        containing the focus region, units of degrees north    
+    lngmax : float 
+        Longitude coordinate of the right side (maximum) of the bounding box 
+        containing the focus region, units of degrees east        
+    latmin : float
+        Latitude coordinate of the bottom side (minimum) of the bounding box 
+        containing the focus region, units of degrees north      
+    columnmean : bool
+        If True, the field is averaged over all pressure levels bounded by 
+        levmax and levmin
+        
+    Returns
+    -------
+    var : numpy.ndarray
+        Model output for specified variable, units of ppbv, if columnsum = True 
+        then shape is [time, lat, lng] if False then shape is [time, lev, 
+        lat, lng]
+    lat : numpy.ndarray
+        Model latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Model numpy.ndarray coordinates, units of degrees east, [lng,]    
+    lev : numpy.ndarray
+        Model pressure levels, units of hPa, [lev]
+    """
+    import time
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading %s from MERRA2 simulation...' %varname)
+    start_time = time.time()
+    import os
+    import numpy as np
+    import xarray as xr
+    # Search for appropriate files given variable of interested specified in 
+    # varname
+    infiles = []
+    for year in years:
+        PATH_MERRA = '/Users/ghkerr/phd/meteorology/data/inst6_3d_ana_Np/%d/'%year
+        infiles_ty = [PATH_MERRA+fn for fn in os.listdir(PATH_MERRA) if 
+            any(ext in fn for ext in [str(y) for y in years])]
+        infiles_ty.sort()
+        infiles.append(infiles_ty)
+    infiles = list(np.hstack(infiles))
+    # Open multiple NetCDF files and store in Dataset
+    ds = xr.open_mfdataset(infiles, concat_dim='time')
+    # Extract relevant variable 
+    ds = ds[[varname]]
+    ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
+        lon = (ds.dims['lon']//2-1), roll_coords = True)
+    # Subset Dataset with respect to spatial coordinates 
+    ds = ds.sel(lat = slice(latmin, latmax), lon = slice(lngmin, lngmax))
+    # Sample appropriate level if pressure coordinates exist 
+    ds = ds.sel(lev = slice(levmax,levmin))
+    # Extract
+    var = ds[varname].values
+    lat = ds.lat.values
+    lng = ds.lon.values
+    lev = ds.lev.values
+    # If specified, average variable over all pressure levels (i.e., if 
+    # column-averaged mixing ratios for a tracer is desired)
+    if (columnmean == True) and (len(lev) > 1):
+        lev_dim = var.shape.index(lev.shape[0])
+        var = np.nanmean(var, axis = lev_dim)
+    elif (columnmean == True) and (len(lev) == 1):
+        var = var[:,:,0]
+    print('%d-%d hPa %s for %d-%d loaded in '%(lev[0], lev[-1], 
+          varname, years[0], years[-1])+'%.2f seconds!'
+          %(time.time() - start_time))
+    return var, lat, lng, lev
