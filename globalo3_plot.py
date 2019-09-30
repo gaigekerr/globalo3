@@ -25,6 +25,7 @@ Revision History
     26092019 -- code to open 2016-2017 Chinese O3 observations added and 
                 function 'zonalavg_byregion' edited to handle observations 
                 from China
+    30092019 -- function 'zonalavg_verticallyintegrated_meridional_flux' added
 """
 # Change font
 import sys
@@ -1635,8 +1636,56 @@ def rt2mo3_iav():
         'rt2mo3_iav_%s_%d-%d'%(season, years_iav[0], years_iav[-1]), 
         extent=[lng_gmi.min()-180., lng_gmi.max()-180., lat_gmi.min()+1, 
         lat_gmi.max()-5], extend = 'neither')
-    return 
+    return
 
+def zonalavg_verticallyintegrated_meridional_flux(total, mean, eddy, lat, 
+    title, fstr):
+    """plot the total, mean, and eddy components of the zonally-averaged 
+    meridional flux of tracer f over the Northern Hemisphere
+
+    Parameters
+    ----------
+    total : numpy.ndarray
+        Total vertically-integrated meridional flux of tracer f, units of kg 
+        s-1, [lat,]
+    mean : numpy.ndarray 
+        Mean vertically-integrated meridional flux of tracer f, units of kg 
+        s-1, [lat,]    
+    eddy : numpy.ndarray
+        Eddy vertically-integrated meridional flux of tracer f, units of kg 
+        s-1, [lat,]    
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]        
+    title : str
+        Title for plot        
+    fstr : str
+        Output file suffix; should specified levels of vertical integration 
+        and tracer name
+    
+    Returns
+    -------        
+    None    
+    """    
+    import matplotlib.pyplot as plt
+    # Plotting
+    fig = plt.figure()
+    ax = plt.subplot2grid((1,1),(0,0))
+    ax.plot(lat, total, ls='-', color='#1b9e77', lw=2, label='Total', zorder=2)
+    ax.plot(lat, mean, ls='-', color='#d95f02', lw=2, label='Mean', zorder=3)
+    ax.plot(lat, eddy, ls='-', color='#7570b3', lw=2, label='Eddy', zorder=4)        
+    # Aesthetics
+    ax.set_xlim([0,90])
+    ax.set_xticks([0,30,60,90])
+    ax.set_xlabel('Latitude [$^{\circ}$N]', fontsize=14)
+    ax.set_ylabel('800-950 hPa Flux [kg s$^{\mathregular{-1}}$]', fontsize=14)
+    ax.set_title(title, fontsize=14)
+    ax.hlines(0, xmin=ax.get_xlim()[0], xmax=ax.get_xlim()[1], zorder=1, 
+        linestyles='--', linewidths=0.75)
+    plt.legend(ncol=3, frameon=False)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'zonalavg_verticallyintegrated_meridional_%sflux.eps' %fstr, dpi=300)
+    return
+ 
 import numpy as np
 import sys
 sys.path.append('/Users/ghkerr/phd/globalo3/')
@@ -1918,140 +1967,7 @@ except NameError:
             globalo3_calculate.calculate_fieldjet_relationship(pblh_merra, 
             lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
 
-
-
-
-
-
-
-#V500, mtime, lat_merra, lng_merra = \
-#    globalo3_open.open_merra2_specifieddomain(years, months_str,
-#    [0,3,6,9,12,15,18,21], 'V', 'inst3_3d_asm_Np_500hPa', lngmin, latmax, 
-#    lngmax, latmin, dailyavg='yes')
-
-
-
-
-
-
-def xxx():
-    """
-    """
-    import matplotlib.pyplot as plt
-    
-    
-    def reynoldsdecomp_zonalavg(x, dtime, lat, lng): 
-        """xxx
-    
-        Parameters
-        ----------
-        x : numpy.ndarray 
-            Field of interest 
-        dtime : numpy.ndarray or pandas.core.indexes.datetimes.DatetimeIndex
-            Time stamps corresponding to x, [time, lat, lng]
-        lat : numpy.ndarray
-            Latitude coordinates, units of degrees north, [lat,]
-        lng : numpy.ndarray
-            Longitude coordinates, units of degrees east, [lng,]       
-            
-        Returns
-        -------
-        xbar : numpy.ndarray
-            Zonal mean average for each timestep, broadcast (repeated) over the
-            longitude axis, [time, lat, lng]
-        xprime : numpy.ndarray
-            Deviation from the zonal mean for each timestep, [time, lat, lng]
-    
-        References
-        ----------
-        https://atmos.washington.edu/~dennis/501/501_Gen_Circ_Atmos.pdf
-        """
-        import numpy as np
-        lngaxis = np.where(np.array(x.shape) == lng.shape[0])[0][0]
-        lataxis = np.where(np.array(x.shape) == lat.shape[0])[0][0]
-        timeaxis = np.where(np.array(x.shape) == dtime.shape[0])[0][0]
-        # \bar{x}, the zonal mean average for a particular timestep 
-        xbar = np.nanmean(x, axis=lngaxis)
-        # Repeat zonal mean average along longitude axis
-        xbar = np.repeat(xbar[:,:,np.newaxis], lng.shape[0], axis=lngaxis)
-        # x', the deviation from the zonal mean (x' = x - bar{x})
-        xprime = x - xbar
-        return xbar, xprime 
-    #
-    o3bar, o3prime = reynoldsdecomp_zonalavg(o3_gmi, mtime, lat_gmi, lng_gmi)
-    vbar, vprime = reynoldsdecomp_zonalavg(V500, mtime, lat_gmi, lng_gmi)
-    co_50bar, co_50prime = reynoldsdecomp_zonalavg(co_50, mtime, lat_gmi, lng_gmi)
-    nh_50bar, nh_50prime = reynoldsdecomp_zonalavg(nh_50, mtime, lat_gmi, lng_gmi)
-    e90bar, e90prime = reynoldsdecomp_zonalavg(e90, mtime, lat_gmi, lng_gmi)
-    st80_25bar, st80_25prime = reynoldsdecomp_zonalavg(st80_25, mtime, lat_gmi, 
-        lng_gmi)
-    # Calculate zonal-mean and eddy components of meridional tracer flux
-    # For CO_50
-    mflux_co_50_zm = np.nanmean((vbar*co_50bar), axis=tuple((0, 2)))
-    mflux_co_50_eddy = np.nanmean((vprime*co_50prime), axis=tuple((0, 2)))
-    # For NH_50
-    mflux_nh_50_zm = np.nanmean((vbar*nh_50bar), axis=tuple((0, 2)))
-    mflux_nh_50_eddy = np.nanmean((vprime*nh_50prime), axis=tuple((0, 2)))
-    # For e90
-    mflux_e90_zm = np.nanmean((vbar*e90bar), axis=tuple((0, 2)))
-    mflux_e90_eddy = np.nanmean((vprime*e90prime), axis=tuple((0, 2)))
-    # For ST80_25
-    mflux_st80_25_zm = np.nanmean((vbar*st80_25bar), axis=tuple((0, 2)))
-    mflux_st80_25_eddy = np.nanmean((vprime*st80_25prime), axis=tuple((0, 2)))
-    # For O3
-    mflux_o3_zm = np.nanmean((vbar*o3bar), axis=tuple((0, 2)))
-    mflux_o3_eddy = np.nanmean((vprime*o3prime), axis=tuple((0, 2)))
-    # Plotting
-    fig = plt.figure(figsize=(7,3))
-    ax1 = plt.subplot2grid((1,3),(0,0))
-    ax2 = plt.subplot2grid((1,3),(0,1))
-    ax3 = plt.subplot2grid((1,3),(0,2))
-    # Total flux
-    ax1.set_title('Total flux <$\overline{\mathregular{v_{500}\:\chi}}$>')
-    ax1.set_xlim([0,90])
-    ax1.set_xticks([0,30,60,90])
-    ax1.set_xlabel('Latitude [$^{\circ}$N]')
-    ax1.set_ylabel('[ppbv m s$^{\mathregular{-1}}$]')
-    ax1.plot(mflux_o3_zm+mflux_o3_eddy, 'k', lw=2, label='O$_{\mathregular{3}}$')
-    ax1.plot(mflux_co_50_zm+mflux_co_50_eddy, label='CO$_{\mathregular{50}}$', 
-        color='#1b9e77')
-    ax1.plot((mflux_nh_50_zm+mflux_nh_50_eddy)*0.0002, 
-        label='NH$_{\mathregular{50}}$ x 0.0002', color='#d95f02')
-    ax1.plot(mflux_e90_eddy+mflux_e90_zm, label='e90', color='#7570b3')
-    ax1.plot((mflux_st80_25_zm+mflux_st80_25_eddy)*50., 
-        label='ST80$_{\mathregular{25}}$ x 50', color='#e7298a')
-    # Eddy flux
-    ax2.set_title('Eddy flux <$\overline{\mathregular{v_{500}\'\:\chi}\'}$>')
-    ax2.set_xlim([0,90])
-    ax2.set_xticks([0,30,60,90])
-    ax2.set_xlabel('Latitude [$^{\circ}$N]')
-    ax2.plot(mflux_o3_eddy, 'k', lw=2)
-    ax2.plot(mflux_co_50_eddy, color='#1b9e77')
-    ax2.plot((mflux_nh_50_eddy)*0.0002, color='#d95f02')
-    ax2.plot(mflux_e90_eddy, color='#7570b3')
-    ax2.plot((mflux_st80_25_eddy)*50., color='#e7298a')
-    # Zonal-mean flux
-    ax3.set_title('Zonal-mean flux <$\overline{\mathregular{v_{500}}}$'+
-        ' $\overline{\mathregular{\chi}}$>')
-    ax3.set_xlim([0,90])
-    ax3.set_xticks([0,30,60,90])    
-    ax3.set_xlabel('Latitude [$^{\circ}$N]')
-    ax3.plot(mflux_o3_zm, 'k', lw=2)
-    ax3.plot(mflux_co_50_zm, color='#1b9e77')
-    ax3.plot(mflux_nh_50_zm*0.0002, color='#d95f02')
-    ax3.plot(mflux_e90_zm, color='#7570b3')
-    ax3.plot(mflux_st80_25_zm*50., color='#e7298a')    
-    ax1.legend(ncol=5, bbox_to_anchor=(3.5, -0.3), frameon=False)
-    plt.subplots_adjust(bottom=0.3)
-    plt.savefig('/Users/ghkerr/Desktop/meridional_tracer_flux_noe90.png', 
-        dpi=300)
-    return 
-
-
-
-
-
-maparea = 'nh'
+#maparea = 'nh'
 ## Mean O3, mean eddy-driven jet position and variability
 #map_hemisphere(lat_gmi, 
 #    lng_gmi, 
@@ -2655,6 +2571,76 @@ maparea = 'nh'
 #    '%s_%d-%d'%(season, years[0],years[-1]), 
 #    skiplng=6)
 
+"""CORRELATE FLOW AT SURFACE WITH DISTANCE TO JET STREAM"""
+#import sys
+#sys.path.append('/Users/ghkerr/phd/transporto3/')
+#import transporto3_open
+## Load 10-meter U and V wind and interpolate to native CTM resolution
+#U10M, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, hours, 
+#    'U10M', 'tavg1_2d_slv_Nx', 'JJA_wind.nc', lngmin, latmax, lngmax, latmin, 
+#    dailyavg='yes')
+#U10M = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, 
+#    lng_merra, U10M)
+#V10M, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, hours, 
+#    'V10M', 'tavg1_2d_slv_Nx', 'JJA_wind.nc', lngmin, latmax, lngmax, latmin, 
+#    dailyavg='yes')
+#V10M = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, lat_merra, 
+#    lng_merra, V10M)
+## Correlate jet movement with flow at surface
+#m_U10Mjetdist, r_U10Mjetdist, diff_U10Mjetdist = \
+#    globalo3_calculate.calculate_fieldjet_relationship(U10M, lat_gmi, 
+#    lng_gmi, lat_jet_ml, lng_ml)
+#m_V10Mjetdist, r_V10Mjetdist, diff_V10Mjetdist = \
+#    globalo3_calculate.calculate_fieldjet_relationship(V10M, lat_gmi, 
+#    lng_gmi, lat_jet_ml, lng_ml)
+#m_WIND10Mjetdist, r_WIND10Mjetdist, diff_WIND10Mjetdist = \
+#    globalo3_calculate.calculate_fieldjet_relationship(np.hypot(U10M, V10M), 
+#    lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
+## r(jet lat - lat, U10M)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    m_U10Mjetdist, 
+#    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, U$_{\mathregular{10\:m}}$)' %season, 
+#    '[$\cdot$]', 
+#    np.linspace(-0.7, 0.7, 8), 
+#    'bwr', 
+#    maparea,
+#    'rU10Mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng = lng_gmi,    
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## r(jet lat - lat, V10M)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    m_V10Mjetdist, 
+#    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, V$_{\mathregular{10\:m}}$)' %season, 
+#    '[$\cdot$]', 
+#    np.linspace(-0.7, 0.7, 8), 
+#    'bwr', 
+#    maparea,
+#    'rV10Mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng = lng_gmi,    
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])        
+## r(jet lat - lat, WIND10M)
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    m_WIND10Mjetdist, 
+#    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, WIND$_{\mathregular{10\:m}}$)' %season, 
+#    '[$\cdot$]', 
+#    np.linspace(-0.7, 0.7, 8), 
+#    'bwr', 
+#    maparea,
+#    'rWIND10Mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng = lng_gmi,    
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
 
 """MODEL-OBSERVATION COMPARISON"""
 ## North American r(T, O3)
@@ -2993,11 +2979,6 @@ maparea = 'nh'
 #ax.outline_patch.set_zorder(20)
 #plt.savefig('/Users/ghkerr/Desktop/'+
 #    'map_cyclones_pwjet-eqjet.png', dpi = 350)
-
-
-
-
-
 #lat = lat_gmi
 #lng_jet =  lng_gmi
 #lat_jet = lat_jet_ml
@@ -3050,3 +3031,53 @@ maparea = 'nh'
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5],
 #    extend='neither')            
+
+"""PLOT VERTICALLY-INTEGRATED MERIDIONAL TRACER FLUXES"""
+#co_50_column, lat_replay, lng_replay, lev_replay = globalo3_open.open_m2g_c90(
+#    years, 'co_50', 1000., 800., lngmin, latmax, lngmax, latmin, 
+#    columnmean=False)
+#nh_50_column, lat_replay, lng_replay, lev_replay = globalo3_open.open_m2g_c90(
+#    years, 'nh_50', 1000., 800., lngmin, latmax, lngmax, latmin, 
+#    columnmean=False)
+#st80_25_column, lat_replay, lng_replay, lev_replay = \
+#    globalo3_open.open_m2g_c90(years, 'st80_25', 1000., 800., lngmin, latmax, 
+#    lngmax, latmin, columnmean=False)
+#e90_column, lat_replay, lng_replay, lev_replay = globalo3_open.open_m2g_c90(
+#    years, 'e90', 1000., 800., lngmin, latmax, lngmax, latmin, 
+#    columnmean=False)
+#V_column, lat_merra, lng_merra, column = \
+#    globalo3_open.open_merra2u_specifieddomain(years, 'V', 1000., 800., lngmin, 
+#    latmax, lngmax, latmin, columnmean=False)
+## Interpolate column CO_50 and meridional wind
+#co_50_column = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+#    lng_gmi, lat_replay, lng_replay, co_50_column, checkplot='yes')
+#nh_50_column = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+#    lng_gmi, lat_replay, lng_replay, nh_50_column, checkplot='yes')
+#st80_25_column = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+#    lng_gmi, lat_replay, lng_replay, st80_25_column, checkplot='yes')
+#e90_column = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+#    lng_gmi, lat_replay, lng_replay, e90_column, checkplot='yes')
+#V_column = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
+#    lng_gmi, lat_merra, lng_merra, V_column, checkplot='yes')
+## Find vertically-integrated meridional tracer flux
+#co_50total, co_50mean, co_50eddy = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(co_50_column/1e9, 
+#    V_column, mtime, lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#nh_50total, nh_50mean, nh_50eddy = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(nh_50_column/1e9, 
+#    V_column, mtime, lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#st80_25total, st80_25mean, st80_25eddy = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(st80_25_column/1e9, 
+#    V_column, mtime, lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97)) 
+#e90total, e90mean, e90eddy = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(e90_column/1e9, 
+#    V_column, mtime, lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))    
+## Plotting
+#zonalavg_verticallyintegrated_meridional_flux(co_50total, co_50mean, co_50eddy, 
+#    lat_gmi, 'CO$_{\mathregular{50}}$', '950-800_co_50')
+#zonalavg_verticallyintegrated_meridional_flux(nh_50total, nh_50mean, nh_50eddy, 
+#    lat_gmi, 'NH$_{\mathregular{50}}$', '950-800_nh_50')
+#zonalavg_verticallyintegrated_meridional_flux(st80_25total, st80_25mean, 
+#    st80_25eddy, lat_gmi, 'ST80$_{\mathregular{25}}$', '950-800_st80_25')
+#zonalavg_verticallyintegrated_meridional_flux(e90total, e90mean, e90eddy, 
+#    lat_gmi, 'e$_{\mathregular{90}}$', '950-800_e90')
