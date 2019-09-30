@@ -47,6 +47,8 @@ Revision History
                 distance calculations
     20082019 -- function 'field_binner' added
     25082019 -- function 'segregate_cyclones_bylat' added
+    29082019 -- function 'field_binner' edited to bin not just observations 
+                over the entire measuring period but on daily timescales
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -968,7 +970,7 @@ def calculate_schnell_do3dt_rto3(years, months, domain):
     domain : str
         Either 'US' or 'EU'
 
-    Returns
+    Returns\
     -------    
     do3dt2m : numpy.ndarray
         dO3/dT, units of ppbv K-1, [lat, lng]    
@@ -1241,46 +1243,48 @@ def calculate_r_significance(x, y, r, lat, lng):
           'in %.2f seconds'%((time.time()-start_time)))    
     return significance
 
-def field_binner(lat_ctm, lng_ctm, lat_field, lng_field, val_field, 
-    numbbox_lat, numbbox_lng, operation): 
+def field_binner(lat_grid, lng_grid, times_grid, lat_obs, lng_obs, val_obs,
+    times_obs, operation): 
     """for a given field (i.e., O3 observations, cyclone centers, etc.) 
     function bins values into grid boxes of the specified size and calculates
     the mean values, variability, or frequency of the field in each bin. 
     
     Parameters
     ----------    
-    lat_ctm : numpy.ndarray
-        Gridded latitude coordinates of CTM, units of degrees north, [lat,]
-    lng_ctm : numpy.ndarray
-        Gridded longitude coordinates of CTM, units of degrees east, [lng,]        
-    lat_field : numpy.ndarray
+    lat_grid : numpy.ndarray
+        Latitude coordinates to which field/observations will be binned (n.b., 
+        for a given set of coordinates, function will search to 1/2 * 
+        resolution on either side of each grid node, units of degrees north, 
+        [lat,]
+    lng_grid : numpy.ndarray
+        Longitude coordinates to which field/observations will be binned,
+        units of degrees east, [lng]
+    times_grid : numpy.ndarray
+        datetime.date timestamps corresponding to gridded field, [time,]
+    lat_obs : numpy.ndarray
         Latitude coordinates corresponding to observations, units of degrees
         north, [no. obs.,]
-    lng_field : numpy.ndarray
+    lng_obs : numpy.ndarray
         Longitude coordinates corresponding to observations, units of degrees
-        east, [no. obs.,]        
-    val_field : numpy.ndarray
+        east, [no. obs.,]  
+    val_obs : numpy.ndarray
         Observational values, [no. obs.,] (n.b., if the frequency of the field 
         is desired, 'val_field' should be an array of 1s and operation = 'sum')
-    numbbox_lat : int
-        The number of bins into which the CTM latitude array will be 
-        discretized    
-    numbbox_lng : int
-        The number of bins into which the CTM longitude array will be 
-        discretized        
+    times_obs : numpy.ndarray
+        Timestamps of field, %Y-%m-%d format
     operation : str
         The operation performed on 'val_field' in every bin ('mean', 'std', 
         or 'sum')
         
     Returns
     -------        
-    field_coarse : numpy.ndarray
+    val_grid : numpy.ndarray
         The specified operation performed over the binned field, [lat_bin, 
         lng_bin,]
-    lat_coarse : numpy.ndarray
-        The latitude array corresponding to the binned field, units of degrees
-        north, [lat_bin,]
-    lng_coarse : numpy.ndarray
+    lat_grid : numpy.ndarray
+        The latitude array corresponding to the binned field (n.b., same as 
+        input field), units of degrees north, [lat_bin,]
+    lng_grd : numpy.ndarray
         The longitude array corresponding to the binned field, units of degrees
         east, [lng_bin,]    
     """
@@ -1289,36 +1293,47 @@ def field_binner(lat_ctm, lng_ctm, lat_field, lng_field, val_field,
     print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
           'Binning observations and calculating %s...' %operation)
     import numpy as np
-    lat_bounds = np.linspace(lat_ctm[0], lat_ctm[-1], numbbox_lat)
-    lng_bounds = np.linspace(lng_ctm[0], lng_ctm[-1], numbbox_lng)
+    # Convert timestamps from gridded dataset to YYYY-MM-DD format
+    times_grid = [x.strftime('%Y-%m-%d') for x in times_grid]
+    times_grid = np.array(times_grid)
+    lat_res = np.mean(np.diff(lat_grid)[1:-1])
+    lng_res = np.mean(np.diff(lng_grid)[1:-1])
     # "Regridded" (binned coarser) arrays
-    field_coarse = np.empty(shape=(lat_bounds.shape[0]-1, 
-        lng_bounds.shape[0]-1))
-    field_coarse[:] = np.nan
-    lat_coarse = np.empty(shape=(lat_bounds.shape[0]-1))
-    lat_coarse[:] = np.nan
-    lng_coarse = np.empty(shape=(lng_bounds.shape[0]-1))
-    lng_coarse[:] = np.nan
+    val_grid = np.empty(shape=(lat_grid.shape[0], lng_grid.shape[0]))
+    val_grid[:] = np.nan
+    if operation == 'daily':
+        val_grid = np.empty(shape=(len(times_grid), lat_grid.shape[0], 
+            lng_grid.shape[0]))
+        val_grid[:] = np.nan
     # Loop through coarse latitude and longitude 
-    for iidx in np.arange(0, len(lat_coarse), 1):
-        for jidx in np.arange(0, len(lng_coarse), 1):
+    for iidx in np.arange(0, len(lat_grid), 1):
+        for jidx in np.arange(0, len(lng_grid), 1):
             # Bounding box 
-            left = lng_bounds[jidx]
-            right = lng_bounds[jidx+1] 
-            up = lat_bounds[iidx+1]
-            down = lat_bounds[iidx]
-            in_bb = np.where((lat_field > down) & (lat_field <= up) & 
-                             (lng_field > left) & (lng_field <= right))[0]
-            lat_coarse[iidx] = np.mean((down, up))
-            lng_coarse[jidx] = np.mean((left, right))        
-            if operation == 'mean':
-                field_coarse[iidx, jidx] = np.nanmean(val_field[in_bb])            
-            elif operation == 'std':        
-                field_coarse[iidx, jidx] = np.nanstd(val_field[in_bb])
-            elif operation == 'sum':        
-                field_coarse[iidx, jidx] = np.nansum(val_field[in_bb])
+            left = lng_grid[jidx]-(lng_res/2.)
+            right = lng_grid[jidx]+(lng_res/2.) 
+            up = lat_grid[iidx]+(lat_res/2.)
+            down = lat_grid[iidx]-(lat_res/2.)
+            in_bb = np.where((lat_obs > down) & (lat_obs <= up) & 
+                             (lng_obs > left) & (lng_obs <= right))[0]
+            if np.shape(in_bb)[0] is not 0: 
+                if operation == 'mean':
+                    val_grid[iidx, jidx] = np.nanmean(val_obs[in_bb])            
+                elif operation == 'std':        
+                    val_grid[iidx, jidx] = np.nanstd(val_obs[in_bb])
+                elif operation == 'sum':        
+                    val_grid[iidx, jidx] = np.nansum(val_obs[in_bb])
+                elif operation == 'daily':
+                    # If cyclone frequency on daily timescales is desired, 
+                    # function will loop through all unique times during 
+                    # which cyclones occurred in the selected grid cell and 
+                    # find the days and occurrences of cyclones
+                    for day in np.unique(times_obs[in_bb]):
+                        time_idx = np.where(times_grid == day)[0]
+                        # Find number of cyclones on day at grid cell
+                        nocyclones = np.where(times_obs[in_bb] == day)[0]
+                        val_grid[time_idx, iidx, jidx] = len(nocyclones)
     print('Observations binned in %.2f seconds!' %(time.time() - start_time))                
-    return field_coarse, lat_coarse, lng_coarse
+    return val_grid, lat_grid, lng_grid
 
 def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times): 
     """function identifies cyclone locations on days when the eddy-driven jet
@@ -1354,12 +1369,18 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
     lowthresh_lng_cyclone : numpy.ndarray
         Longitude of cylones on days where the jet is "extreme" equatorward, 
         units of degrees east
-    highthresh_lat_cyclone : list
+    lowthresh_time_cyclone : numpy.ndarray   
+        Timestamps (%Y-%m-%d format) of cyclones on days where the jet is 
+        "extreme" equatorward
+    highthresh_lat_cyclone : numpy.ndarray   
         Latitudes of cylones on days where the jet is "extreme" poleward, 
         (n.b., "extreme" refers to > 70th percentile), units of degrees north    
-    highthresh_lng_cyclone : list
+    highthresh_lng_cyclone : numpy.ndarray   
         Longitude of cylones on days where the jet is "extreme" poleward, 
         units of degrees east    
+    highthresh_time_cyclone : numpy.ndarray   
+        Timestamps (%Y-%m-%d format) of cyclones on days where the jet is 
+        "extreme" poleward
     lowthresh_lat_jet : list
         The mean latitude of the eddy-driven jet on days when it is 
         "extreme" equatorward, [lng]
@@ -1386,6 +1407,7 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
     import numpy as np
     lowthresh_lng_cyclone, lowthresh_lat_cyclone = [], []
     highthresh_lng_cyclone, highthresh_lat_cyclone = [], []
+    highthresh_time_cyclone, lowthresh_time_cyclone = [], []
     lowthresh_lat_jet, lowthresh_lat_jet_var = [], []
     highthresh_lat_jet, highthresh_lat_jet_var = [], []
     # Return empty arrays to fill with value of 3D (tyx) field on days with 
@@ -1406,11 +1428,11 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
         # Mean values of the field on days when the jet extreme poleward or 
         # equatorward at longitude 
         pwjet_field_anom[:, ilng] = (
-            np.nanmean(field[highthresh_days, :, ilng], axis=0)-
-            np.nanmean(field[:, :, ilng], axis=0))
+            np.nanmean(field[highthresh_days, :, ilng], axis=0))#-
+#            np.nanmean(field[:, :, ilng], axis=0))
         eqjet_field_anom[:, ilng] = (
-            np.nanmean(field[lowthresh_days, :, ilng], axis=0)-
-            np.nanmean(field[:, :, ilng], axis=0))    
+            np.nanmean(field[lowthresh_days, :, ilng], axis=0))#-
+#            np.nanmean(field[:, :, ilng], axis=0))    
         # Find mean jet latitude and its variability on days when jet is 
         # extreme poleward or equatorward at longitude of interest
         lowthresh_lat_jet.append(np.nanmean(lat_jet[lowthresh_days,ilng]))
@@ -1433,7 +1455,8 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
         highthresh_lng_cyclone.append(
             highthresh_cyclones['Longitude'].values)
         highthresh_lat_cyclone.append(
-            highthresh_cyclones['Latitude'].values)                    
+            highthresh_cyclones['Latitude'].values)  
+        highthresh_time_cyclone.append(highthresh_cyclones['Date'].values)                  
         lowthresh_cyclones = cyclones.loc[
             (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
             (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
@@ -1442,12 +1465,185 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
             lowthresh_cyclones['Longitude'].values)
         lowthresh_lat_cyclone.append(
             lowthresh_cyclones['Latitude'].values)
+        lowthresh_time_cyclone.append(lowthresh_cyclones['Date'].values)
     lowthresh_lat_cyclone = np.hstack(lowthresh_lat_cyclone) 
     lowthresh_lng_cyclone = np.hstack(lowthresh_lng_cyclone) 
     highthresh_lat_cyclone = np.hstack(highthresh_lat_cyclone) 
     highthresh_lng_cyclone = np.hstack(highthresh_lng_cyclone) 
+    highthresh_time_cyclone = np.hstack(highthresh_time_cyclone)
+    lowthresh_time_cyclone = np.hstack(lowthresh_time_cyclone)
     print('Cyclones separated in %.2f seconds!' %(time.time() - start_time))                    
     return (lowthresh_lat_cyclone, lowthresh_lng_cyclone, 
-        highthresh_lat_cyclone, highthresh_lng_cyclone, lowthresh_lat_jet, 
+        lowthresh_time_cyclone, highthresh_lat_cyclone, highthresh_lng_cyclone, 
+        highthresh_time_cyclone, lowthresh_lat_jet, 
         lowthresh_lat_jet_var, highthresh_lat_jet, highthresh_lat_jet_var,
         pwjet_field_anom, eqjet_field_anom)
+    
+def reynolds_decomposition(x, dtime, lat, lng):
+    """function computes eddy fluxes through Reynolds decomposition 
+    into mean and eddy transports. 
+    
+    Parameters
+    ----------
+    x : numpy.ndarray 
+        Field of interest, [time, lat, lng] 
+    dtime : numpy.ndarray or pandas.core.indexes.datetimes.DatetimeIndex
+        Time stamps corresponding to x, [time, lat, lng]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Longitude coordinates, units of degrees east, [lng,]       
+        
+    Returns
+    -------
+    xbar : numpy.ndarray
+        Time-averaged field, [lat, lng]
+    xbar_star : numpy.ndarray
+        The deviations of the time-averaged field from its zonal average, 
+        [lat, lng]
+    xbar_zm : numpy.ndarray
+        The zonal average of the time-averaged field (zonal average 
+        repeated for each longitude), [lat, lng]
+    xprime : numpy.ndarray
+        Deviations from the time average, [time, lat, lng]
+
+    References
+    ----------
+    Hartmann, D. L., (2016). Global Physical Climatology (Second Ed). 
+    Elsevier: San Diego. 
+    """
+    import numpy as np
+    lngaxis = np.where(np.array(x.shape) == lng.shape[0])[0][0]
+    lataxis = np.where(np.array(x.shape) == lat.shape[0])[0][0]
+    timeaxis = np.where(np.array(x.shape) == dtime.shape[0])[0][0]
+    # Time average
+    xbar = np.nanmean(x, axis=timeaxis)
+    # Transient component (deviation from time mean)
+    xprime = x-xbar
+    # Stationary component (deviation from zonal mean of the time average, 
+    # given by \bar{x}* = \bar{x} - [\bar{x}], where \bar{x} is the 
+    # instantaneous zonal mean field (at each timestep) and [\bar{x}] is the 
+    # time-averaged zonal value field.
+    # Begin by finding the zonal mean of the time average
+    xbar_zm = np.nanmean(xbar, axis=np.where(np.array(xbar.shape)==
+        lng.shape[0])[0][0])
+    xbar_zm = np.repeat(xbar_zm[:, np.newaxis], len(lng), axis=1)
+    xbar_star = xbar - xbar_zm
+    return xbar, xbar_star, xbar_zm, xprime
+
+def meridional_flux(v, f, dtime, lat, lng):
+    """function calculates the meridional transport of a given field as the 
+    sum of contributions from the mean circulation, the stationary eddies, and 
+    the transient eddies. 
+    
+    Parameters
+    ----------
+    v : numpy.ndarray 
+        Northward (meridional) wind field, units of m s-1, [time, lat, lng]
+    f : numpy.ndarray 
+        Field of interest, [time, lat, lng] 
+    dtime : numpy.ndarray or pandas.core.indexes.datetimes.DatetimeIndex
+        Time stamps corresponding to x, [time, lat, lng]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Longitude coordinates, units of degrees east, [lng,]       
+        
+    Returns
+    -------
+    mean : numpy.ndarray
+        Northward transport of field due to mean meridional circulation, [lat,]
+    stationary : numpy.ndarray
+        Northward transport of field due to stationary eddies, [lat,]    
+    transient : numpy.ndarray
+        Northward transport of field due to transient eddies, [lat,]        
+    total : numpy.ndarray
+        Total northward transport of field, [lat,]
+    """
+    import numpy as np
+    vbar, vbar_star, vbar_zm, vprime = reynolds_decomposition(v, dtime, lat, 
+        lng)
+    fbar, fbar_star, fbar_zm, fprime = reynolds_decomposition(f, dtime, lat, 
+        lng)
+    # From Hartmann (2016), using the definition of time and zonal averages, 
+    # the flux of field f by wind u can be written as the sum of contributions 
+    # from the mean meridional circulation, stationary eddies, and the 
+    # transient eddyes
+    mean = np.nanmean(vbar, axis=1)*np.nanmean(fbar, axis=1)
+    stationary = np.nanmean((vbar_star*fbar_star), axis=1)
+    transient = np.nanmean((vprime*fprime), axis=tuple((0,2)))
+    total = mean+stationary+transient
+    return mean, stationary, transient, total
+
+def verticallyintegrated_meridional_flux(v, f, dtime, lat, lng, column, levmax, 
+    levmin, ratio):
+    """integrate meridional flux of tracer f over the specified vertical 
+    pressure levels by calculating the tracer mass flow across each latitude.
+
+    Parameters
+    ----------
+    v : numpy.ndarray 
+        Northward (meridional) wind field, units of m s-1, [time, lev, lat, 
+        lng]
+    f : numpy.ndarray 
+        Field of interest, [time, lev, lat, lng] 
+    dtime : numpy.ndarray or pandas.core.indexes.datetimes.DatetimeIndex
+        Time stamps corresponding to x, [time, lat, lng]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Longitude coordinates, units of degrees east, [lng,]    
+    column : 
+        Model pressure levels (must be evenly spaced!), units of hPa, [lev]       
+    levmax : int/float
+        Desired pressure level closest to the surface (must match exactly with 
+        pressure levels!)
+    levmin : int/float
+        Desired pressure level aloft 
+    ratio : float
+        Ratio of the molecular mass weight between tracer and dry air (28.97 g
+        mol-1)
+        
+    Returns
+    -------
+    total : numpy.ndarray
+        Total vertically-integrated meridional flux of tracer f, units of kg 
+        s-1, [lat,]
+    mean : numpy.ndarray 
+        Mean vertically-integrated meridional flux of tracer f, units of kg 
+        s-1, [lat,]    
+    eddy : numpy.ndarray
+        Eddy vertically-integrated meridional flux of tracer f, units of kg 
+        s-1, [lat,]    
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Calculating vertically-integrated tracer flux...')    
+    import numpy as np
+    mean_all, eddy_all, total_all = [], [], []
+    # Find pressure difference between levels, convert from hPa to Pa
+    dp = -np.diff(column).mean()*100.
+    # Cosine of latitude 
+    coslat = np.cos(np.deg2rad(lat))
+    # Loop over specified pressure levels
+    for lev in np.arange(np.where(column==levmax)[0][0], 
+        np.where(column==levmin)[0][0], 1):
+        # Calculate meridional transport
+        mean, stationary, transient, total = meridional_flux(v[:,lev], 
+            f[:,lev], dtime, lat, lng)
+        # The northward vertically integrated flux averaged around a latitude
+        # circle; see Yang et al. (2019)
+        # <F> = int_p1^p2 dP (2 pi cos(lat) r_M)/(g) • F
+        # where r_M is the ratio of the molecule mass weight of tracer and 
+        # dry air
+        eddy = stationary+transient
+        total_all.append((dp*2*np.pi*6370000.*coslat*ratio*total)/9.81)
+        mean_all.append((dp*2*np.pi*6370000.*coslat*ratio*mean)/9.81)
+        eddy_all.append((dp*2*np.pi*6370000.*coslat*ratio*eddy)/9.81)
+    # Integrate over pressure levels
+    total = np.sum(np.vstack(total_all),axis=0)
+    mean = np.sum(np.vstack(mean_all),axis=0)
+    eddy = np.sum(np.vstack(eddy_all),axis=0)
+    print('Flux calculated in %.2f seconds!' %(time.time() - start_time))                    
+    return total, mean, eddy    
