@@ -13,7 +13,11 @@ Notes
     emissions from 60-90˚N/S, MIDLAT_50 for emissions from 30-60˚N/S, and 
     TROPIC_50 from 0-30˚N/S. One could, in the future create separate variables
     for each hemisphere to investigate exchanges from each hemisphere.
-
+    
+Revision History
+----------------
+    20092019 -- initial version created
+    01102019 -- added tracer (GLOBAL_50) with global emissions
 """
 import datetime
 import xarray as xr
@@ -63,6 +67,9 @@ tropics[:, (np.abs(lat-0.)).argmin():
     (np.abs(lat-30.)).argmin(), :] = emiss_rate
 tropics[:, (np.abs(lat-(-30.))).argmin():
     (np.abs(lat-(-0.))).argmin(), :] = emiss_rate    
+# Fill global region 
+globalr = np.zeros(emiss.shape)
+globalr[:] = emiss_rate
 # History for new tracer emission inventory
 date = datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S")
 history = ('%s: created by Gaige Hunter Kerr (gaige.kerr@jhu.edu). '
@@ -70,7 +77,8 @@ history = ('%s: created by Gaige Hunter Kerr (gaige.kerr@jhu.edu). '
     'emissions fields. All emission rates are constant'
     ', %s kg/m2/s. File contains these emissions for ' 
     'three different regions: 0-30˚N/S (data variable TROPIC_50),'
-    '30-60˚N/S (MIDLAT_50), and 60-90˚N/S (POLAR_50).') %(
+    '30-60˚N/S (MIDLAT_50), and 60-90˚N/S (POLAR_50) as well as a tracer '
+    'with global emissions (GLOBAL_50).') %(
     date, str(emiss_rate))
 Title = 'GEOSChem passive species emissions'
 Model = inventory.Model
@@ -87,7 +95,8 @@ CDO = inventory.CDO
 inventory_new = xr.Dataset(
     {'TROPIC_50': (['time', 'lat', 'lon'],  tropics),
      'MIDLAT_50': (['time', 'lat', 'lon'],  midlat),
-     'POLAR_50': (['time', 'lat', 'lon'],  polar)},
+     'POLAR_50': (['time', 'lat', 'lon'],  polar),
+     'GLOBAL_50': (['time', 'lat', 'lon'],  globalr)},
     coords={'lat': (['lat'], lat),
             'lon': (['lon'], lng),            
             'time': (['time'], time)},
@@ -120,7 +129,10 @@ inventory_new.time.attrs['standard_name'] = inventory.time.standard_name
 inventory_new.TROPIC_50.attrs['long_name'] = 'TROPIC_50'
 inventory_new.MIDLAT_50.attrs['long_name'] = 'MIDLAT_50'
 inventory_new.POLAR_50.attrs['long_name'] = 'POLAR_50'
+inventory_new.GLOBAL_50.attrs['long_name'] = 'POLAR_50'
 inventory_new.TROPIC_50.attrs['units'] = 'kg/m2/s'
 inventory_new.MIDLAT_50.attrs['units'] = 'kg/m2/s'
 inventory_new.POLAR_50.attrs['units'] = 'kg/m2/s'
-inventory_new.to_netcdf(INVENTORYPATH+'tracers_ghk.annual.geos.2x25.nc')
+inventory_new.GLOBAL_50.attrs['units'] = 'kg/m2/s'
+inventory_new.to_netcdf(INVENTORYPATH+
+    'tracers_globalsource_ghk.annual.geos.2x25.nc')
