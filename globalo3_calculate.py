@@ -49,6 +49,8 @@ Revision History
     25082019 -- function 'segregate_cyclones_bylat' added
     29082019 -- function 'field_binner' edited to bin not just observations 
                 over the entire measuring period but on daily timescales
+    07102019 -- functions 'sortfield_byjetlat' and 'sortfield_byjetlat_column' 
+                added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -1647,3 +1649,162 @@ def verticallyintegrated_meridional_flux(v, f, dtime, lat, lng, column, levmax,
     eddy = np.sum(np.vstack(eddy_all),axis=0)
     print('Flux calculated in %.2f seconds!' %(time.time() - start_time))                    
     return total, mean, eddy    
+
+def sortfield_byjetlat(field1, field2, lat_jet, lng_jet, lat, psize=30):
+    """for each longitude, function fetches the jet latitude time series at 
+    that longitude and, using the jet latitude, sorts the specified field by 
+    the jet latitude. The top and bottom ~30th percentiles of the sorted field 
+    are returned. There were some potential issues since the jet latitude is 
+    repeated (i.e., many days where the jet latitude is, say, 65 or 48˚N). 
+    This caused sorting to be inconsistent across days where the jet is at the 
+    same latitude (i.e., two fields could be sorted differently based on 
+    jet latitude because of the repeats.) To ameliorate this, the function 
+    was edited to sort two fields simultaneously by jet latitude. If two 
+    sorted fields aren't desired, the same field could be passed in as input 
+    parameters "field1" and "field2."
+    
+    Parameters
+    ----------
+    field1 : numpy.ndarray
+        First field of interest, [time, lat, lng]  
+    field2 : numpy.ndarray
+        Second field of interest, [time, lat, lng]          
+    lat_jet : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng]
+    lng_jet : numpy.ndarray
+        Longitude coordinates corresponding to jet dataset, units of degrees 
+        east, [lng,]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    psize : int
+        Percentiles that will define the equator- and poleward eddy-driven jet
+        days, default 30th percentile
+
+    Returns
+    -------
+    eqjet_field1 : numpy.ndarray
+        First field of interest on days when the jet is in an equatorward 
+        position, [~time*psize*0.01, lat, lng]
+    pwjet_field1 : numpy.ndarray
+        First field of interest on days when the jet is in an poleward 
+        position, [~time*psize*0.01, lat, lng]    
+    eqjet_field2 : numpy.ndarray
+        Second field of interest on days when the jet is in an equatorward 
+        position, [~time*psize*0.01, lat, lng]
+    pwjet_field2 : numpy.ndarray
+        Second field of interest on days when the jet is in an poleward 
+        position, [~time*psize*0.01, lat, lng]            
+    """
+    import time
+    start_time = time.time()
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Determining field on days with equator/poleward jet...')
+    import numpy as np
+    # Given the total sample size find the nearest sample size 
+    # corresponding to the top and bottom 30th %-ile
+    psize = np.int(np.round(len(field1)*(psize*0.01)))
+    # Empty arrays to fill with value of 3D (tyx) field on days with 
+    # poleward/equatorward jet 
+    pwjet_field1 = np.empty(shape=(psize, field1.shape[1], field1.shape[2]))
+    pwjet_field1[:] = np.nan
+    eqjet_field1 = np.empty(shape=(psize, field1.shape[1], field1.shape[2]))
+    eqjet_field1[:] = np.nan
+    pwjet_field2 = np.empty(shape=(psize, field2.shape[1], field2.shape[2]))
+    pwjet_field2[:] = np.nan
+    eqjet_field2 = np.empty(shape=(psize, field2.shape[1], field2.shape[2]))
+    eqjet_field2[:] = np.nan    
+    for ilng in np.arange(0,len(lng_jet),1):
+        # Find indices of days at a given longitude that have a poleward-
+        # shifted or equatorward-shift jet. Previously this was accomplished
+        # using percentiles (i.e., np.percentile(lat_jet[:,ilng], 70) and
+        # np.percentile(lat_jet[:,ilng], 30)); however, this doesn't 
+        # work because it creates an uneven sample size depending on the 
+        # longitude considered. 
+        # For a given longitude, find field of interest at each latitude 
+        for ilat in np.arange(0,len(lat),1):
+            # Sort field by jet latitude
+            sorted_fieldjet = sorted(zip(lat_jet[:,ilng],
+                field1[:,ilat,ilng], field2[:,ilat,ilng]))
+            # Find values of field and time on days with pole- and equatorward 
+            # jet
+            eqjet_field1[:,ilat,ilng] = np.array(sorted_fieldjet[:psize])[:,1]
+            pwjet_field1[:,ilat,ilng] = np.array(sorted_fieldjet[-psize:])[:,1]
+            eqjet_field2[:,ilat,ilng] = np.array(sorted_fieldjet[:psize])[:,2]
+            pwjet_field2[:,ilat,ilng] = np.array(sorted_fieldjet[-psize:])[:,2]            
+    print('Field determined in %.2f seconds!' %(time.time() - start_time))                    
+    return eqjet_field1, pwjet_field1, eqjet_field2, pwjet_field2
+
+def sortfield_byjetlat_column(field1, field2, lat_jet, lng_jet, lat, column, 
+    psize=30):
+    """same as function 'sortfield_byjetlat' but for columned fields (i.e., 
+    tracer mixing ratio from 900-850 hPa). Function segregates fields on days
+    where the jet is in a pole- and equatorward position. The exact number of 
+    days considered to be pole- or equatorward days is determined by optional
+    argument "psize," corresponding to the percentile of interest. 
+    
+    Parameters
+    ----------
+    field1 : numpy.ndarray
+        First field of interest; shape MUST be [time, lev, lat, lng]  
+    field2 : numpy.ndarray
+        Second field of interest; shape MUST be [time, lev, lat, lng]  
+    lat_jet : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in region, units of degrees north[time, lng]
+    lng_jet : numpy.ndarray
+        Longitude coordinates corresponding to jet dataset, units of degrees 
+        east, [lng,]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    column : numpy.ndarray
+        Model pressure levels (must be evenly spaced!), units of hPa, [lev]       
+    psize : int
+        Percentiles that will define the equator- and poleward eddy-driven jet
+        days, default 30th percentile
+
+    Returns
+    -------
+    eqjet_field1 : numpy.ndarray
+        First field of interest on days when the jet is in an equatorward 
+        position, [~time*psize*0.01, lev, lat, lng]
+    pwjet_field1 : numpy.ndarray
+        First field of interest on days when the jet is in an poleward 
+        position, [~time*psize*0.01, lev, lat, lng]  
+    eqjet_field2 : numpy.ndarray
+        Second field of interest on days when the jet is in an equatorward 
+        position, [~time*psize*0.01, lev, lat, lng]
+    pwjet_field2 : numpy.ndarray
+        Second field of interest on days when the jet is in an poleward 
+        position, [~time*psize*0.01, lev, lat, lng]          
+    """
+    import numpy as np
+    # Given the total sample size find the nearest sample size 
+    # corresponding to the top and bottom 30th %-ile
+    # Given the total sample size find the nearest sample size 
+    # corresponding to the top and bottom %-ile
+    pwjet_field1 = np.empty(shape=(np.int(np.round(len(field1)*(psize*0.01))), 
+        field1.shape[1], field1.shape[2], field1.shape[3]))
+    pwjet_field1[:] = np.nan
+    eqjet_field1 = np.empty(shape=(np.int(np.round(len(field1)*(psize*0.01))), 
+        field1.shape[1], field1.shape[2], field1.shape[3]))
+    eqjet_field1[:] = np.nan
+
+    pwjet_field2 = np.empty(shape=(np.int(np.round(len(field2)*(psize*0.01))), 
+        field2.shape[1], field2.shape[2], field2.shape[3]))
+    pwjet_field2[:] = np.nan
+    eqjet_field2 = np.empty(shape=(np.int(np.round(len(field2)*(psize*0.01))), 
+        field2.shape[1], field2.shape[2], field2.shape[3]))
+    eqjet_field2[:] = np.nan
+    # Loop through atmospheric layers
+    for layer in np.arange(0, field1.shape[1], 1):
+        print('For %d hPa...'%column[layer]) 
+        # Segregate on days when jet is pole- versus equatorward     
+        eqjet_field_layer1, pwjet_field_layer1, eqjet_field_layer2, pwjet_field_layer2 = sortfield_byjetlat(
+            field1[:,layer], field2[:,layer], lat_jet, lng_jet, lat, psize=psize)
+        # Append to multi-layer arrays
+        eqjet_field1[:,layer] = eqjet_field_layer1
+        pwjet_field1[:,layer] = pwjet_field_layer1
+        eqjet_field2[:,layer] = eqjet_field_layer2
+        pwjet_field2[:,layer] = pwjet_field_layer2       
+    return eqjet_field1, pwjet_field1, eqjet_field2, pwjet_field2
