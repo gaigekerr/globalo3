@@ -26,6 +26,8 @@ Revision History
                 function 'zonalavg_byregion' edited to handle observations 
                 from China
     30092019 -- function 'zonalavg_verticallyintegrated_meridional_flux' added
+    09102019 -- code to process the eddy and mean meridional tracer fluxes on 
+                days with a pole- versus equatorward jet added
 """
 # Change font
 import sys
@@ -1690,6 +1692,8 @@ import numpy as np
 import sys
 sys.path.append('/Users/ghkerr/phd/globalo3/')
 import globalo3_open, globalo3_calculate, observations_open
+sys.path.append('/Users/ghkerr/phd/transporto3/')
+import transporto3_open
 # Load data the first iteration only 
 try:lat_gmi
 except NameError:
@@ -3059,7 +3063,7 @@ except NameError:
 #    lng_gmi, lat_replay, lng_replay, e90_column, checkplot='yes')
 #V_column = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
 #    lng_gmi, lat_merra, lng_merra, V_column, checkplot='yes')
-## Find vertically-integrated meridional tracer flux
+## Find vertically-integrated meridional tracer flux on all days
 #co_50total, co_50mean, co_50eddy = \
 #    globalo3_calculate.verticallyintegrated_meridional_flux(co_50_column/1e9, 
 #    V_column, mtime, lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
@@ -3080,4 +3084,76 @@ except NameError:
 #zonalavg_verticallyintegrated_meridional_flux(st80_25total, st80_25mean, 
 #    st80_25eddy, lat_gmi, 'ST80$_{\mathregular{25}}$', '950-800_st80_25')
 #zonalavg_verticallyintegrated_meridional_flux(e90total, e90mean, e90eddy, 
-#    lat_gmi, 'e$_{\mathregular{90}}$', '950-800_e90')
+#    lat_gmi, 'e90', '950-800_e90')
+## Sort columned fields by days with a pole- versus equatorward jet
+#V_column_eqjet, V_column_pwjet, co_50_column_eqjet, co_50_column_pwjet = \
+#    globalo3_calculate.sortfield_byjetlat_column(V_column, co_50_column, 
+#    lat_jet_ml, lng_gmi, lat_gmi, lev_replay, psize=30)
+#V_column_eqjet, V_column_pwjet, nh_50_column_eqjet, nh_50_column_pwjet = \
+#    globalo3_calculate.sortfield_byjetlat_column(V_column, nh_50_column, 
+#    lat_jet_ml, lng_gmi, lat_gmi, lev_replay, psize=30)
+#V_column_eqjet, V_column_pwjet, st80_25_column_eqjet, st80_25_column_pwjet = \
+#    globalo3_calculate.sortfield_byjetlat_column(V_column, st80_25_column, 
+#    lat_jet_ml, lng_gmi, lat_gmi, lev_replay, psize=30)
+#V_column_eqjet, V_column_pwjet, e90_column_eqjet, e90_column_pwjet = \
+#    globalo3_calculate.sortfield_byjetlat_column(V_column, e90_column, 
+#    lat_jet_ml, lng_gmi, lat_gmi, lev_replay, psize=30)
+## Find vertically-integrated meridional tracer flux on days with a pole- 
+## versus equatorward jet
+#co_50total_eqjet, co_50mean_eqjet, co_50eddy_eqjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    co_50_column_eqjet/1e9, V_column_eqjet, mtime[:len(V_column_eqjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#co_50total_pwjet, co_50mean_pwjet, co_50eddy_pwjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    co_50_column_pwjet/1e9, V_column_pwjet, mtime[:len(V_column_pwjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#nh_50total_eqjet, nh_50mean_eqjet, nh_50eddy_eqjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    nh_50_column_eqjet/1e9, V_column_eqjet, mtime[:len(V_column_eqjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#nh_50total_pwjet, nh_50mean_pwjet, nh_50eddy_pwjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    nh_50_column_pwjet/1e9, V_column_pwjet, mtime[:len(V_column_pwjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))    
+#st80_25total_eqjet, st80_25mean_eqjet, st80_25eddy_eqjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    st80_25_column_eqjet/1e9, V_column_eqjet, mtime[:len(V_column_eqjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#st80_25total_pwjet, st80_25mean_pwjet, st80_25eddy_pwjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    st80_25_column_pwjet/1e9, V_column_pwjet, mtime[:len(V_column_pwjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))        
+#e90total_eqjet, e90mean_eqjet, e90eddy_eqjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    e90_column_eqjet/1e9, V_column_eqjet, mtime[:len(V_column_eqjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))
+#e90total_pwjet, e90mean_pwjet, e90eddy_pwjet = \
+#    globalo3_calculate.verticallyintegrated_meridional_flux(
+#    e90_column_pwjet/1e9, V_column_pwjet, mtime[:len(V_column_pwjet)], 
+#    lat_gmi, lng_gmi, lev_replay, 950., 800., (28/28.97))   
+## Plotting 
+#zonalavg_verticallyintegrated_meridional_flux(co_50total_eqjet, 
+#    co_50mean_eqjet, co_50eddy_eqjet, lat_gmi, 
+#    'CO$_{\mathregular{50,\:equatorward\;jet}}$', '950-800_co_50_eqjet')
+#zonalavg_verticallyintegrated_meridional_flux(co_50total_pwjet, 
+#    co_50mean_pwjet, co_50eddy_pwjet, lat_gmi, 
+#    'CO$_{\mathregular{50,\:poleward\;jet}}$', '950-800_co_50_pwjet')
+#zonalavg_verticallyintegrated_meridional_flux(nh_50total_eqjet, 
+#    nh_50mean_eqjet, nh_50eddy_eqjet, lat_gmi, 
+#    'NH$_{\mathregular{50,\:equatorward\;jet}}$', '950-800_nh_50_eqjet')
+#zonalavg_verticallyintegrated_meridional_flux(nh_50total_pwjet, 
+#    nh_50mean_pwjet, nh_50eddy_pwjet, lat_gmi, 
+#    'NH$_{\mathregular{50,\:poleward\;jet}}$', '950-800_nh_50_pwjet')  
+#zonalavg_verticallyintegrated_meridional_flux(st80_25total_eqjet, 
+#    st80_25mean_eqjet, st80_25eddy_eqjet, lat_gmi, 
+#    'ST80$_{\mathregular{25,\:equatorward\;jet}}$', '950-800_st80_25_eqjet')
+#zonalavg_verticallyintegrated_meridional_flux(st80_25total_pwjet, 
+#    st80_25mean_pwjet, st80_25eddy_pwjet, lat_gmi, 
+#    'ST80$_{\mathregular{25,\:poleward\;jet}}$', '950-800_st80_25_pwjet') 
+#zonalavg_verticallyintegrated_meridional_flux(e90total_eqjet, e90mean_eqjet, 
+#    e90eddy_eqjet, lat_gmi, 'e90$_{\mathregular{equatorward\;jet}}$', 
+#    '950-800_e90_eqjet')
+#zonalavg_verticallyintegrated_meridional_flux(e90total_pwjet, e90mean_pwjet, 
+#    e90eddy_pwjet, lat_gmi, 'e90$_{\mathregular{poleward\;jet}}$', 
+#    '950-800_e90_pwjet') 
