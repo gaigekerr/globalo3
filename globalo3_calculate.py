@@ -51,6 +51,7 @@ Revision History
                 over the entire measuring period but on daily timescales
     07102019 -- functions 'sortfield_byjetlat' and 'sortfield_byjetlat_column' 
                 added
+    15102019 -- function 'bin_observations_bylat' added
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -1808,3 +1809,57 @@ def sortfield_byjetlat_column(field1, field2, lat_jet, lng_jet, lat, column,
         eqjet_field2[:,layer] = eqjet_field_layer2
         pwjet_field2[:,layer] = pwjet_field_layer2       
     return eqjet_field1, pwjet_field1, eqjet_field2, pwjet_field2
+
+def bin_observations_bylat(lat_inregion, obs_inregion, lat_obs_inregion): 
+    """function iterates through latitudes in variable 'lat_inregion' and 
+    finds observations bounded by latitude(i) and latitude(i+1) and thereafter
+    calculates the mean and standard deviation of observations within 
+    these bounded. If no observations are within latitude(i, i+1), the mean 
+    and standard deviation are set equal to NaN. 
+
+    Parameters
+    ----------
+    lat_gmi : numpy.ndarray
+        GMI CTM latitude coordinates in region, units of degrees north, [lat,]
+    obs_inregion : list 
+        Field of interest at each observational station in region, [stations,]
+    lat_obs_inregion : list
+        Latitude coorindates at each observational station in region, units of 
+        degrees north, [stations,]
+
+    Returns
+    -------
+    obs_binned_lat : numpy.ndarray
+        The average latitude of the bin; i.e., items in this list are 
+        calculated by averaging the elements from the input variable: 
+        lat_gmi(i) and lat_gmi(i+1) 
+    obs_binned_mean : numpy.ndarray
+        The value of the field averaged over all stations in latitude bins,
+        [lat_binned,]
+    obs_binned_err : numpy.ndarray
+        The standard deviation of the field calculated over all stations in 
+        latitude bins, [lat_binned,]
+    """
+    import numpy as np
+    # Lists will be filled with the mean value and 2 sigma of observations of 
+    # interest within the latitude bins as well as the mean latitude 
+    obs_binned_mean = []
+    obs_binned_err = []
+    obs_binned_lat = []
+    # Loop through model latitudes and bin by every X degrees
+    for i in np.arange(0, len(lat_inregion)-1, 1):
+        latlower = lat_inregion[i]
+        latupper = lat_inregion[i+1]
+        obs_binned_lat.append(np.mean([latlower,latupper]))
+        # Find observations within band of observations
+        obs_inlatband = np.where((lat_obs_inregion>=latlower) &  
+                               (lat_obs_inregion<latupper))[0]
+        if obs_inlatband.shape[0] > 0:
+            obs_inlatband = np.array(obs_inregion)[obs_inlatband]
+            obs_binned_mean.append(np.nanmean(obs_inlatband))
+            obs_binned_err.append(2*np.nanstd(obs_inlatband))
+        else: 
+            obs_binned_mean.append(np.nan)
+            obs_binned_err.append(np.nan)    
+    return (np.array(obs_binned_lat), np.array(obs_binned_mean), 
+        np.array(obs_binned_err))
