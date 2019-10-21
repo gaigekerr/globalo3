@@ -13,6 +13,8 @@ Revision History
                 0 (i.e., AQS, EMEP), so this must be taken into account 
                 when selecting hours of interest
     26092019 -- function 'open_chinao3' added
+    21102019 -- change longitude from (-180-180) to (0-360) for AQS and NAPS
+                dataset
 """
 def get_merged_csv(flist, **kwargs):
     """function reads CSV files in the list comprehension loop, this list of
@@ -117,6 +119,8 @@ def open_napso3(years, months, hours):
         # Name index column and convert to string
         naps.index.names = ['Date Local']
         naps.index = [x.strftime('%Y-%m-%d') for x in naps.index]        
+        # Convert longitude from (-180-180) to (0-360)
+        naps['Longitude'] = naps['Longitude']%360.        
         # Rename station ID column
         naps = naps.rename(columns={'Station (NAPS ID)' : 'Station ID'})
         # Drop columns with hourly values
@@ -192,6 +196,8 @@ def open_aqso3(years, months, hours):
     aqs_allyr = aqs_allyr.rename(columns=
                                  {'Sample Measurement' : 'O3 (ppbv)'})
     aqs_allyr['O3 (ppbv)'] = aqs_allyr['O3 (ppbv)']*1000.
+    # Convert longitude from (-180-180) to (0-360)
+    aqs_allyr['Longitude'] = aqs_allyr['Longitude']%360.        
     print('AQS O3 for %d-%d loaded in '%(years[0], years[-1])+
           '%.2f seconds!'%(time.time() - start_time))          
     return aqs_allyr
