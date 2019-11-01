@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Open GMI CTM trace gas concentrations, MERRA-2 2-meter temperatures, 
@@ -35,6 +34,9 @@ Revision History
     18092019 -- function 'open_merra2pblh_specifieddomain' added
     29092019 -- function 'open_merra2u_specifieddomain' added
     17102019 -- function 'open_geoschem_merra2_2x25_RnPbBe' added
+    31122019 -- function 'open_merra2pblh_specifieddomain' edited to handle 
+                hourly PBLH rather than daily-averaged heights; function can 
+                now produce daily averages or averages over selected hours
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -884,7 +886,8 @@ def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin,
         infilesty.sort()
         infiles+=infilesty
     # Open multiple NetCDF files and store in Dataset
-    ds = xr.open_mfdataset(infiles, concat_dim='time')
+    ds = xr.open_mfdataset(infiles, mask_and_scale=False, combine='nested', 
+        concat_dim='time')
     varname = ds[var].long_name
     print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
           'Loading MERRA-2 %s...' %varname)
@@ -912,7 +915,7 @@ def open_merra2_specifieddomain(years, months, hours, var, collection, lngmin,
     ds = ds.sortby('time')
     # Produce daily average
     if dailyavg == 'yes':
-        ds = ds.resample({'time': '1D'}).mean(dim='time')
+        ds = ds.resample({'time': '1D'}).mean(dim='time', skipna=True)
         # Resampling adds time dimensions to smooth out the discontinuous time
         # series (i.e., examining JJA 2008-2010 will add in September through 
         # May values for years); find indices of days not in JAA
@@ -1056,17 +1059,17 @@ def open_merra2_cyclones(sday, eday, months_str):
                                                           start_time))
     return cyclones
 
-def open_merra2pblh_specifieddomain(years, months, latmin, latmax, lngmin, 
-    lngmax):
-    """load daily mean PBL height from MERRA-2 over the specified spatial and
-    temporal domains.
+def open_merra2pblh_specifieddomain(years, hours, latmin, latmax, lngmin, 
+    lngmax, dailyavg='no'):
+    """Load hourly PBL height from MERRA-2 over the specified spatial and
+    temporal domains and, if desired, produce daily-averaged values. 
     
     Parameters
     ----------
     years : list
         Year or range of years in measuring period
-    months : list
-        Three letter abbreviations (lowercase) for months in measuring period
+    hours : numpy.ndarray
+        Hours (in Zulu time) during which reanalysis data is desired
     latmin : float    
         Latitude (degrees north) of bottom edge of bounding box for focus 
         region. For this parameter and others defining the bounding box, 
@@ -1079,64 +1082,72 @@ def open_merra2pblh_specifieddomain(years, months, latmin, latmax, lngmin,
     lngmax : float
         Longitude (degrees east, 0-360) of right edge of bounding box for focus 
         region
-        
+    dailyavg : str
+        If 'yes' a daily average over the hours specified in variable 'hours'
+        is calculated.         
+
     Returns
     -------
+    mtime : pandas.core.indexes.datetimes.DatetimeIndex
+        Timestamps of MERRA-2 data, [time,]    
     lat : numpy.ndarray
         MERRA-2 latitude coordinates, units of degrees north, [lat,]
     lng : numpy.ndarray
         MERRA-2 longitude coordinates, units of degrees east, [lng,]
-    t2m_all : numpy.ndarray
-        Daily mean PBL height, units of m, [time, lat, lng]
+    var : numpy.ndarray
+        Daily mean or hourly PBL height, units of m, [time, lat, lng]        
     """
-    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
-          'Loading MERRA-2 PBL height...' %varname)    
-    import numpy as np
-    from netCDF4 import Dataset
-    import calendar
     import time
-    import sys
-    sys.path.append('/Users/ghkerr/phd/GMI/')
-    from geo_idx import geo_idx
     start_time = time.time()
-    months_int = []
-    pblh_all = []
-    # Convert month abbreviations to integers
-    for month in months:
-        months_int.append(list(calendar.month_abbr).index(month.title()))
-    # Loop through measuring period    
+    import os
+    import numpy as np
+    import pandas as pd
+    import xarray as xr
+    # Find relevant files in years of interest
+    infiles = []
     for year in years:
-        PATH_MERRA = '/Users/ghkerr/phd/meteorology/data/tavg1_2d_flx_Nx/Y%d/'%year
-        for month in months_int:
-            # Open monthly overpass2 file 
-            infile = Dataset(PATH_MERRA+'MERRA2_300.tavg1_2d_flx_Nx.%d%.2d.nc'
-                             %(year,month),'r')        
-            if (month==months_int[0]) and (year==years[0]):
-                lat = infile.variables['lat'][:]
-                lng = infile.variables['lon'][:]
-                # Convert longitude from (-180-180) to (0-360)
-                lng = lng % 360
-                # Shift this grid such that it spans (0-360) rather than 
-                # (180-360, 0-180)
-                lng = np.roll(lng,int(lng.shape[0]/2)-1)
-                latmin = geo_idx(latmin,lat)
-                latmax = geo_idx(latmax,lat)
-                lngmin = geo_idx(lngmin,lng)
-                lngmax = geo_idx(lngmax,lng)
-                # Restrict coordinates over focus region 
-                lat = lat[latmin:latmax+1]
-                lng = lng[lngmin:lngmax+1]           
-            # Extract PBL height for the month
-            pblh_month = infile.variables['PBLH'][:]
-            # Roll grid similar to longitude grid
-            pblh_month = np.roll(pblh_month, int(pblh_month.shape[-1]/2)-1, 
-                axis=2)
-            pblh_month = pblh_month[:,latmin:latmax+1,lngmin:lngmax+1]
-            pblh_all.append(pblh_month)
-    print('# # # # # # # # # # # # # # # # # # # # # # # # # # \n'+
-        'MERRA-2 PBLH for %d-%d loaded in %.2f seconds!' %(years[0], years[-1],
-        (time.time()-start_time)))
-    return lat, lng, np.vstack(pblh_all)
+        PATH_PBLH = '/Users/ghkerr/phd/meteorology/data/'+\
+            'tavg1_2d_flx_Nx/Y%s/'%year    
+        infiles_ty = [PATH_PBLH+fn for fn in os.listdir(PATH_PBLH) if 
+            any(fn.__contains__(ext) for ext in [str(y) for y in years])]
+        infiles_ty.sort()
+        infiles.append(infiles_ty)
+    infiles = list(np.hstack(infiles))
+    # Open multiple NetCDF files and store in Dataset
+    ds = xr.open_mfdataset(infiles, combine='nested', concat_dim='time')
+    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
+          'Loading MERRA-2 PBL height...')
+    # Extract PBL height
+    ds = ds[['PBLH']]
+    # Subset Dataset with respect to spatial coordinates
+    ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
+        lon=(ds.dims['lon']//2-1), roll_coords=True)
+    ds = ds['PBLH'].sel(lat=slice(latmin, latmax), 
+        lon=slice(lngmin, lngmax))
+    # Convert np.datetime64 to DatetimeIndex
+    dt = pd.to_datetime(ds.time.data)
+    # Find relevant hours and subset Dataset
+    dt_where = np.where(np.in1d(dt.hour, hours)==True)[0]
+    dt = dt[dt_where]
+    ds = ds.isel(time=dt_where)       
+    # Produce daily average
+    if dailyavg == 'yes':
+        ds = ds.resample({'time': '1D'}).mean(dim='time')
+        # Resampling adds time dimensions to smooth out the discontinuous time
+        # series (i.e., examining JJA 2008-2010 will add in September through 
+        # May values for years); find indices of days not in JAA
+        notJJA = np.where((ds.time.dt.month.values == 6) |
+                          (ds.time.dt.month.values == 7) |
+                          (ds.time.dt.month.values == 8))[0]
+        ds = ds.isel(time=notJJA)
+    # Extract
+    var = ds.values
+    mtime = pd.to_datetime(ds.time.values)
+    lat = ds.lat.values
+    lng = ds.lon.values
+    print('MERRA-2 PBLH for %d-%d loaded in %.2f seconds!'%(years[0],years[-1], 
+        time.time() - start_time))
+    return mtime, lat, lng, var
 
 def open_merra2u_specifieddomain(years, varname, levmax, levmin, lngmin, 
     latmax, lngmax, latmin, columnmean=False):
