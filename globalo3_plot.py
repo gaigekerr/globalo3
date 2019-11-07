@@ -28,6 +28,7 @@ Revision History
     30092019 -- function 'zonalavg_verticallyintegrated_meridional_flux' added
     09102019 -- code to process the eddy and mean meridional tracer fluxes on 
                 days with a pole- versus equatorward jet added
+    07112019 -- function 'map_o3anomcyclones_pweqjet' added
 """
 # Change font
 import sys
@@ -42,12 +43,13 @@ if 'mpl' not in sys.modules:
     # for unicode minus/negative sign implementation
     matplotlib.rcParams['axes.unicode_minus'] = False
     # change width and thickness of ticks/spines
-    matplotlib.rcParams['axes.linewidth'] = 1.5
-    matplotlib.rcParams['xtick.major.width'] = 1.5
-    matplotlib.rcParams['xtick.minor.width'] = 1.5
-    matplotlib.rcParams['ytick.major.width'] = 1.5
-    matplotlib.rcParams['ytick.minor.width'] = 1.5
+    matplotlib.rcParams['axes.linewidth'] = 1.0
+    matplotlib.rcParams['xtick.major.width'] = 1.0
+    matplotlib.rcParams['xtick.minor.width'] = 1.0
+    matplotlib.rcParams['ytick.major.width'] = 1.0
+    matplotlib.rcParams['ytick.minor.width'] = 1.0
         
+  
 
 def cmap_discretize(cmap, N):
     """Return a discrete colormap from the continuous colormap cmap; adapted 
@@ -224,8 +226,7 @@ def map_trend(lat_n, lat_s, lng_n, lng_s, trend_n, trend_s, cbar_label,
 def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, 
     hemisphere, fstr, contour=None, contour_levs=None, e_lng=None, e_n=None, 
     eerr_n=None, hatch=None, hatch_freq=None, extent=None, quiver=None, 
-    lat_n_binned=None, lng_n_binned=None, pcolor=None, oceanon='yes', 
-    extend='both'):
+    lat_n_binned=None, lng_n_binned=None, oceanon='yes', extend='both'):
     """plot desired quantity over the Northern or Southern hemisphere (however, 
     if variable 'extent' is specified, map can be tailored to any region).
     
@@ -281,9 +282,6 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
     lng_n_binned : numpy.ndarray or NoneType
         Binned longitude coordinates corresponding to the pcolor array, units
         of degrees east, [lng_binned,]
-    pcolor : numpy.ndarray or NoneType   
-        If type(eerr_n) is numpy.ndarray, binned field will be plotted as 
-        pcolor, [lat_binned, lng_binned,]
     oceanon : str
         If 'yes', map adds ocean polygons feature        
     extend : str
@@ -303,11 +301,10 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
     fig = plt.figure(figsize=(8,3.5))
     ax=plt.subplot2grid((1,2), (0,0), colspan=2,
                         projection=ccrs.Miller(central_longitude=0.))
-    ax.set_title(title, fontsize=14, x=0.02, ha='left')    
+    ax.set_title(title, fontsize=16, x=0.02, ha='left')    
     if oceanon == 'yes':
-        ax.add_feature(cfeature.OCEAN, zorder = 2, lw = 0.0, 
-            color = 'lightgrey')
-    ax.coastlines(lw = 0.25, color = 'k', zorder = 3)
+        ax.add_feature(cfeature.OCEAN, zorder=2, lw=0.0, color='lightgrey')
+    ax.coastlines(lw=0.25, color='k', zorder=3)
     if extent is None:
         ax.set_extent([lng_n.min()-180., lng_n.max()-180., 
                        lat_n.min(), lat_n.max()])    
@@ -315,29 +312,30 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
         ax.set_extent(extent)
     # Plot filled contours
     cmap = plt.get_cmap(cmap)
-    mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap = cmap, 
-        extend = extend, transform = ccrs.PlateCarree(), zorder = 1)
+    mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap=cmap, 
+        extend=extend, transform=ccrs.PlateCarree(), zorder=1)
     # If specified, add contours and labels. 
     if contour is None: pass
     else:
-        cs = ax.contour(lng_n, lat_n, contour, contour_levs, colors = 'k', 
-                        linewidths = 0.75,
-                        transform=ccrs.PlateCarree(), zorder = 15)
-        plt.clabel(cs, fontsize=10, inline=1, fmt = '%1.0f', zorder = 15)
+        csthick = ax.contour(lng, lat, contour, [10.], colors='k', 
+            linewidths=1.5, transform=ccrs.PlateCarree(), zorder=15)
+        csmedium = ax.contour(lng, lat, contour, [8.], colors='k', 
+            linestyles='--', linewidths=0.75, transform=ccrs.PlateCarree(), 
+            zorder=15)
     # If specified, add hatching (e.g., for significance)
     if hatch is None: pass
     else:
         # Hatching for significance
-        ax.contourf(lng_n, lat_n, hatch, hatches = hatch_freq, colors = 'none', 
-                    transform = ccrs.PlateCarree())
+        ax.contourf(lng_n, lat_n, hatch, hatches=hatch_freq, colors='none', 
+                    transform=ccrs.PlateCarree())
     # If specified add scatterplots (e.g., for location of eddy-driven jet)
     if e_n is None: pass
     else:
         # Plot only every X number of longitude values
         skiplng = 6
-        ax.errorbar(e_lng[::skiplng], e_n[::skiplng], yerr = eerr_n[::skiplng], 
-            zorder = 10, color = 'k', markersize = 2, elinewidth = 0.5, 
-            ecolor = 'k', fmt = 'o', transform = ccrs.PlateCarree())
+        ax.errorbar(e_lng[::skiplng], e_n[::skiplng], yerr=eerr_n[::skiplng], 
+            zorder=10, color='k', markersize=3, elinewidth=1.25,
+            ecolor='k', fmt='o', transform=ccrs.PlateCarree())
     # If specified, add quiver (e.g., for wind vectors)
     if quiver is None: pass
     else:    
@@ -349,42 +347,13 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
                       transform=ccrs.PlateCarree())
         plt.quiverkey(Q, 1.05, 0.05, 15, '15 m s$^{\mathregular{-1}}$', 
                       labelpos='E',coordinates='axes')
-    # If specified, add pcolor (e.g., for cyclone frequency or any binned
-    # quantity)
-    # Mask binned quantity < -10 for greater contrast)
-    if pcolor is None: pass
-    else: 
-        pcolor = np.ma.masked_array(pcolor, pcolor > -10)
-#        pcolor_clevs = np.linspace(0, 25, 6)
-        pcolor_clevs = np.linspace(-25, 0, 6)        
-        mb2 = ax.pcolor(lng_n_binned, lat_n_binned, pcolor, 
-            cmap = plt.get_cmap('binary_r', len(pcolor_clevs)-1), 
-            vmin = pcolor_clevs[0], vmax = pcolor_clevs[-1], alpha = 0.5, 
-            transform = ccrs.PlateCarree(), zorder = 5)
-    # Add colorbar(s) (i.e., a second colorbar is added on the left hand side 
-    # of the figure if pcolor is specified)
-    if pcolor is None:    
-        colorbar_axes = plt.gcf().add_axes([0.78,0.25,0.02,0.5])
-        colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-                                extend='both')
-        colorbar.ax.tick_params(labelsize=12)
-        colorbar.set_label(cbar_label, fontsize=14)
-        plt.gcf().subplots_adjust(right = 0.75, hspace = -0.2)
-    else: 
-        colorbar_axes = plt.gcf().add_axes([0.78,0.25,0.02,0.5])
-        colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-                                extend='both')
-        colorbar.ax.tick_params(labelsize=12)
-        colorbar.set_label(cbar_label, fontsize=14)
-        colorbar_axes = plt.gcf().add_axes([0.1, 0.25, 0.02, 0.5])
-        colorbar = plt.colorbar(mb2, colorbar_axes, orientation='vertical', 
-            extend = 'both')
-        # Shift ticks, label to left hand side
-        colorbar.ax.tick_params(labelsize = 12)
-        colorbar.set_label('Cyclones', fontsize = 14)
-        colorbar_axes.yaxis.set_label_position('left')
-        colorbar_axes.yaxis.set_ticks_position('left')
-        plt.gcf().subplots_adjust(left = 0.15, right = 0.75, hspace = -0.2)
+    # Add colorbar
+    colorbar_axes = plt.gcf().add_axes([0.89,0.2,0.02,0.6]) 
+    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+        extend='both')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label(cbar_label, fontsize=16)
+    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=-0.2)    
     ax.outline_patch.set_zorder(20)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'map_%s_%s.png'%(hemisphere, fstr), #transparent = True, 
@@ -1698,7 +1667,424 @@ def zonalavg_verticallyintegrated_meridional_flux(total, mean, eddy, lat,
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'zonalavg_verticallyintegrated_meridional_%sflux.eps' %fstr, dpi=300)
     return
+
+def map_obso3ctmo3_performancemetric(field_aqs, field_naps, field_emep, 
+    field_china, lat_field, lng_field, cbar_label, clevs, cmap, extend, 
+    fstr):
+    """plot gridded modeled O3-observed O3 performance metrics over North 
+    America (NAPS, AQS), Europe (EMEP), and China (Li et al., 2019).
+    
+    Parameters
+    ----------
+    field_aqs : numpy.ndarray
+        Gridded performance metric from AQS, [lat, lng]
+    field_naps : numpy.ndarray
+        Gridded performance metric from NAPS, [lat, lng]
+    field_emep : numpy.ndarray
+        Gridded performance metric from EMEP, [lat, lng]
+    field_china : numpy.ndarray
+        Gridded performance metric from China, [lat, lng]        
+    lat_field : numpy.ndarray
+        Modeled latitude coordinates, units of degrees north, [lat,]        
+    lng_field : numpy.ndarray
+        Modeled longitude coordinates, units of degrees east, [lng,]
+    cbar_label : str
+        Label for the colorbar (field and units)
+    clevs : numpy.ndarray
+        Filled contour levels values
+    cmap : str
+        Colormap name
+    extend : str
+        Extend settings for matplotlib colormap/colorbar (i.e., 'neither', 
+        'both', 'min', 'max')
+    fstr : str
+        Output filename suffix
+
+    Returns
+    -------
+    None          
+    """
+    import matplotlib as mpl
+    mpl.rcParams['hatch.linewidth'] = 0.3     
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+    fig = plt.figure(figsize=(5.5,6))
+    # Enforce equal size (height) of subplots 
+    # stackoverflow.com/questions/37767026/matplotlib-enforce-equal-size-
+    # height-of-subplots
+    ax1 = plt.subplot2grid((2,2),(0,0), colspan=2,
+        projection=ccrs.Miller(central_longitude=0.))
+    ax2 = plt.subplot2grid((2,2),(1,0), aspect='auto', adjustable='box-forced',
+        projection=ccrs.Miller(central_longitude=0.))
+    ax3 = plt.subplot2grid((2,2),(1,1), aspect='auto', adjustable='box-forced',
+        projection=ccrs.Miller(central_longitude=0.))
+    # Set subplot labels and titles
+    ax1.set_title('(a) NAPS, AQS', fontsize=15, x=0.02, ha='left')  
+    ax2.set_title('(b) EMEP', fontsize=15, x=0.02, ha='left')
+    ax3.set_title('(c) Li et al. (2019)', fontsize=15, x=0.02, ha='left')
+    # Add oceans and coasts
+    for ax in [ax1, ax2, ax3]:
+        ax.add_feature(cfeature.OCEAN, zorder=2, lw=0.0, color='lightgrey')
+        ax.coastlines(lw=0.25, color='k', zorder=3)
+    # Set extent
+    ax1.set_extent([-165, -50, 24, 55])    
+    ax2.set_extent([-14, 37, 34, 70])
+    ax3.set_extent([95, 139, 15, 53])
+    # Define colormap
+    cmap = plt.get_cmap(cmap)
+    # Extract all colors from the colormap
+    cmaplist = [cmap(i) for i in range(cmap.N)]
+    cmap = mpl.colors.LinearSegmentedColormap.from_list(
+        'Custom cmap', cmaplist, cmap.N)
+    norm = mpl.colors.BoundaryNorm(clevs, cmap.N)
+    # North America
+    mb = ax1.pcolor(lng_field, lat_field, field_aqs, cmap=cmap, norm=norm, 
+        transform=ccrs.PlateCarree(), zorder=20)
+    ax1.pcolor(lng_field, lat_field, field_naps, cmap=cmap, norm=norm, 
+        transform=ccrs.PlateCarree(), zorder=20)
+    # Europe
+    ax2.pcolor(lng_field, lat_field, field_emep, cmap=cmap, norm=norm, 
+        transform=ccrs.PlateCarree(), zorder=20)
+    # China
+    ax3.pcolor(lng_field, lat_field, field_china, cmap=cmap, norm=norm, 
+        transform=ccrs.PlateCarree(), zorder=20)
+    # Add colorbar
+    colorbar_axes = plt.gcf().add_axes([0.83,0.15,0.03,0.7])
+    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+        extend=extend)
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label(cbar_label, fontsize=15)
+    plt.gcf().subplots_adjust(left=0.04, right=0.78)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'map_obso3ctmo3_%s.eps'%fstr, dpi=300)
+    return
+
+def map_nh_rpblho3_diurnalcycle(ilat, ilng, lat_model, lng_model, pblh_daily, 
+    pblh_hrly):
+    """Plot map of the correlation coefficient calculated between mean daily 
+    PBL height across the Northern Hemisphere with hatching indicating in-
+    significant correlations (top subplot) and the diurnal cycle of PBL height
+    and O3 for the specified grid cell on days with high PBL heights (70th 
+    percentile) and low PBL heights (30th percentile) (bottom subplot).
+
+    Parameters
+    ----------
+    ilat : float 
+        The latitude of interest for which the PBLH and O3 from AQS stations 
+        will be plotted in the bottom subplot
+    ilng : float 
+        The longitude of interest for which the PBLH from MERRA and O3 from AQS 
+        stations will be plotted in the bottom subplot        
+    lat_model    
+        GMI CTM latitude coordinates, units of degrees north, [lat,]
+    lng_model : numpy.ndarray
+        GMI CTM longitude coordinates, units of degrees east, [lng,]
+    pblh_daily : numpy.ndarray
+        Daily mean PBL height, units of m, [time, lat, lng]        
+    pblh_hrly : numpy.ndarray
+        Hourly PBL height, units of m, [time, lat, lng]    
+
+    Returns
+    -------
+    None    
+    """
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from timezonefinder import TimezoneFinder
+    import pytz
+    import datetime
+    import matplotlib as mpl
+    mpl.rcParams['hatch.linewidth'] = 0.3     
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+    import sys
+    sys.path.append('/Users/ghkerr/phd/GMI/')
+    from geo_idx import geo_idx
+    PATH_AQS = '/Users/ghkerr/phd/observations/o3/AQS/'
+    dtype = {'State Code' : np.str, 'County Code' : np.str,
+           'Site Num' : np.str, 'Latitude' : np.float64, 
+           'Longitude' : np.float64, 'Date Local' : np.str,
+           'Time Local' : np.str, 'Sample Measurement' : np.float}
+    O3files = []
+    for year in years:
+        # Fetch file names for measuring period    
+        O3files.append(PATH_AQS+'hourly_44201_%s_reduced.csv' %year)
+    O3files.sort()
+    # Read multiple CSV files (yearly) into Pandas dataframe 
+    aqs_allyr = observations_open.get_merged_csv(O3files, dtype=dtype, index_col = None, 
+                          usecols = list(dtype.keys())) 
+    # Select months in measuring period     
+    aqs_allyr = aqs_allyr.loc[pd.to_datetime(aqs_allyr['Date Local']).
+                         dt.month.isin(months)]    
+    aqs_allyr['Station ID'] = np.nan
+    # Select hours of interest
+    hours_str = ['%s:00'%str(x).zfill(2) for x in np.arange(0,24,1)]
+    aqs_allyr = aqs_allyr.loc[aqs_allyr['Time Local'].isin(hours_str)]
+    # Combine State Code, County Code, and Site Number into single site 
+    # ID column 
+    aqs_allyr['Station ID'] = (aqs_allyr['State Code'] + '-' +
+        aqs_allyr['County Code'] + '-' + aqs_allyr['Site Num'])
+    # Rename O3 column and convert from ppm to ppb
+    aqs_allyr = aqs_allyr.rename(columns=
+                                 {'Sample Measurement' : 'O3 (ppbv)'})
+    aqs_allyr['O3 (ppbv)'] = aqs_allyr['O3 (ppbv)']*1000.
+    # Convert longitude from (-180-180) to (0-360)
+    aqs_allyr['Longitude'] = aqs_allyr['Longitude']%360.
+    # Drop individual code columns
+    del aqs_allyr['State Code'], aqs_allyr['County Code'], \
+        aqs_allyr['Site Num']
+    aqs_allyr.index = pd.to_datetime(aqs_allyr['Date Local'])
+    # Find grid cell corresponding to city/point of interest and PBLH 
+    # in grid cells 
+    ilat = geo_idx(ilat, lat_model)
+    ilng = geo_idx(ilng, lng_model)
+    # Based on O3 observations from AQS (above) find O3 near to grid cell 
+    # where "near" is defined by the searchradius; n.b., this assumes that 
+    # the resolution of the model is ~1 deg x ~1 deg
+    searchradius = 2
+    ipblh_daily = pblh_daily[:,ilat-searchradius:ilat+searchradius,
+        ilng-searchradius:ilng+searchradius]
+    ipblh_daily = np.nanmean(ipblh_daily, axis=tuple((1,2)))
+    ipblh_hrly = pblh_hrly[:,ilat-searchradius:ilat+searchradius,
+        ilng-searchradius:ilng+searchradius]
+    ipblh_hrly = np.nanmean(ipblh_hrly, axis=tuple((1,2)))
+    iaqs_hrly = aqs_allyr.loc[
+        (aqs_allyr['Latitude'] > (lat_model[ilat]-searchradius)) &
+        (aqs_allyr['Latitude'] < (lat_model[ilat]+searchradius)) &
+        (aqs_allyr['Longitude'] > (lng_model[ilng]-searchradius)) &
+        (aqs_allyr['Longitude'] < (lng_model[ilng]+searchradius))]
+    # Days that have PBLH in the top and bottom 30th percentiles of all days
+    # (using daily mean )
+    highpblhidx = np.where(ipblh_daily > np.percentile(ipblh_daily, 70))[0]
+    lowpblhidx = np.where(ipblh_daily < np.percentile(ipblh_daily, 30))[0]
+    highpblhtime = mtime[highpblhidx]
+    lowpblhtime = mtime[lowpblhidx]
+    # Find O3 observations on days with high/low PBLH
+    highpblh_iaqs_hrly = iaqs_hrly.loc[highpblhtime]
+    lowpblh_iaqs_hrly = iaqs_hrly.loc[lowpblhtime]
+    # Group AQS O3 by hour (column 'Time Local') and average to produce diel 
+    # cycle
+    highpblh_iaqs_hrly = highpblh_iaqs_hrly.groupby(['Time Local']).mean()
+    lowpblh_iaqs_hrly = lowpblh_iaqs_hrly.groupby(['Time Local']).mean()
+    # Find GMI O3 on days with high/low PBLH
+    highpblh_o3_model = o3_model[highpblhidx, ilat, ilng].mean()
+    lowpblh_o3_model = o3_model[lowpblhidx, ilat, ilng].mean()
+    # Hourly PBLH on days with high/low PBLH 
+    highpblh_hrly, lowpblh_hrly = [], []
+    for idx in highpblhidx:
+        highpblh_hrly.append(pblh_hrly[idx*24:idx*24+24, ilat, ilng])
+    for idx in lowpblhidx:
+        lowpblh_hrly.append(pblh_hrly[idx*24:idx*24+24, ilat, ilng])
+    lowpblh_hrly = np.stack(lowpblh_hrly)
+    lowpblh_hrly = np.nanmean(lowpblh_hrly, axis=0)
+    highpblh_hrly = np.stack(highpblh_hrly)
+    highpblh_hrly = np.nanmean(highpblh_hrly, axis=0)
+    # Shift diel cycle of PBLH based on location of grid cell (UTC offset)
+    tf = TimezoneFinder()
+    timezone_str = tf.certain_timezone_at(lat=lat_model[ilat], 
+        lng=(lng_model[ilng]+180)%360-180)
+    tz = pytz.timezone(timezone_str)
+    # Dummy summer date (to pick up on DST)
+    dt = datetime.datetime.strptime('2010-06-01', '%Y-%m-%d')
+    offset = int(tz.utcoffset(dt).total_seconds() / 3600.0)
+    # Roll PBLH diel cycle by UTC offset 
+    highpblh_hrly = np.roll(highpblh_hrly, offset)
+    lowpblh_hrly = np.roll(lowpblh_hrly, offset)
+    # Plotting
+    fig = plt.figure()
+    ax=plt.subplot2grid((2,2), (0,0), colspan=2, aspect="auto",
+        projection=ccrs.Miller(central_longitude=0.))
+    ax.set_title(r'(a) $\it{r}\:$(PBLH, O$_{\mathregular{3}}$)', fontsize=16, 
+        x=0.02, ha='left')    
+    ax.add_feature(cfeature.OCEAN, zorder=2, lw=0.0, color='lightgrey')
+    ax.coastlines(lw=0.25, color='k', zorder=3)
+    ax.set_extent([lng_model.min()-180., lng_model.max()-180., 
+        lat_model.min()+1, lat_model.max()-5])
+    # Plot filled contours
+    cmap = plt.get_cmap('bwr')
+    mb = ax.contourf(lng_model, lat_model, r_pblho3, np.linspace(-1., 1, 9), 
+        cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
+    # Hatching for significance
+    ax.contourf(lng_model, lat_model, significance_r_pblho3, hatches=['//////'], 
+        colors='none', transform=ccrs.PlateCarree())
+    # Draw box to indicate region over which O3 observations/PBL height is
+    # examed 
+    x = [lng_model[ilng]-searchradius, lng_model[ilng]+searchradius, 
+        lng_model[ilng]+searchradius, lng_model[ilng]-searchradius, 
+        lng_model[ilng]-searchradius]
+    y = [lat_model[ilat]-searchradius, lat_model[ilat]-searchradius, 
+        lat_model[ilat]+searchradius, lat_model[ilat]+searchradius, 
+        lat_model[ilat]-searchradius]
+    ax.fill(x, y, transform=ccrs.PlateCarree(),facecolor="none",
+            edgecolor="k")
+    # PBLH diurnal cycle
+    ax2 = plt.subplot2grid((2,2), (1,0), colspan=2)
+    ax2.set_title('(b)', fontsize=16, x=0.02, ha='left')    
+    ln1 = ax2.plot(highpblh_iaqs_hrly['O3 (ppbv)'].values, ls='-', lw=2., 
+        color='#e41a1c', 
+        label='O$_{\mathregular{3}}$(PBLH$_{\mathregular{70}}$)')
+    ln2 = ax2.plot(lowpblh_iaqs_hrly['O3 (ppbv)'].values, ls='-', lw=2., 
+        color='#377eb8', 
+        label='O$_{\mathregular{3}}$(PBLH$_{\mathregular{30}}$)')
+    ax2.set_ylim([10, 60])
+    ax2.set_yticks([10, 20, 30, 40, 50, 60])
+    ax2.set_ylabel('O$_{\mathregular{3}}$ [ppbv]', fontsize=16)
+    # PBL height 
+    ax2b = ax2.twinx()
+    ln3 = ax2b.plot(highpblh_hrly, ls='--', lw=2., color='#e41a1c', 
+        label='PBLH$_{\mathregular{70}}$')
+    ln4 = ax2b.plot(lowpblh_hrly, ls='--', lw=2., color='#377eb8',
+        label='PBLH$_{\mathregular{30}}$')          
+    ax2b.set_xlim([0, 23])
+    ax2b.set_xticks([0, 3, 6, 9, 12, 15, 18, 21])
+    ax2b.set_xticklabels(['', '3', '6', '9', '12', '15', '18', '21'])
+    ax2b.set_ylim([0, 2300])
+    ax2b.set_yticks(np.linspace(0, 2300, 6))
+    ax2b.set_ylabel('PBLH [m]', fontsize=16, rotation=270, position=(1.1, 0.5))
+    ax2b.yaxis.set_label_coords(1.16, 0.5)
+    ax2.set_xlabel('Hour [LT]', fontsize=16)
+    # Add legend
+    lns = ln1+ln2+ln3+ln4
+    labs = [l.get_label() for l in lns]
+    ax2.legend(lns, labs, loc=0, frameon=False, fontsize=8)
+    plt.gcf().subplots_adjust(left=0.1, right=0.8, hspace=0.3)
+    # Add colorbar
+    colorbar_axes = plt.gcf().add_axes([ax.get_position().x1+0.04,
+        ax.get_position().y0,
+        0.02,
+        ax.get_position().y1-ax.get_position().y0]) 
+    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+        extend='neither')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16)
+    ax.outline_patch.set_zorder(20)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'map_nh_rpblho3_diurnalcycle.png', dpi = 450)
+    return 
  
+def map_o3anomcyclones_pweqjet(lat_model, lng_model, o3_model, o3_pwjet, 
+    o3_eqjet, lat_binned, lng_binned, pwjet_cyclones_binned, 
+    eqjet_cyclones_binned, pwjet_lat, pwjet_lat_var, eqjet_lat, eqjet_lat_var): 
+    """plot maps of the O3 anomaly (filled contours) calculated as the 
+    difference of O3 on days with a poleward/equatorward jet and all 
+    days and the cyclone frequency (pcolor) on days with a poleward/equatorward
+    jet. The mean position and variability of the poleward and equatorward 
+    jets are also indicated. 
+
+    Parameters
+    ----------
+    lat_model : numpy.ndarray
+        Latitude coordinates for the Northern Hemisphere, units of degrees 
+        north, [lat,]                
+    lng_model : numpy.ndarray
+        Longitude coordinates for the Northern Hemisphere, units of degrees 
+        east, [lng,]          
+    o3_model : numpy.ndarray
+        Modeled O3 for all days, units of ppbv, [time, lat, lng]
+    o3_pwjet : numpy.ndarray
+        Modeled O3 for days where the jet is in a poleward position, units of
+        ppbv, [lat, lng]
+    o3_eqjet : numpy.ndarray
+        Modeled O3 for days where the jet is in a poleward position, units of
+        ppbv, [lat, lng]
+    lat_binned : numpy.ndarray
+        Latitude coordinates for binned cyclone dataset, units of degrees
+        north, [lat_b,]        
+    lng_binned : numpy.ndarray
+        Longitude coordinates for binned cyclone dataset, units of degrees
+        east, [lng_b,]
+    pwjet_cyclones_binned : numpy.ndarray
+        Binned cyclone frequency on days with a poleward jet, [lat_b, lng_b]
+    eqjet_cyclones_binned : numpy.ndarray
+        Binned cyclone frequency on days with a equatorward jet, [lat_b, 
+        lng_b]    
+    pwjet_lat : numpy.ndarray
+        Mean latitude of the eddy-driven jet on days when the jet is in a 
+        poleward position, units of degrees north, [lng,]
+    pwjet_lat_var : numpy.ndarray
+        Variability of the eddy-driven jet on days when the jet is in a 
+        poleward position, units of degrees, [lng,]
+    eqjet_lat : numpy.ndarray
+        Mean latitude of the eddy-driven jet on days when the jet is in an
+        equatorward position, units of degrees north, [lng,]
+    eqjet_lat_var : numpy.ndarray
+        Variability of the eddy-driven jet on days when the jet is in an 
+        equatorward position, units of degrees, [lng,]
+    """
+    import numpy as np
+    import matplotlib as mpl
+    mpl.rcParams['hatch.linewidth'] = 0.3     
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+    fig = plt.figure(figsize=(8,5))
+    ax1=plt.subplot2grid((2,2), (0,0), colspan=2,
+                        projection=ccrs.Miller(central_longitude=0.))
+    ax2=plt.subplot2grid((2,2), (1,0), colspan=2,
+                        projection=ccrs.Miller(central_longitude=0.))
+    ax1.set_title('(a) Poleward jet', fontsize=16, x=0.02, ha='left')    
+    ax2.set_title('(b) Equatorward jet', fontsize=16, x=0.02, ha='left')    
+    for ax in [ax1, ax2]:
+        ax.add_feature(cfeature.OCEAN, zorder=2, lw=0.0, color='lightgrey')
+        ax.coastlines(lw=0.25, color='k', zorder=3)
+        ax.set_extent([lng_model.min()-180., lng_model.max()-180., 
+            lat_model.min()+1, lat_model.max()-5])
+    # Plot difference in O3 between poleward and equatorward jet days
+    cmap = plt.get_cmap('bwr')
+    mb = ax1.contourf(lng_model, lat_model, o3_pwjet-np.nanmean(o3_model, axis=0),
+        np.linspace(-4, 4, 9), cmap=cmap, extend='both', 
+        transform=ccrs.PlateCarree(), zorder=1)
+    ax2.contourf(lng_model, lat_model, o3_eqjet-np.nanmean(o3_model, axis=0),
+        np.linspace(-4, 4, 9), cmap=cmap, extend='both', 
+        transform=ccrs.PlateCarree(), zorder=1)
+    # Cyclone anomaly calculated as difference in cyclones on all days 
+    # versus cyclones on days with a poleward jet
+    pwjet_cyclones_binned_ma = np.ma.masked_array(pwjet_cyclones_binned, 
+        pwjet_cyclones_binned < 4)
+    pcolor_clevs = np.linspace(0, 20, 6)
+    mb2 = ax1.pcolor(lng_binned, lat_binned, pwjet_cyclones_binned_ma, 
+        cmap=plt.get_cmap('binary', len(pcolor_clevs)-1), 
+        vmin=pcolor_clevs[0], vmax=pcolor_clevs[-1], alpha=0.5, 
+        transform=ccrs.PlateCarree(), zorder=5)
+    eqjet_cyclones_binned_ma = np.ma.masked_array(eqjet_cyclones_binned, 
+        eqjet_cyclones_binned < 5)
+    ax2.pcolor(lng_binned, lat_binned, eqjet_cyclones_binned_ma,
+        cmap=plt.get_cmap('binary', len(pcolor_clevs)-1), 
+        vmin=pcolor_clevs[0], vmax=pcolor_clevs[-1], alpha=0.5, 
+        transform=ccrs.PlateCarree(), zorder=5)
+    # Poleward and equatorward jet and variability
+    skiplng = 6
+    ax1.errorbar(lng_model[::skiplng], pwjet_lat[::skiplng], 
+        yerr=pwjet_lat_var[::skiplng], zorder=12, color='k', markersize=2, 
+        elinewidth=0.5, ecolor='k', fmt='o', transform=ccrs.PlateCarree())
+    ax2.errorbar(lng_model[::skiplng], eqjet_lat[::skiplng], 
+        yerr=eqjet_lat_var[::skiplng], zorder=12, color='k', markersize=2, 
+        elinewidth=0.5, ecolor='k', fmt='o', transform=ccrs.PlateCarree())
+    # Add colorbars; colorbar on left (right) corresponds to cyclone (O3) 
+    # anomaly. Align colorbars with top and bottom of subplots 
+    colorbar_axes = plt.gcf().add_axes([0.87, ax2.get_position().y0, 0.02,
+        (ax1.get_position().y1-ax2.get_position().y0)])
+    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+        extend='both')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label('$\mathregular{\delta}$ O$_\mathregular{3}$ [ppbv]', 
+        fontsize=14)
+    colorbar_axes = plt.gcf().add_axes([0.1, ax2.get_position().y0, 0.02,
+        (ax1.get_position().y1-ax2.get_position().y0)])
+    colorbar = plt.colorbar(mb2, colorbar_axes, orientation='vertical', 
+        extend='both', ticks=pcolor_clevs)
+    # Shift ticks, label to left hand side
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label('Cyclones', fontsize=14)
+    colorbar_axes.yaxis.set_label_position('left')
+    colorbar_axes.yaxis.set_ticks_position('left')
+    plt.gcf().subplots_adjust(left=0.12, right=0.88)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'map_o3anomcyclones_pweqjet.png', dpi = 350)
+    return
+    
 import numpy as np
 import sys
 sys.path.append('/Users/ghkerr/phd/globalo3/')
@@ -1738,9 +2124,9 @@ except NameError:
     qv2m_merra = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
         lng_gmi, lat_merra, lng_merra, qv2m_merra)   
     qv2m_merra = qv2m_merra*1000. # Convert from kg kg-1 to g kg-1
-    # Calculate MERRA-2 relative humidity
-    rh = globalo3_calculate.calculate_rh_from_q(years, 
-        [0, 3, 9, 12, 15, 18, 21], lngmin, latmax, lngmax, latmin)
+#    # Calculate MERRA-2 relative humidity
+#    rh = globalo3_calculate.calculate_rh_from_q(years, 
+#        [0, 3, 9, 12, 15, 18, 21], lngmin, latmax, lngmax, latmin)
     # Load Northern Hemisphere 500 hPa MERRA-2 data
     U500, mtime, lat_merra, lng_merra = \
         globalo3_open.open_merra2_specifieddomain(years, months_str,
@@ -1777,13 +2163,15 @@ except NameError:
         lat_gmi, lng_gmi, 0., 360., 20., 70.)
     # Find latitude of eddy-driven jet and fields at jet
     lat_jet_ml, o3_jet_ml = globalo3_calculate.find_field_atjet(o3_ml, U500_ml, 
-        lat_ml, lng_ml, 20, anom = True)    
-    lat_jet_ml, t2m_jet_ml = globalo3_calculate.find_field_atjet(t2m_ml, 
+        lat_ml, lng_ml, 20, anom = True)
+    scratch, t2m_jet_ml = globalo3_calculate.find_field_atjet(t2m_ml, 
         U500_ml, lat_ml, lng_ml, 20, anom=True)
-    lat_jet_ml, do3dt2m_jet_ml = globalo3_calculate.find_field_atjet(
+    scratch, do3dt2m_jet_ml = globalo3_calculate.find_field_atjet(
         do3dt2m_ml, U500_ml, lat_ml, lng_ml, 20)
-    lat_jet_ml, r_t2mo3_jet_ml = globalo3_calculate.find_field_atjet(
+    scratch, r_t2mo3_jet_ml = globalo3_calculate.find_field_atjet(
         r_t2mo3_ml, U500_ml, lat_ml, lng_ml, 20) 
+    # Smooth jet latitude with window size of ~10 deg
+    lat_jet_ml = globalo3_calculate.convolve_jet(lat_jet_ml, 9)    
     # Slope and correlation of O3/jet distance and 2-meter temperature and 
     # jet distance
     m_o3jetdist, r_o3jetdist, diff_o3jetdist = \
@@ -1804,8 +2192,11 @@ except NameError:
         china = observations_open.open_chinao3([2016,2017], months, hours, 
             cityavg=True)
         # Since Chinese observations span a different measuring period than 
-        # the other observations, load different MERRA-2 temperatures and 
-        # specific humidity
+        # the other observations, load different GMI and MERRA-2 data
+        lat_gmi_china, lng_gmi_china, times_gmi_china, o3_gmi_china = \
+            globalo3_open.open_overpass2_specifieddomain([2016,2017], 
+            months_str, latmin, latmax, lngmin, lngmax, 'O3', 'HindcastMR2')
+        o3_gmi_china = o3_gmi_china*1e9
         lat_merra_china, lng_merra_china, t2m_merra_china = \
             globalo3_open.open_merra2t2m_specifieddomain([2016,2017], 
             months_str, latmin, latmax, lngmin, lngmax)        
@@ -1818,7 +2209,7 @@ except NameError:
             lngmin, latmax, lngmax, latmin, dailyavg='yes')
         qv2m_merra_china = globalo3_open.interpolate_merra_to_ctmresolution(
             lat_gmi, lng_gmi, lat_merra_china, lng_merra_china, 
-            qv2m_merra_china)   
+            qv2m_merra_china)
         qv2m_merra_china = qv2m_merra_china*1000. # Convert from kg kg-1 to g kg-1        
         import pandas as pd
         times_gmi_china = pd.date_range(start='01/01/2016', end='12/31/2017')
@@ -1869,6 +2260,16 @@ except NameError:
 #            lat_gmi, lng_gmi, r_t2mo3)
 #        do3dt2m_emep_bias = globalo3_calculate.ctm_obs_bias(lat_emep, lng_emep, 
 #            do3dt2m_emep, lat_gmi, lng_gmi, do3dt2m)
+#        # Calculate the air quality performance index for each observational dataset
+#        aqpi_aqs, fac2_aqs, r_aqs, mfb_aqs = globalo3_calculate.calculate_aqpi(aqs, 
+#            o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
+#        aqpi_naps, fac2_naps, r_naps, mfb_naps = globalo3_calculate.calculate_aqpi(
+#            naps, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
+#        aqpi_emep, fac2_emep, r_emep, mfb_emep = globalo3_calculate.calculate_aqpi(
+#            emep, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
+#        aqpi_china, fac2_china, r_china, mfb_china = \
+#            globalo3_calculate.calculate_aqpi(china, o3_gmi_china, lat_gmi_china, 
+#            lng_gmi_china, times_gmi_china, 'gridwise')
     # Significance (alpha = 0.05) of O3-temperature-q-jet correlations
     promptsignificance = input('Calculate significance? [y/n]\n').lower()    
     if promptsignificance == 'y':
@@ -1902,11 +2303,11 @@ except NameError:
         significance_diff_r_t2mo3[:] = np.nan
         significance_diff_r_t2mo3[diff[0], diff[1]] = 1.    
         del diff
-        diff = np.where(np.logical_and(significance_r_qo3 != 1., 
-            significance_r_qo3_transport == 1.))
-        significance_diff_r_qo3 = np.empty(r_qv2mo3.shape)
-        significance_diff_r_qo3[:] = np.nan
-        significance_diff_r_qo3[diff[0], diff[1]] = 1.            
+        diff = np.where(np.logical_and(significance_r_qv2mo3 != 1., 
+            significance_r_qv2mo3_transport == 1.))
+        significance_diff_r_qv2mo3 = np.empty(r_qv2mo3.shape)
+        significance_diff_r_qv2mo3[:] = np.nan
+        significance_diff_r_qv2mo3[diff[0], diff[1]] = 1.
     # Load tracer fields 
     prompttracer = input('Load tracer fields? [y/n]\n').lower()
     if prompttracer == 'y':
@@ -1941,13 +2342,13 @@ except NameError:
         st80_25_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(
             st80_25, lat_gmi, lng_gmi, 0., 360., 20., 70.)
         # Find latitude of eddy-driven jet and tracer fields at jet
-        lat_jet_ml, co_50_jet_ml = globalo3_calculate.find_field_atjet(co_50_ml, 
+        scratch, co_50_jet_ml = globalo3_calculate.find_field_atjet(co_50_ml, 
             U500_ml, lat_ml, lng_ml, 20, anom = True) 
-        lat_jet_ml, nh_50_jet_ml = globalo3_calculate.find_field_atjet(nh_50_ml, 
+        scratch, nh_50_jet_ml = globalo3_calculate.find_field_atjet(nh_50_ml, 
             U500_ml, lat_ml, lng_ml, 20, anom = True) 
-        lat_jet_ml, e90_jet_ml = globalo3_calculate.find_field_atjet(e90_ml, 
+        scratch, e90_jet_ml = globalo3_calculate.find_field_atjet(e90_ml, 
             U500_ml, lat_ml, lng_ml, 20, anom = True)         
-        lat_jet_ml, st80_25_jet_ml = globalo3_calculate.find_field_atjet(st80_25_ml, 
+        scratch, st80_25_jet_ml = globalo3_calculate.find_field_atjet(st80_25_ml, 
             U500_ml, lat_ml, lng_ml, 20, anom = True) 
         # Tracer-temperature correlations
         r_t2mco_50 = globalo3_calculate.calculate_r(t2m_merra, co_50, lat_gmi, 
@@ -2049,12 +2450,22 @@ except NameError:
     # Load PBL height from MERRA-2
     promptpbl = input('Load PBL height? [y/n]\n').lower()
     if promptpbl == 'y':    
-        lat_merra, lng_merra, pblh_merra = \
-            globalo3_open.open_merra2pblh_specifieddomain(years, months_str, 
-                latmin, latmax, lngmin, lngmax)    
+        # Load daily mean PBL height
+        mtime, lat_merra, lng_merra, pblh_merra = \
+            globalo3_open.open_merra2pblh_specifieddomain(years, 
+            np.arange(0, 24, 1), latmin, latmax, lngmin, lngmax, 
+            dailyavg='yes')
+        # Load hourly PBL height 
+        mtime_hrly, lat_merra, lng_merra, pblh_merra_hrly = \
+            globalo3_open.open_merra2pblh_specifieddomain(years, 
+            np.arange(0, 24, 1), latmin, latmax, lngmin, lngmax, 
+            dailyavg='no')
         # Interpolate PBL height
         pblh_merra = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
             lng_gmi, lat_merra, lng_merra, pblh_merra, checkplot='yes')
+        pblh_merra_hrly = globalo3_open.interpolate_merra_to_ctmresolution(
+            lat_gmi, lng_gmi, lat_merra, lng_merra, pblh_merra_hrly, 
+            checkplot='yes')        
         r_pblho3 = globalo3_calculate.calculate_r(pblh_merra, o3_gmi, lat_gmi, 
             lng_gmi)
         r_pblht2m = globalo3_calculate.calculate_r(pblh_merra, t2m_merra, 
@@ -2062,7 +2473,12 @@ except NameError:
         m_pblhjetdist, r_pblhjetdist, diff_pblhjetdist = \
             globalo3_calculate.calculate_fieldjet_relationship(pblh_merra, 
             lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
-
+        # Calculate significance 
+        significance_r_pblho3 = \
+            globalo3_calculate.calculate_r_significance(pblh_merra, o3_gmi, 
+            r_pblho3, lat_gmi, lng_gmi)
+        
+        
 #maparea = 'nh'
 ## Mean O3, mean eddy-driven jet position and variability
 #map_hemisphere(lat_gmi, 
@@ -2075,10 +2491,10 @@ except NameError:
 #    maparea,
 #    'meano3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
 #    e_lng = lng_gmi,
-#    e_n=np.nanmean(lat_jet_ml,axis=0), 
-#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    e_n=np.nanmean(lat_jet_ml, axis=0), 
+#    eerr_n=np.std(lat_jet_ml, axis=0),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5])
+#            lat_gmi.min()+1, lat_gmi.max()-5])    
 ## dO3/dT
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
@@ -2089,7 +2505,7 @@ except NameError:
 #    'bwr', 
 #    maparea,
 #    'do3dt2m_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-#    e_lng = lng_gmi,    
+#    e_lng = lng_gmi,
 #    e_n=np.nanmean(lat_jet_ml,axis=0), 
 #    eerr_n=np.std(lat_jet_ml,axis=0),
 #    hatch = significance_r_t2mo3,
@@ -2786,10 +3202,10 @@ except NameError:
 ## r(jet lat - lat, U10M)
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    m_U10Mjetdist, 
+#    r_U10Mjetdist, 
 #    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, U$_{\mathregular{10\:m}}$)' %season, 
 #    '[$\cdot$]', 
-#    np.linspace(-0.7, 0.7, 8), 
+#    np.linspace(-1., 1, 9),
 #    'bwr', 
 #    maparea,
 #    'rU10Mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
@@ -2797,14 +3213,15 @@ except NameError:
 #    e_n=np.nanmean(lat_jet_ml,axis=0), 
 #    eerr_n=np.std(lat_jet_ml,axis=0),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5])
+#            lat_gmi.min()+1, lat_gmi.max()-5],
+#    extend='neither')
 ## r(jet lat - lat, V10M)
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    m_V10Mjetdist, 
+#    r_V10Mjetdist, 
 #    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, V$_{\mathregular{10\:m}}$)' %season, 
 #    '[$\cdot$]', 
-#    np.linspace(-0.7, 0.7, 8), 
+#    np.linspace(-1., 1, 9),
 #    'bwr', 
 #    maparea,
 #    'rV10Mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
@@ -2812,14 +3229,15 @@ except NameError:
 #    e_n=np.nanmean(lat_jet_ml,axis=0), 
 #    eerr_n=np.std(lat_jet_ml,axis=0),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5])        
+#            lat_gmi.min()+1, lat_gmi.max()-5],
+#    extend='neither')            
 ## r(jet lat - lat, WIND10M)
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    m_WIND10Mjetdist, 
+#    r_WIND10Mjetdist, 
 #    '%s r($\mathregular{\phi_{jet}}-{\mathregular{\phi}}$, WIND$_{\mathregular{10\:m}}$)' %season, 
 #    '[$\cdot$]', 
-#    np.linspace(-0.7, 0.7, 8), 
+#    np.linspace(-1., 1, 9),
 #    'bwr', 
 #    maparea,
 #    'rWIND10Mjetdist_jet_%s_%d-%d'%(season, years[0],years[-1]), 
@@ -2827,7 +3245,8 @@ except NameError:
 #    e_n=np.nanmean(lat_jet_ml,axis=0), 
 #    eerr_n=np.std(lat_jet_ml,axis=0),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5])
+#            lat_gmi.min()+1, lat_gmi.max()-5],
+#    extend='neither')
 
 """MODEL-OBSERVATION COMPARISON"""
 ## North American r(T, O3)
@@ -3512,9 +3931,236 @@ except NameError:
 #zonalavg_verticallyintegrated_meridional_flux(o3_total, 
 #    o3_mean, (o3_stationary+o3_transient), lat_gmi, 
 #    'O$_{\mathregular{3}}$', 'sfc_o3')
-zonalavg_verticallyintegrated_meridional_flux(o3_total_pwjet, 
-    o3_mean_pwjet, (o3_stationary_pwjet+o3_transient_pwjet), lat_gmi, 
-    'O$_{\mathregular{3,\:poleward\;jet}}$', 'sfc_o3_pwjet')
-zonalavg_verticallyintegrated_meridional_flux(o3_total_eqjet, 
-    o3_mean_eqjet, (o3_stationary_eqjet+o3_transient_eqjet), lat_gmi, 
-    'O$_{\mathregular{3,\:equatorward\;jet}}$', 'sfc_o3_eqjet')    
+#zonalavg_verticallyintegrated_meridional_flux(o3_total_pwjet, 
+#    o3_mean_pwjet, (o3_stationary_pwjet+o3_transient_pwjet), lat_gmi, 
+#    'O$_{\mathregular{3,\:poleward\;jet}}$', 'sfc_o3_pwjet')
+#zonalavg_verticallyintegrated_meridional_flux(o3_total_eqjet, 
+#    o3_mean_eqjet, (o3_stationary_eqjet+o3_transient_eqjet), lat_gmi, 
+#    'O$_{\mathregular{3,\:equatorward\;jet}}$', 'sfc_o3_eqjet')    
+
+"""PLOT V-WIND, O3 AND THEIR TIME AVERAGES ON DAYS WITH POLE- AND EQUATORWARD
+JETS"""
+#import matplotlib as mpl
+#mpl.rcParams['hatch.linewidth'] = 0.3     
+#import matplotlib.pyplot as plt
+#import cartopy.crs as ccrs
+#import cartopy.feature as cfeature
+## Mean of 1000-800hPa averaged V wind 
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    np.nanmean(V_column_mean, axis=0), 
+#    'Mean V$_{\mathregular{1000-800hPa\:mean}}$', 
+#    '[m s$^\mathregular{-1}$]', 
+#    np.linspace(-6, 6, 11), 
+#    'bwr',
+#    maparea,
+#    'meanv_1000-800hPa_jet',
+#    e_lng = lng_gmi,    
+#    e_n = np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n = np.std(lat_jet_ml,axis=0),    
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## Variability of 1000-800hPa averaged V wind 
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    np.nanstd(V_column_mean, axis=0), 
+#    'Std. V$_{\mathregular{1000-800hPa\:mean}}$', 
+#    '[m s$^\mathregular{-1}$]', 
+#    np.linspace(0, 8, 11), 
+#    'Reds',
+#    maparea,
+#    'stdv_1000-800hPa_jet',
+#    e_lng = lng_gmi,    
+#    e_n = np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n = np.std(lat_jet_ml,axis=0),    
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## Plot column mean V wind versus jet latitude to determine whether the 
+## relationship is linear
+#fig = plt.figure()
+#ax1 = plt.subplot2grid((2,2),(0,0), colspan=2)
+#ax2 = plt.subplot2grid((2,2),(1,0), colspan=2)
+## For US grid cell
+#lat_us, lng_us = 41, 222
+#ax1.plot(lat_jet_ml[:, lng_us], V_column_mean[:, lat_us, lng_us], 'ko')
+#m1,b1 = np.polyfit(lat_jet_ml[:, lng_us], V_column_mean[:, lat_us, lng_us], 1) 
+#ax1.plot(lat_jet_ml[:, lng_us], m1*lat_jet_ml[:, lng_us]+b1, '-r')  
+#ax1.set_title('U.S.; %.1f$^\mathregular{\circ}$N, ' %(lat_gmi[lat_us]) +
+#    '%.1f$^\mathregular{\circ}$E' %(lng_gmi[lng_us]))
+#ax1.text(0.05, 0.8, '%.2f m s$^{\mathregular{-1}}$ deg$^{\mathregular{-1}}$'%m1, 
+#    transform = ax1.transAxes, fontsize=14)
+## For Siberia grid cell
+#lat_russ, lng_russ = 58, 62
+#ax2.plot(lat_jet_ml[:, lng_russ], V_column_mean[:, lat_russ, lng_russ], 'ko')
+#m2,b2 = np.polyfit(lat_jet_ml[:, lng_russ], 
+#    V_column_mean[:, lat_russ, lng_russ], 1) 
+#ax2.plot(lat_jet_ml[:, lng_russ], m2*lat_jet_ml[:, lng_russ]+b2, '-r') 
+#ax2.set_title('Russia; %.1f$^\mathregular{\circ}$N, ' %(lat_gmi[lat_russ]) +
+#    '%.1f$^\mathregular{\circ}$E' %(lng_gmi[lng_russ]))
+#ax2.text(0.05, 0.8, '%.2f m s$^{\mathregular{-1}}$ deg$^{\mathregular{-1}}$'%m2, 
+#    transform = ax2.transAxes, fontsize=14)
+#for ax in [ax1, ax2]:
+#    ax.set_xlim([20, 70])
+#    ax.set_ylim([-15, 15])
+#    ax.set_ylabel('V$_{\mathregular{mean\:1000-800hPa}}$', fontsize=14)
+#ax2.set_xlabel('$\mathregular{\phi_{jet}}$ [$^{\mathregular{\circ}}$]', 
+#    fontsize=14)
+#plt.tight_layout()
+#plt.savefig('/Users/ghkerr/Desktop/scatter_latjet_vwind.png', dpi=300)
+## Separate V wind by equator- and poleward jet
+#V_column_eqjet, V_column_pwjet, V_column_eqjet, V_column_pwjet = \
+#    globalo3_calculate.sortfield_byjetlat_column(V_column, V_column, 
+#    lat_jet_ml, lng_gmi, lat_gmi, lev_replay, psize=30)
+#V_column_pwjet_mean = np.nanmean(V_column_pwjet, axis=1)
+#V_column_eqjet_mean = np.nanmean(V_column_eqjet, axis=1)
+#V_column_mean = np.nanmean(V_column, axis=1)
+#vbar_pwjet, vbar_star_pwjet, vbar_zm_pwjet, vprime_pwjet = \
+#    globalo3_calculate.reynolds_decomposition(V_column_pwjet_mean,
+#    mtime[:len(V_column_pwjet_mean)], lat_gmi, lng_gmi)
+#vbar_eqjet, vbar_star_eqjet, vbar_zm_eqjet, vprime_eqjet = \
+#    globalo3_calculate.reynolds_decomposition(V_column_eqjet_mean, 
+#    mtime[:len(V_column_pwjet_mean)], lat_gmi, lng_gmi)      
+## Plot zonally-averaged V wind and \bar{V} for PW and EW jets
+#fig = plt.figure()
+#ax = plt.subplot2grid((1,1),(0,0))
+#p1, = ax.plot(np.nanmean(V_column_mean, axis=tuple((0,2))), color='k')
+#p2 = ax.fill_between(lat_gmi, 
+#    np.nanmean(V_column_mean, axis=tuple((0,2)))-np.nanstd(V_column_mean, 
+#              axis=tuple((0,2))),
+#    np.nanmean(V_column_mean, axis=tuple((0,2)))+np.nanstd(V_column_mean, 
+#              axis=tuple((0,2))),
+#    color='k', alpha=0.2, zorder=5)
+#p3, = ax.plot(np.nanmean(vbar_pwjet, axis=1))
+#p4, = ax.plot(np.nanmean(vbar_eqjet, axis=1))
+#ax.set_xlim([0, 90])
+#ax.set_xlabel('Latitude [$^\mathregular{\circ}$]', fontsize=16)
+#ax.set_ylabel('m s$^{\mathregular{-1}}$', fontsize=16)
+#leg = ax.legend([(p1, p2), p3, p4], 
+#    ['V$_{\mathregular{1000-800hPa\:mean}}$ $\mathregular{\pm}$ 2$\mathregular{\sigma}$',
+#     '$\overline{\mathregular{V_{PW}}}$',
+#     '$\overline{\mathregular{V_{EW}}}$'], 
+#    loc = 6, ncol = 3, 
+#     bbox_to_anchor=(0.05, 1.05), frameon=False)
+#plt.savefig('/Users/ghkerr/Desktop/vbar_composites_zm.png', dpi=300)
+## Plot zonally-averaged O3 and \bar{O3} for PW and EW jets
+## Separate O3 by equator- and poleward jet
+#o3_eqjet, o3_pwjet, o3_eqjet, o3_pwjet = \
+#    globalo3_calculate.sortfield_byjetlat_column(
+#    np.reshape(o3_gmi, (276, 1, 92, 288)), np.reshape(o3_gmi, (276, 1, 92, 288)),
+#    lat_jet_ml, lng_gmi, lat_gmi, np.array([1000.]), psize=30)
+#o3_eqjet_mean = np.nanmean(o3_eqjet, axis=1)
+#o3_pwjet_mean = np.nanmean(o3_pwjet, axis=1)
+#o3bar_pwjet, o3bar_star_pwjet, o3bar_zm_pwjet, o3_pwjet = \
+#    globalo3_calculate.reynolds_decomposition(o3_pwjet_mean,
+#    mtime[:len(o3_pwjet_mean)], lat_gmi, lng_gmi)
+#o3bar_eqjet, o3bar_star_eqjet, o3bar_zm_eqjet, o3_eqjet = \
+#    globalo3_calculate.reynolds_decomposition(o3_eqjet_mean,
+#    mtime[:len(o3_eqjet_mean)], lat_gmi, lng_gmi)    
+## Plot zonally-averaged O3 and \bar{O3} for PW and EW jets
+#fig = plt.figure()
+#ax = plt.subplot2grid((1,1),(0,0))
+#p1, = ax.plot(np.nanmean(o3_gmi, axis=tuple((0,2))), color='k')
+#p2 = ax.fill_between(lat_gmi, 
+#    np.nanmean(o3_gmi, axis=tuple((0,2)))-np.nanstd(o3_gmi, 
+#              axis=tuple((0,2))),
+#    np.nanmean(o3_gmi, axis=tuple((0,2)))+np.nanstd(o3_gmi, 
+#              axis=tuple((0,2))),
+#    color='k', alpha=0.2, zorder=5)
+#p3, = ax.plot(np.nanmean(o3bar_pwjet, axis=1))
+#p4, = ax.plot(np.nanmean(o3bar_eqjet, axis=1))
+#ax.set_xlim([0, 90])
+#ax.set_xlabel('Latitude [$^\mathregular{\circ}$]', fontsize=16)
+#ax.set_ylabel('ppbv', fontsize=16)
+#leg = ax.legend([(p1, p2), p3, p4], 
+#    ['O$_{\mathregular{3}}$ $\mathregular{\pm}$ 2$\mathregular{\sigma}$',
+#     '$\overline{\mathregular{O_{3,\:PW}}}$',
+#     '$\overline{\mathregular{0_{3,\:EW}}}$'], 
+#    loc = 6, ncol = 3, 
+#     bbox_to_anchor=(0.05, 1.05), frameon=False)
+#plt.savefig('/Users/ghkerr/Desktop/o3bar_composites_zm.png', dpi=300)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## FIGURE 1; Mean O3, mean eddy-driven jet position and variability
+#map_hemisphere(lat_gmi, 
+#    lng_gmi, 
+#    np.mean(o3_gmi, axis=0), 
+#    '',
+#    '[ppbv]', 
+#    np.linspace(30, 60, 7), 
+#    'OrRd', 
+#    maparea,
+#    'meano3_jet_%s_%d-%d'%(season, years[0],years[-1]), 
+#    contour=np.nanstd(o3_gmi, axis=0),
+#    e_lng=lng_gmi,
+#    e_n=np.nanmean(lat_jet_ml,axis=0), 
+#    eerr_n=np.std(lat_jet_ml,axis=0),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5])
+## r(observed O3, modeled O3)
+#map_obso3ctmo3_performancemetric(r_aqs, 
+#    r_naps, 
+#    r_emep, 
+#    r_china, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(-1., 1, 9), 
+#    'bwr', 
+#    'neither',
+#    'r')
+## MFB
+#map_obso3ctmo3_performancemetric(mfb_aqs*100., 
+#    mfb_naps*100., 
+#    mfb_emep*100., 
+#    mfb_china*100., 
+#    lat_gmi, 
+#    lng_gmi, 
+#    '[%]', 
+#    np.linspace(-40., 40., 9), 
+#    'bwr', 
+#    'both',
+#    'mfb')
+## FAC2
+#map_obso3ctmo3_performancemetric(fac2_aqs,
+#    fac2_naps,
+#    fac2_emep,
+#    fac2_china,
+#    lat_gmi, 
+#    lng_gmi, 
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(0., 1., 11), 
+#    'Reds', 
+#    'both',
+#    'fac2')
+## AQPI
+#map_obso3ctmo3_performancemetric(aqpi_aqs,
+#    aqpi_naps, 
+#    aqpi_emep, 
+#    aqpi_china, 
+#    lat_gmi, 
+#    lng_gmi, 
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(0., 100., 11), 
+#    'Reds', 
+#    'min',
+#    'aqpi')
+## Figure 6; PBLH-O3 correlation (for Pittsburgh)
+#map_nh_rpblho3_diurnalcycle(40.4406, 280.0041, lat_gmi, lng_gmi, pblh_merra,
+#    pblh_merra_hrly)
+## Figure 7; cyclone frequency and O3 anomaly for poleward/equatorward jet
+#map_o3anomcyclones_pweqjet(lat_gmi, lng_gmi, o3_gmi, pwjet_o3, eqjet_o3,  
+#    eqjet_lat_cyclones_binned, eqjet_lng_cyclones_binned, 
+#    pwjet_cyclones_binned, eqjet_cyclones_binned, pwjet_lat, pwjet_lat_var, 
+#    eqjet_lat, eqjet_lat_var)
