@@ -34,9 +34,12 @@ Revision History
     18092019 -- function 'open_merra2pblh_specifieddomain' added
     29092019 -- function 'open_merra2u_specifieddomain' added
     17102019 -- function 'open_geoschem_merra2_2x25_RnPbBe' added
-    31122019 -- function 'open_merra2pblh_specifieddomain' edited to handle 
+    31102019 -- function 'open_merra2pblh_specifieddomain' edited to handle 
                 hourly PBLH rather than daily-averaged heights; function can 
                 now produce daily averages or averages over selected hours
+    07112019 -- function 'open_merra2_cyclones' edited to also extract the 
+                hour of cyclone detection (in addition to just the date) in 
+                output dataframs
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -1006,6 +1009,7 @@ def open_merra2_cyclones(sday, eday, months_str):
     # Lists to be filled with values for entire measuring period
     lng_all, lat_all, slp_all, fracland_all, idoftrack_all, datestr_all = \
         [],[],[],[],[], []
+    hroftrack_all = []
     # Find files of cyclones on particular day 
     for day in days_mp:
         year = str(day.year)
@@ -1034,12 +1038,15 @@ def open_merra2_cyclones(sday, eday, months_str):
         # cyclone has an ID specified in the filename: e.g., 
         # MERRA2fronts_YYYYMMDD_UT_Latstorm_Lonstorm_surfacetype_IDofTrack
         idoftrack = [fn.split('_')[6][:-5] for fn in infiles]
+        # Hour of cyclone detection
+        hroftrack = [fn.split('_')[2] for fn in infiles]
         # Append daily values to lists for entire measuring period
         datestr_all.append(datestr)    
         lng_all.append(lng)
         lat_all.append(lat)
         slp_all.append(slp)
         fracland_all.append(fracland)
+        hroftrack_all.append(hroftrack)
         idoftrack_all.append(idoftrack)
     datestr_all = np.hstack(datestr_all)
     # Convert longitude from (-180-180) to (0-360)
@@ -1048,9 +1055,11 @@ def open_merra2_cyclones(sday, eday, months_str):
     lat_all = np.hstack(lat_all)
     slp_all = np.hstack(slp_all)
     fracland_all = np.hstack(fracland_all)
+    hroftrack_all = np.hstack(hroftrack_all)
     idoftrack_all = np.hstack(idoftrack_all)
     # Create DataFrame and fill 
     cyclones = pd.DataFrame({'Date' : datestr_all, 
+        'Hour' : hroftrack_all,
         'Longitude' : lng_all,
         'Latitude' : lat_all, 
         'SLP' : slp_all,
