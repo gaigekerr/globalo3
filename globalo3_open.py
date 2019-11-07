@@ -1019,14 +1019,15 @@ def open_merra2_cyclones(sday, eday, months_str):
                     'CF_simmonds850', 'CF_combined', 'WF_Hewson850', 
                     'WF_Hewson1km', 'WF_HewsonWB']
         ds = xr.open_mfdataset(infiles, data_vars=['storm_info'],
-                               coords='minimal', drop_variables=dropvars)
+            combine='nested', concat_dim='time', coords='minimal', 
+            drop_variables=dropvars)
         # Extract latitude, longitude, SLP, and fraction of land cover from 
         # variable 'storm_info' and create date entry for each cyclone
         storm_info = ds.storm_info.values
-        lng = storm_info[0::4]
-        lat = storm_info[1::4]
-        slp = storm_info[2::4]
-        fracland = storm_info[3::4]
+        lng = storm_info[:, 0]
+        lat = storm_info[:, 1]
+        slp = storm_info[:, 2]
+        fracland = storm_info[:, 3]
         datestr = np.repeat(day.strftime('%Y-%m-%d'), len(lng))
         # From https://portal.nccs.nasa.gov/datashare/Obs-ETC/Fronts-ETC/
         # Readme_MERRA2fronts.pdf, the filename convention means that each 
@@ -1047,7 +1048,7 @@ def open_merra2_cyclones(sday, eday, months_str):
     lat_all = np.hstack(lat_all)
     slp_all = np.hstack(slp_all)
     fracland_all = np.hstack(fracland_all)
-    idoftrack_all = np.hstack(idoftrack_all) 
+    idoftrack_all = np.hstack(idoftrack_all)
     # Create DataFrame and fill 
     cyclones = pd.DataFrame({'Date' : datestr_all, 
         'Longitude' : lng_all,
@@ -1095,7 +1096,7 @@ def open_merra2pblh_specifieddomain(years, hours, latmin, latmax, lngmin,
     lng : numpy.ndarray
         MERRA-2 longitude coordinates, units of degrees east, [lng,]
     var : numpy.ndarray
-        Daily mean or hourly PBL height, units of m, [time, lat, lng]        
+        Daily mean or hourly PBL height, units of m, [time, lat, lng]
     """
     import time
     start_time = time.time()
