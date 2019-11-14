@@ -964,7 +964,7 @@ def open_merra2_cyclones(sday, eday, months_str):
     Returns
     -------
     cyclones : pandas.core.frame.DataFrame
-        DataFrame containing the date, fraction of land cover, latitude, 
+        DataFrame containing the date, hour, fraction of land cover, latitude, 
         longitude, SLP, and storm ID
     
     Notes
