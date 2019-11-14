@@ -29,6 +29,7 @@ Revision History
     09102019 -- code to process the eddy and mean meridional tracer fluxes on 
                 days with a pole- versus equatorward jet added
     07112019 -- function 'map_o3anomcyclones_pweqjet' added
+    13112019 -- function 'o3anom_atcyclones' added
 """
 # Change font
 import sys
@@ -48,7 +49,6 @@ if 'mpl' not in sys.modules:
     matplotlib.rcParams['xtick.minor.width'] = 1.0
     matplotlib.rcParams['ytick.major.width'] = 1.0
     matplotlib.rcParams['ytick.minor.width'] = 1.0
-        
   
 
 def cmap_discretize(cmap, N):
@@ -226,7 +226,8 @@ def map_trend(lat_n, lat_s, lng_n, lng_s, trend_n, trend_s, cbar_label,
 def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap, 
     hemisphere, fstr, contour=None, contour_levs=None, e_lng=None, e_n=None, 
     eerr_n=None, hatch=None, hatch_freq=None, extent=None, quiver=None, 
-    lat_n_binned=None, lng_n_binned=None, oceanon='yes', extend='both'):
+    lat_n_binned=None, lng_n_binned=None, oceanon='yes', extend='both', 
+    pcolorflag=False, lbound=None, ubound=None):
     """plot desired quantity over the Northern or Southern hemisphere (however, 
     if variable 'extent' is specified, map can be tailored to any region).
     
@@ -287,6 +288,15 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
     extend : str
         Extend settings for matplotlib colormap/colorbar (i.e., 'neither', 
         'both', 'min', 'max')
+    pcolorflag : bool
+        If False, field is plotted as filled contour; if True, field is plotted
+        as pcolor. 
+    lbound : float or NoneType
+        Lower bound for pcolor masking; any pcolor values greater than or equal 
+        to this value will be masked
+    ubound : float or NoneType
+        Upper bound for pcolor masking; any pcolor values less than or equal 
+        to this value will be masked
 
     Returns
     -------
@@ -310,10 +320,19 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
                        lat_n.min(), lat_n.max()])    
     else: 
         ax.set_extent(extent)
-    # Plot filled contours
+    # Plot filled contours; if pcolorflag == True, then plot field as pcolor
     cmap = plt.get_cmap(cmap)
-    mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap=cmap, 
-        extend=extend, transform=ccrs.PlateCarree(), zorder=1)
+    if pcolorflag == False: 
+        mb = ax.contourf(lng_n, lat_n, field_n, clevs, cmap=cmap, 
+            extend=extend, transform=ccrs.PlateCarree(), zorder=1)
+    else: 
+        if lbound is not None: 
+            field_n = np.ma.masked_array(field_n, ((field_n >= lbound) & 
+                (field_n <= ubound)))
+        mb = ax.pcolor(lng_n, lat_n, field_n, 
+            cmap=plt.get_cmap(cmap, len(clevs)-1), vmin=clevs[0], 
+            vmax=clevs[-1], norm = mpl.colors.BoundaryNorm(clevs, ncolors=cmap.N, clip=False),
+            transform=ccrs.PlateCarree(), zorder=6)
     # If specified, add contours and labels. 
     if contour is None: pass
     else:
@@ -348,12 +367,13 @@ def map_hemisphere(lat_n, lng_n, field_n, title, cbar_label, clevs, cmap,
         plt.quiverkey(Q, 1.05, 0.05, 15, '15 m s$^{\mathregular{-1}}$', 
                       labelpos='E',coordinates='axes')
     # Add colorbar
-    colorbar_axes = plt.gcf().add_axes([0.89,0.2,0.02,0.6]) 
+    plt.gcf().subplots_adjust(left=0.02, right=0.86)#, hspace=-0.2)        
+    colorbar_axes = plt.gcf().add_axes([0.89, ax.get_position().y0, 
+        0.02, (ax.get_position().y1-ax.get_position().y0)]) 
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-        extend='both')
+        ticks=clevs, extend='both')
     colorbar.ax.tick_params(labelsize=12)
     colorbar.set_label(cbar_label, fontsize=16)
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=-0.2)    
     ax.outline_patch.set_zorder(20)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'map_%s_%s.png'%(hemisphere, fstr), #transparent = True, 
@@ -874,226 +894,226 @@ def map_toar(data, lat, lng, frl, fru, frr, frd, res, vmin, vmax, nlevs,
                 'map_toar_%s.eps' %fstr, dpi=300, transparent=True)
     return 
 
-def timeseries_o3atabovebelow_jet(o3, lat_jet, lat, lng, lngl, lngr):
-    """for O3 and the latitude of the eddy-driven jet in a given region, plot 
-    a timeseries of O3 at (with +/- 2 degrees) of the mean jet location, O3 
-    above (8-12 degrees above) the mean jet location, and O3 below (8-12 
-    degrees below) the mean jet location. A timeseries of the regionally-
-    averaged jet latitude is plotted for each subplot. 
-    
-    Parameters
-    ----------
-    o3 : numpy.ndarray
-        O3 in region, units of ppbv, [time, lat, lng]  
-    lat_jet : numpy.ndarray
-        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
-        in region, units of degrees north[time, lng]
-    lat : numpy.ndarray
-        Latitude coordinates, units of degrees north, [lat,]
-    lng : numpy.ndarray
-        Longitude coordinates, units of degrees east, [lng,]
-    lngl : float
-        Longitude coordinate corresponding to the west side of the focus 
-        region; n.b., lngl < lngr
-    lngr : float
-        Longitude coordinate corresponding to the east side of the focus region
-        
-    Returns
-    -------
-    None
-    """
-    import numpy as np
-    import matplotlib.pyplot as plt
-    # Find mean jet position in Eastern North America
-    lat_jet_fr = lat_jet[:, np.abs(lng-lngl).argmin(): 
-        np.abs(lng-lngr).argmin()]
-    lat_jet_fr = np.nanmean(lat_jet_fr, axis=1) 
-    lat_jet_mean = np.nanmean(lat_jet_fr)
-    # O3 at the mean position of the jet (+/- 3 degrees)
-    o3at = o3[:, np.abs(lat-lat_jet_mean).argmin()-2:
-        np.abs(lat-lat_jet_mean).argmin()+2, np.abs(lng-lngl).argmin(): 
-        np.abs(lng-lngr).argmin()]
-    # O3 above the mean position of the jet (7-13 degrees above)    
-    o3above = o3[:, np.abs(lat-lat_jet_mean).argmin()+8:
-        np.abs(lat-lat_jet_mean).argmin()+12, np.abs(lng-lngl).argmin(): 
-        np.abs(lng-lngr).argmin()]    
-    # O3 below the mean position of the jet (7-13 degrees below)    
-    o3below = o3[:, np.abs(lat-lat_jet_mean).argmin()-12:
-        np.abs(lat-lat_jet_mean).argmin()-8, np.abs(lng-lngl).argmin(): 
-        np.abs(lng-lngr).argmin()]        
-    # Regional averaging 
-    o3at = np.nanmean(o3at, axis=tuple((1,2)))
-    o3above = np.nanmean(o3above, axis=tuple((1,2)))
-    o3below = np.nanmean(o3below, axis=tuple((1,2)))
-    # Plotting
-    fig = plt.figure()
-    ax1 = plt.subplot2grid((3,3), (0,0), colspan=3)
-    ax1b = ax1.twinx()
-    ax2 = plt.subplot2grid((3,3), (1,0), colspan=3)
-    ax2b = ax2.twinx()
-    ax3 = plt.subplot2grid((3,3), (2,0), colspan=3)
-    ax3b = ax3.twinx()
-    # Above jet
-    ax1b.axhspan(lat_jet_mean+8, lat_jet_mean+12, xmin=ax1b.get_xlim()[0], 
-        xmax=ax1b.get_xlim()[1], alpha=0.2, color='dodgerblue', zorder=0)
-    ax1.plot(o3above[:92], '-k')
-    ax1b.plot(lat_jet_fr[:92], ls='-', color='dodgerblue')
-    # At jet
-    ax2b.axhline(y=lat_jet_mean, xmin=ax2b.get_xlim()[0], 
-        xmax=ax2b.get_xlim()[1], color='dodgerblue', ls='--', alpha=0.5, 
-        zorder=2)
-    ax2b.axhspan(lat_jet_mean-2, lat_jet_mean+2, xmin=ax2b.get_xlim()[0], 
-        xmax=ax2b.get_xlim()[1], alpha=0.2, color='dodgerblue', zorder=0)
-    ax2b.plot(lat_jet_fr[:92], ls='-', color='dodgerblue', zorder=5)
-    ax2.plot(o3at[:92], '-k', zorder=5)
-    # Below jet
-    ax3b.axhspan(lat_jet_mean-12, lat_jet_mean-8, xmin=ax3b.get_xlim()[0], 
-        xmax=ax3b.get_xlim()[1], alpha=0.2, color='dodgerblue', zorder=0)
-    ax3b.plot(lat_jet_fr[:92], ls='-', color='dodgerblue')
-    ax3.plot(o3below[:92], '-k')
-    # Set limits, labels
-    for ax in [ax1, ax1b, ax2, ax2b, ax3, ax3b]:
-        ax.set_xlim([0, 91])
-        ax.set_xticks([0, 14, 30, 44, 61, 75])  
-        ax.set_xticklabels([''])
-    for ax in [ax1, ax2, ax3]:
-        ax.set_ylim([15, 60])
-        ax.set_yticks([15, 30, 45, 60])
-        ax.set_ylabel('O$_{\mathregular{3}}$ [ppbv]')
-    for ax in [ax1b, ax2b, ax3b]:
-        ax.set_ylim([30, 60])
-        ax.set_yticks([30, 40, 50, 60])
-        ax.set_ylabel('Jet position [$^{\mathregular{\circ}}$]')  
-    ax3.set_xticklabels(['1 June 2008', '', '1 July', '', '1 Aug', ''], 
-        ha = 'center', fontsize = 12)
-    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'timeseries_o3atabovebelow_jet.png', dpi=300)
-    return 
+#def timeseries_o3atabovebelow_jet(o3, lat_jet, lat, lng, lngl, lngr):
+#    """for O3 and the latitude of the eddy-driven jet in a given region, plot 
+#    a timeseries of O3 at (with +/- 2 degrees) of the mean jet location, O3 
+#    above (8-12 degrees above) the mean jet location, and O3 below (8-12 
+#    degrees below) the mean jet location. A timeseries of the regionally-
+#    averaged jet latitude is plotted for each subplot. 
+#    
+#    Parameters
+#    ----------
+#    o3 : numpy.ndarray
+#        O3 in region, units of ppbv, [time, lat, lng]  
+#    lat_jet : numpy.ndarray
+#        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+#        in region, units of degrees north[time, lng]
+#    lat : numpy.ndarray
+#        Latitude coordinates, units of degrees north, [lat,]
+#    lng : numpy.ndarray
+#        Longitude coordinates, units of degrees east, [lng,]
+#    lngl : float
+#        Longitude coordinate corresponding to the west side of the focus 
+#        region; n.b., lngl < lngr
+#    lngr : float
+#        Longitude coordinate corresponding to the east side of the focus region
+#        
+#    Returns
+#    -------
+#    None
+#    """
+#    import numpy as np
+#    import matplotlib.pyplot as plt
+#    # Find mean jet position in Eastern North America
+#    lat_jet_fr = lat_jet[:, np.abs(lng-lngl).argmin(): 
+#        np.abs(lng-lngr).argmin()]
+#    lat_jet_fr = np.nanmean(lat_jet_fr, axis=1) 
+#    lat_jet_mean = np.nanmean(lat_jet_fr)
+#    # O3 at the mean position of the jet (+/- 3 degrees)
+#    o3at = o3[:, np.abs(lat-lat_jet_mean).argmin()-2:
+#        np.abs(lat-lat_jet_mean).argmin()+2, np.abs(lng-lngl).argmin(): 
+#        np.abs(lng-lngr).argmin()]
+#    # O3 above the mean position of the jet (7-13 degrees above)    
+#    o3above = o3[:, np.abs(lat-lat_jet_mean).argmin()+8:
+#        np.abs(lat-lat_jet_mean).argmin()+12, np.abs(lng-lngl).argmin(): 
+#        np.abs(lng-lngr).argmin()]    
+#    # O3 below the mean position of the jet (7-13 degrees below)    
+#    o3below = o3[:, np.abs(lat-lat_jet_mean).argmin()-12:
+#        np.abs(lat-lat_jet_mean).argmin()-8, np.abs(lng-lngl).argmin(): 
+#        np.abs(lng-lngr).argmin()]        
+#    # Regional averaging 
+#    o3at = np.nanmean(o3at, axis=tuple((1,2)))
+#    o3above = np.nanmean(o3above, axis=tuple((1,2)))
+#    o3below = np.nanmean(o3below, axis=tuple((1,2)))
+#    # Plotting
+#    fig = plt.figure()
+#    ax1 = plt.subplot2grid((3,3), (0,0), colspan=3)
+#    ax1b = ax1.twinx()
+#    ax2 = plt.subplot2grid((3,3), (1,0), colspan=3)
+#    ax2b = ax2.twinx()
+#    ax3 = plt.subplot2grid((3,3), (2,0), colspan=3)
+#    ax3b = ax3.twinx()
+#    # Above jet
+#    ax1b.axhspan(lat_jet_mean+8, lat_jet_mean+12, xmin=ax1b.get_xlim()[0], 
+#        xmax=ax1b.get_xlim()[1], alpha=0.2, color='dodgerblue', zorder=0)
+#    ax1.plot(o3above[:92], '-k')
+#    ax1b.plot(lat_jet_fr[:92], ls='-', color='dodgerblue')
+#    # At jet
+#    ax2b.axhline(y=lat_jet_mean, xmin=ax2b.get_xlim()[0], 
+#        xmax=ax2b.get_xlim()[1], color='dodgerblue', ls='--', alpha=0.5, 
+#        zorder=2)
+#    ax2b.axhspan(lat_jet_mean-2, lat_jet_mean+2, xmin=ax2b.get_xlim()[0], 
+#        xmax=ax2b.get_xlim()[1], alpha=0.2, color='dodgerblue', zorder=0)
+#    ax2b.plot(lat_jet_fr[:92], ls='-', color='dodgerblue', zorder=5)
+#    ax2.plot(o3at[:92], '-k', zorder=5)
+#    # Below jet
+#    ax3b.axhspan(lat_jet_mean-12, lat_jet_mean-8, xmin=ax3b.get_xlim()[0], 
+#        xmax=ax3b.get_xlim()[1], alpha=0.2, color='dodgerblue', zorder=0)
+#    ax3b.plot(lat_jet_fr[:92], ls='-', color='dodgerblue')
+#    ax3.plot(o3below[:92], '-k')
+#    # Set limits, labels
+#    for ax in [ax1, ax1b, ax2, ax2b, ax3, ax3b]:
+#        ax.set_xlim([0, 91])
+#        ax.set_xticks([0, 14, 30, 44, 61, 75])  
+#        ax.set_xticklabels([''])
+#    for ax in [ax1, ax2, ax3]:
+#        ax.set_ylim([15, 60])
+#        ax.set_yticks([15, 30, 45, 60])
+#        ax.set_ylabel('O$_{\mathregular{3}}$ [ppbv]')
+#    for ax in [ax1b, ax2b, ax3b]:
+#        ax.set_ylim([30, 60])
+#        ax.set_yticks([30, 40, 50, 60])
+#        ax.set_ylabel('Jet position [$^{\mathregular{\circ}}$]')  
+#    ax3.set_xticklabels(['1 June 2008', '', '1 July', '', '1 Aug', ''], 
+#        ha = 'center', fontsize = 12)
+#    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+#                'timeseries_o3atabovebelow_jet.png', dpi=300)
+#    return 
 
-def contourf_var_atcenter(center, var, lat, lng, varname, exam_rad, 
-    kind, cbar_label, clevs, cmap, fstr, SLP=None, H=None): 
-    """function retrieves variable of interest in the vincinity of 
-    (anti)cyclones and plots the mean O3 concentrations averaged over all 
-    systems in region/measuring period. Only (anti)cyclones over land are 
-    considered as part of the average.
-
-    Parameters
-    ----------
-    center : numpy.ndarray 
-        A value of 1 indicates the presence of a cyclone/anticylone for a 
-        particular day and location, [time, lat, lng]       
-    var : numpy.ndarray
-        Variable of interest in region, units of ppbv, [time, lat, lng]
-    lat : numpy.ndarray
-        Latitude coordinates, units of degrees north, [lat,]
-    lng : numpy.ndarray
-        Longitude coordinates, units of degrees east, [lng,]
-    varname : str
-        Variable name for output file
-    exam_rad : int
-        Search radius; the number of grid cells on each side of the (anti)
-        cyclone's center over which O3 concentrations will be retrieved
-    kind : str
-        'cyclone' or 'anticyclone' (for axis labels)
-    cbar_label : str
-        Label for the colorbar (field and units)
-    clevs : numpy.ndarray
-        Contour levels values
-    cmap : str
-        Colormap name        
-    fstr : str
-        Output filename suffix (should specify the type of system in variable
-        'kind' and the latitude) 
-    SLP: numpy.ndarray
-        Sea level pressure in region, units of Pa, [time, lat, lng]
-    H : numpy.ndarray
-        Geopotential height at 500 hPa in region, units of m, [time, lat, lng]
-        
-    Returns
-    -------
-    None
-    """
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.basemap import Basemap
-    bm = Basemap()    
-    # Identify locations of (anti)cyclones
-    where_center = np.where(center==1.)
-    # Find O3, SLP, and  surrounding (within +/- exam_rad) systems for each 
-    # (anti)cyclone
-    var_atcenter = np.empty(shape=(where_center[0].shape[0], exam_rad, 
-                                   exam_rad))
-    var_atcenter[:] = np.nan
-    SLP_atcenter = np.empty(shape=(where_center[0].shape[0], exam_rad, 
-                                   exam_rad))
-    SLP_atcenter[:] = np.nan
-    H_atcenter = np.empty(shape=(where_center[0].shape[0], exam_rad, 
-                                 exam_rad))
-    H_atcenter[:] = np.nan            
-    for system in np.arange(0, len(where_center[0]), 1):
-        system_coords = (where_center[0][system], 
-                         where_center[1][system], 
-                         where_center[2][system])
-        # (xpt, ypt)
-        if bm.is_land(lng[where_center[2][system]]-360., 
-                      lat[where_center[1][system]]) == True:   
-            var_atcenter[system]= var[system_coords[0], 
-                     system_coords[1]-(int(np.round(exam_rad/2))-1):
-                     system_coords[1]+int(np.round(exam_rad/2)),
-                     system_coords[2]-(int(np.round(exam_rad/2))-1):
-                     system_coords[2]+int(np.round(exam_rad/2))]
-            if SLP is not None: 
-                # Convert from Pa to hPa
-                SLP_atcenter[system]= SLP[system_coords[0], 
-                     system_coords[1]-(int(np.round(exam_rad/2))-1):
-                     system_coords[1]+int(np.round(exam_rad/2)),
-                     system_coords[2]-(int(np.round(exam_rad/2))-1):
-                     system_coords[2]+int(np.round(exam_rad/2))]/100.
-            if H is not None: 
-                # Convert from m to dm 
-                H_atcenter[system]= H[system_coords[0], 
-                     system_coords[1]-(int(np.round(exam_rad/2))-1):
-                     system_coords[1]+int(np.round(exam_rad/2)),
-                     system_coords[2]-(int(np.round(exam_rad/2))-1):
-                     system_coords[2]+int(np.round(exam_rad/2))]/10.            
-    # Plotting 
-    fig = plt.figure()
-    ax = plt.subplot2grid((1,1),(0,0))
-    mb = ax.contourf(np.nanmean(var_atcenter, axis=0), clevs, extend='both',
-                     cmap=plt.get_cmap(cmap))
-    
-    # Add contours for SLP and H, if needed
-    if SLP is None: pass
-    else:
-        cs = ax.contour(np.nanmean(SLP_atcenter, axis=0), colors='k')
-        plt.clabel(cs, fontsize=12, inline=1, fmt='%1.0f')    
-    if H is None: pass
-    else:
-        cs = ax.contour(np.nanmean(H_atcenter, axis=0), colors='w')
-        plt.clabel(cs, fontsize=12, inline=1, fmt='%1.0f')    
-    # Add colorbar
-    colorbar_axes = plt.gcf().add_axes([0.83,0.25,0.02,0.5])
-    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical',
-                            extend='max')
-    colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label(cbar_label, fontsize=14)
-    # Aesthetics (crosshairs for system's center, axes labels)
-#    ax.axhline(y=(int(np.round(exam_rad/2))-1), xmin=ax.get_xlim()[0], 
-#               xmax=ax.get_xlim()[1], ls='--', lw=2., color='k')
-#    ax.axvline(x=(int(np.round(exam_rad/2))-1), ymin=ax.get_ylim()[0], 
-#               ymax=ax.get_ylim()[1], ls='--', lw=2., color='k') 
-    ax.set_xticks(np.arange(0, exam_rad, 1))
-    ax.set_xticklabels(np.arange(-(int(np.round(exam_rad/2))-1), 
-                       int(np.round(exam_rad/2)), 1), fontsize=12)
-    ax.set_xlabel('E-W grid cells from %s center'%kind, fontsize=14)
-    ax.set_yticks(np.arange(0, exam_rad, 1))
-    ax.set_yticklabels(np.arange(-(int(np.round(exam_rad/2))-1), 
-                       int(np.round(exam_rad/2)), 1), fontsize=12)
-    ax.set_ylabel('N-S grid cells from %s center'%kind, fontsize=14)
-    plt.gcf().subplots_adjust(right=0.8)
-    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-                'contourf_%s_at%s.eps' %(varname,fstr), dpi=300)
-    return
+#def contourf_var_atcenter(center, var, lat, lng, varname, exam_rad, 
+#    kind, cbar_label, clevs, cmap, fstr, SLP=None, H=None): 
+#    """function retrieves variable of interest in the vincinity of 
+#    (anti)cyclones and plots the mean O3 concentrations averaged over all 
+#    systems in region/measuring period. Only (anti)cyclones over land are 
+#    considered as part of the average.
+#
+#    Parameters
+#    ----------
+#    center : numpy.ndarray 
+#        A value of 1 indicates the presence of a cyclone/anticylone for a 
+#        particular day and location, [time, lat, lng]       
+#    var : numpy.ndarray
+#        Variable of interest in region, units of ppbv, [time, lat, lng]
+#    lat : numpy.ndarray
+#        Latitude coordinates, units of degrees north, [lat,]
+#    lng : numpy.ndarray
+#        Longitude coordinates, units of degrees east, [lng,]
+#    varname : str
+#        Variable name for output file
+#    exam_rad : int
+#        Search radius; the number of grid cells on each side of the (anti)
+#        cyclone's center over which O3 concentrations will be retrieved
+#    kind : str
+#        'cyclone' or 'anticyclone' (for axis labels)
+#    cbar_label : str
+#        Label for the colorbar (field and units)
+#    clevs : numpy.ndarray
+#        Contour levels values
+#    cmap : str
+#        Colormap name        
+#    fstr : str
+#        Output filename suffix (should specify the type of system in variable
+#        'kind' and the latitude) 
+#    SLP: numpy.ndarray
+#        Sea level pressure in region, units of Pa, [time, lat, lng]
+#    H : numpy.ndarray
+#        Geopotential height at 500 hPa in region, units of m, [time, lat, lng]
+#        
+#    Returns
+#    -------
+#    None
+#    """
+#    import numpy as np
+#    import matplotlib.pyplot as plt
+#    from mpl_toolkits.basemap import Basemap
+#    bm = Basemap()    
+#    # Identify locations of (anti)cyclones
+#    where_center = np.where(center==1.)
+#    # Find O3, SLP, and  surrounding (within +/- exam_rad) systems for each 
+#    # (anti)cyclone
+#    var_atcenter = np.empty(shape=(where_center[0].shape[0], exam_rad, 
+#                                   exam_rad))
+#    var_atcenter[:] = np.nan
+#    SLP_atcenter = np.empty(shape=(where_center[0].shape[0], exam_rad, 
+#                                   exam_rad))
+#    SLP_atcenter[:] = np.nan
+#    H_atcenter = np.empty(shape=(where_center[0].shape[0], exam_rad, 
+#                                 exam_rad))
+#    H_atcenter[:] = np.nan            
+#    for system in np.arange(0, len(where_center[0]), 1):
+#        system_coords = (where_center[0][system], 
+#                         where_center[1][system], 
+#                         where_center[2][system])
+#        # (xpt, ypt)
+#        if bm.is_land(lng[where_center[2][system]]-360., 
+#                      lat[where_center[1][system]]) == True:   
+#            var_atcenter[system]= var[system_coords[0], 
+#                     system_coords[1]-(int(np.round(exam_rad/2))-1):
+#                     system_coords[1]+int(np.round(exam_rad/2)),
+#                     system_coords[2]-(int(np.round(exam_rad/2))-1):
+#                     system_coords[2]+int(np.round(exam_rad/2))]
+#            if SLP is not None: 
+#                # Convert from Pa to hPa
+#                SLP_atcenter[system]= SLP[system_coords[0], 
+#                     system_coords[1]-(int(np.round(exam_rad/2))-1):
+#                     system_coords[1]+int(np.round(exam_rad/2)),
+#                     system_coords[2]-(int(np.round(exam_rad/2))-1):
+#                     system_coords[2]+int(np.round(exam_rad/2))]/100.
+#            if H is not None: 
+#                # Convert from m to dm 
+#                H_atcenter[system]= H[system_coords[0], 
+#                     system_coords[1]-(int(np.round(exam_rad/2))-1):
+#                     system_coords[1]+int(np.round(exam_rad/2)),
+#                     system_coords[2]-(int(np.round(exam_rad/2))-1):
+#                     system_coords[2]+int(np.round(exam_rad/2))]/10.            
+#    # Plotting 
+#    fig = plt.figure()
+#    ax = plt.subplot2grid((1,1),(0,0))
+#    mb = ax.contourf(np.nanmean(var_atcenter, axis=0), clevs, extend='both',
+#                     cmap=plt.get_cmap(cmap))
+#    
+#    # Add contours for SLP and H, if needed
+#    if SLP is None: pass
+#    else:
+#        cs = ax.contour(np.nanmean(SLP_atcenter, axis=0), colors='k')
+#        plt.clabel(cs, fontsize=12, inline=1, fmt='%1.0f')    
+#    if H is None: pass
+#    else:
+#        cs = ax.contour(np.nanmean(H_atcenter, axis=0), colors='w')
+#        plt.clabel(cs, fontsize=12, inline=1, fmt='%1.0f')    
+#    # Add colorbar
+#    colorbar_axes = plt.gcf().add_axes([0.83,0.25,0.02,0.5])
+#    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical',
+#                            extend='max')
+#    colorbar.ax.tick_params(labelsize=12)
+#    colorbar.set_label(cbar_label, fontsize=14)
+#    # Aesthetics (crosshairs for system's center, axes labels)
+##    ax.axhline(y=(int(np.round(exam_rad/2))-1), xmin=ax.get_xlim()[0], 
+##               xmax=ax.get_xlim()[1], ls='--', lw=2., color='k')
+##    ax.axvline(x=(int(np.round(exam_rad/2))-1), ymin=ax.get_ylim()[0], 
+##               ymax=ax.get_ylim()[1], ls='--', lw=2., color='k') 
+#    ax.set_xticks(np.arange(0, exam_rad, 1))
+#    ax.set_xticklabels(np.arange(-(int(np.round(exam_rad/2))-1), 
+#                       int(np.round(exam_rad/2)), 1), fontsize=12)
+#    ax.set_xlabel('E-W grid cells from %s center'%kind, fontsize=14)
+#    ax.set_yticks(np.arange(0, exam_rad, 1))
+#    ax.set_yticklabels(np.arange(-(int(np.round(exam_rad/2))-1), 
+#                       int(np.round(exam_rad/2)), 1), fontsize=12)
+#    ax.set_ylabel('N-S grid cells from %s center'%kind, fontsize=14)
+#    plt.gcf().subplots_adjust(right=0.8)
+#    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+#                'contourf_%s_at%s.eps' %(varname,fstr), dpi=300)
+#    return
 
 def map_jet_centerdist(centers, lat_jet, lng_jetcoords, lat_centercoords, 
     lng_centercoords, kind): 
@@ -1702,7 +1722,7 @@ def map_obso3ctmo3_performancemetric(field_aqs, field_naps, field_emep,
 
     Returns
     -------
-    None          
+    None 
     """
     import matplotlib as mpl
     mpl.rcParams['hatch.linewidth'] = 0.3     
@@ -1715,14 +1735,14 @@ def map_obso3ctmo3_performancemetric(field_aqs, field_naps, field_emep,
     # height-of-subplots
     ax1 = plt.subplot2grid((2,2),(0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
-    ax2 = plt.subplot2grid((2,2),(1,0), aspect='auto', adjustable='box-forced',
+    ax2 = plt.subplot2grid((2,2),(1,0), aspect='auto', adjustable='box',
         projection=ccrs.Miller(central_longitude=0.))
-    ax3 = plt.subplot2grid((2,2),(1,1), aspect='auto', adjustable='box-forced',
+    ax3 = plt.subplot2grid((2,2),(1,1), aspect='auto', adjustable='box',
         projection=ccrs.Miller(central_longitude=0.))
     # Set subplot labels and titles
     ax1.set_title('(a) NAPS, AQS', fontsize=15, x=0.02, ha='left')  
     ax2.set_title('(b) EMEP', fontsize=15, x=0.02, ha='left')
-    ax3.set_title('(c) Li et al. (2019)', fontsize=15, x=0.02, ha='left')
+    ax3.set_title('(c) MEE', fontsize=15, x=0.02, ha='left')
     # Add oceans and coasts
     for ax in [ax1, ax2, ax3]:
         ax.add_feature(cfeature.OCEAN, zorder=2, lw=0.0, color='lightgrey')
@@ -1757,7 +1777,7 @@ def map_obso3ctmo3_performancemetric(field_aqs, field_naps, field_emep,
     colorbar.set_label(cbar_label, fontsize=15)
     plt.gcf().subplots_adjust(left=0.04, right=0.78)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'map_obso3ctmo3_%s.eps'%fstr, dpi=300)
+        'map_obso3ctmo3_%s.png'%fstr, dpi=300)
     return
 
 def map_nh_rpblho3_diurnalcycle(ilat, ilng, lat_model, lng_model, pblh_daily, 
@@ -2085,6 +2105,90 @@ def map_o3anomcyclones_pweqjet(lat_model, lng_model, o3_model, o3_pwjet,
         'map_o3anomcyclones_pweqjet.png', dpi = 350)
     return
     
+def o3anom_atcyclones(o3_anom, o3_all, o3_anom_rotated, o3_rotated):
+    """Plot mean O3 anomaly and the standard deviation in the vicinity (+/- 5 
+    grid cells) of cyclones for the (left) unrotated case and (right) rotated
+    case, where the east side of the subplot is the direction of cyclone 
+    motion. Note that finding the mean of the rotated O3 anomaly raises a 
+    RuntimeWarning because the rotation process fills the outer edge with NaNs
+    when applicable. 
+
+    Parameters
+    ----------
+    o3_anom_all : list
+        The daily O3 anomaly in the vicinity of cyclone, [cyclones,]
+    o3_all : list
+        O3 in the vicinity of cyclone, [cyclones,]    
+    o3_anom_rotated : list 
+        The daily O3 anomaly in the vicinity of cyclone rotated such that 
+        the upward direction is the direction of cyclone motion (n.b., the mean 
+        rotated anomaly is further rotated 90˚ in the subplot such that the 
+        direction of cyclone motion is to the right), [cyclones,]    
+    o3_rotated : list 
+        O3 in the vicinity of cyclone rotated 90˚, [cyclones,]
+    
+    Returns
+    -------
+    None
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    # Plotting unrotated and rotated cases
+    fig = plt.figure(figsize=(8,4))
+    axl = plt.subplot2grid((1, 2), (0, 0))
+    axr = plt.subplot2grid((1, 2), (0, 1))
+    clevs = np.linspace(-1.5, 1.5, 13)
+    axl.set_aspect('equal')
+    axr.set_aspect('equal')
+    axl.set_title('Unrotated', fontsize=16)
+    axr.set_title('Rotated', fontsize=16) 
+    mb = axl.contourf(np.nanmean(np.stack(o3_anom),axis=0), 
+        clevs, cmap=plt.get_cmap('bwr'), extend='both', zorder=1)
+    CS = axl.contour(np.nanstd(np.stack(o3_anom),axis=0), 
+        [6.0, 6.25, 6.5, 6.75, 7.0, 7.25, 7.5],
+        linewidths=1.5, colors='k', zorder=3)
+    plt.clabel(CS, fontsize=10, fmt='%.2f', inline=True)
+    axr.contourf(np.rot90(np.nanmean(np.stack(o3_anom_rotated),axis=0)),
+        clevs, cmap=plt.get_cmap('bwr'), extend='both', zorder=1)
+    CS = axr.contour(np.nanstd(np.stack(o3_anom_rotated), axis=0), 
+        [6.0, 6.25, 6.5, 6.75, 7.0, 7.25, 7.5],
+        linewidths=1.5, colors='k', zorder=3)                     
+    plt.clabel(CS, fontsize=10, fmt='%.2f', inline=True)
+    # Axis labels
+    axl.set_xlabel('E$\:$-W', fontsize=16)
+    axl.set_ylabel('N$\:$-S', fontsize=16)
+    axr.set_xlabel('Tangential', fontsize=16)
+    axr.set_ylabel('Orthogonal', fontsize=16)
+    # Since rotation handles interpolation around the periphery in a non-
+    # ideal way, strip off the edge grid cells in unrotated and rotated 
+    # cases
+    for ax in [axl, axr]:
+        # Aesthetics (crosshairs for system's center, axes labels)
+        ax.axhline(y=6, xmin=ax.get_xlim()[0], xmax=ax.get_xlim()[1], ls='--', 
+            lw=0.75, color='k', zorder=2)
+        ax.axvline(x=6, ymin=ax.get_ylim()[0], ymax=ax.get_ylim()[1], ls='--', 
+            lw=0.75, color='k', zorder=2)        
+        ax.set_xlim([1, o3_anom_rotated[0].shape[0]-2])
+        ax.set_ylim([1, o3_anom_rotated[0].shape[0]-2])    
+        ax.set_xticks(np.arange(1, o3_anom_rotated[0].shape[0]-1, 1))
+        ax.set_xticklabels(['', '-4', '', '-2', '', '0', '', '2', '', '4', ''], 
+            fontsize=12)
+        ax.set_yticks(np.arange(1, o3_anom_rotated[0].shape[0]-1, 1))
+        ax.set_yticklabels(['', '-4', '', '-2', '', '0', '', '2', '', '4', ''],
+            fontsize=12)
+    plt.gcf().subplots_adjust(left=0.1, right=0.86, wspace=0.35)  
+    # Add colorbar
+    colorbar_axes = plt.gcf().add_axes([0.89, axr.get_position().y0,
+        0.02, (axr.get_position().y1-axr.get_position().y0)]) 
+    colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+        extend='both')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label('$\mathregular{\delta}\:$O$_{\mathregular{3}}$ [ppbv]', 
+        fontsize=16)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'o3anom_atcyclones.png', dpi=300)
+    return 
+
 import numpy as np
 import sys
 sys.path.append('/Users/ghkerr/phd/globalo3/')
@@ -2260,16 +2364,16 @@ except NameError:
 #            lat_gmi, lng_gmi, r_t2mo3)
 #        do3dt2m_emep_bias = globalo3_calculate.ctm_obs_bias(lat_emep, lng_emep, 
 #            do3dt2m_emep, lat_gmi, lng_gmi, do3dt2m)
-#        # Calculate the air quality performance index for each observational dataset
-#        aqpi_aqs, fac2_aqs, r_aqs, mfb_aqs = globalo3_calculate.calculate_aqpi(aqs, 
-#            o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
-#        aqpi_naps, fac2_naps, r_naps, mfb_naps = globalo3_calculate.calculate_aqpi(
-#            naps, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
-#        aqpi_emep, fac2_emep, r_emep, mfb_emep = globalo3_calculate.calculate_aqpi(
-#            emep, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
-#        aqpi_china, fac2_china, r_china, mfb_china = \
-#            globalo3_calculate.calculate_aqpi(china, o3_gmi_china, lat_gmi_china, 
-#            lng_gmi_china, times_gmi_china, 'gridwise')
+        # Calculate the air quality performance index for each observational dataset
+        aqpi_aqs, fac2_aqs, r_aqs, mfb_aqs = globalo3_calculate.calculate_aqpi(aqs, 
+            o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
+        aqpi_naps, fac2_naps, r_naps, mfb_naps = globalo3_calculate.calculate_aqpi(
+            naps, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
+        aqpi_emep, fac2_emep, r_emep, mfb_emep = globalo3_calculate.calculate_aqpi(
+            emep, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
+        aqpi_china, fac2_china, r_china, mfb_china = \
+            globalo3_calculate.calculate_aqpi(china, o3_gmi_china, lat_gmi_china, 
+            lng_gmi_china, times_gmi_china, 'gridwise')
     # Significance (alpha = 0.05) of O3-temperature-q-jet correlations
     promptsignificance = input('Calculate significance? [y/n]\n').lower()    
     if promptsignificance == 'y':
@@ -2447,6 +2551,10 @@ except NameError:
         eqjet_lng_cyclones_binned[-1] = 360.
         pwjet_lng_cyclones_binned[0] = 0.
         pwjet_lng_cyclones_binned[-1] = 360.    
+        # Find O3 and O3 anomaly within 5 grid cells of cyclone centers
+        o3_anom, o3_all, o3_anom_rotated, o3_rotated = \
+            globalo3_calculate.o3anom_cyclone(cyclones, times_gmi, lat_gmi, 
+            lng_gmi, o3_gmi)
     # Load PBL height from MERRA-2
     promptpbl = input('Load PBL height? [y/n]\n').lower()
     if promptpbl == 'y':    
@@ -2477,7 +2585,6 @@ except NameError:
         significance_r_pblho3 = \
             globalo3_calculate.calculate_r_significance(pblh_merra, o3_gmi, 
             r_pblho3, lat_gmi, lng_gmi)
-        
         
 #maparea = 'nh'
 ## Mean O3, mean eddy-driven jet position and variability
@@ -2850,83 +2957,104 @@ except NameError:
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5], 
 #    extend='both')
-## O3 anomaly, jet position, and cyclone frequency on days where the 
-## jet is extreme poleward
+## POLEWARD/EQUATORWARD ANOMALIES
+## O3 anomaly, jet position on days where the jet is extreme poleward
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    highthresh_o3_anom, 
-#    '',
-#    '$\mathregular{\delta}$O$_{\mathregular{3}}$ [ppbv]',
-#    np.linspace(-4, 4., 9), 
+#    pwjet_o3-np.nanmean(o3_gmi,axis=0), 
+#    'O$_{\mathregular{3,\:PW}}$ - $\overline{\mathregular{O_3}}$',
+#    '[ppbv]', 
+#    np.linspace(-6, 6, 13), 
 #    'bwr', 
 #    maparea,
 #    'o3anom_pwjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
 #    e_lng = lng_gmi,
 #    e_n = pwjet_lat,
 #    eerr_n = pwjet_lat_var,
-#    lat_n_binned=pwjet_lat_cyclones_binned, 
-#    lng_n_binned=pwjet_lng_cyclones_binned, 
-#    pcolor=(pwjet_cyclones_binned-cyclones_binned),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5], 
 #    extend='both')
-## 2-meter temperature anomaly, jet position, and cyclone frequency on days 
-## where the jet is extreme poleward
+## 2-meter temperature anomaly, jet position on days where the jet is extreme 
+## poleward
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    pwjet_t2m_anom, 
-#    '',
-#    '$\mathregular{\delta}$T [K]',
-#    np.linspace(-4, 4., 9), 
+#    pwjet_t2m-np.nanmean(t2m_merra,axis=0), 
+#    'T$_{\mathregular{PW}}$ - $\overline{\mathregular{T}}$',
+#    '[K]', 
+#    np.linspace(-6, 6, 13), 
 #    'bwr', 
 #    maparea,
 #    't2manom_pwjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
 #    e_lng = lng_gmi,
 #    e_n = pwjet_lat,
 #    eerr_n = pwjet_lat_var,
-#    lat_n_binned=pwjet_lat_cyclones_binned, 
-#    lng_n_binned=pwjet_lng_cyclones_binned, 
-#    pcolor=(pwjet_cyclones_binned-cyclones_binned),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5], 
 #    extend='both')
-## O3 anomaly, jet position, and cyclone frequency on days where the 
-## jet is extreme equatorward
+## 2-meter specific humidity anomaly, jet position on days where the jet is 
+## extreme poleward
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    lowthresh_o3_anom, 
-#    '',
-#    '$\mathregular{\delta}$O$_{\mathregular{3}}$ [ppbv]',
-#    np.linspace(-4, 4., 9), 
+#    pwjet_qv2m-np.nanmean(qv2m_merra,axis=0), 
+#    'q$_{\mathregular{PW}}$ - $\overline{\mathregular{q}}$',
+#    '[g kg$^{\mathregular{-1}}$]',
+#    np.linspace(-2, 2, 9), 
 #    'bwr', 
 #    maparea,
-#    'o3anom_eqjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    'qv2manom_pwjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
 #    e_lng = lng_gmi,
-#    e_n = eqjet_lat,
-#    eerr_n = eqjet_lat_var,
-#    lat_n_binned=eqjet_lat_cyclones_binned, 
-#    lng_n_binned=eqjet_lng_cyclones_binned, 
-#    pcolor=(eqjet_cyclones_binned-cyclones_binned),
+#    e_n = pwjet_lat,
+#    eerr_n = pwjet_lat_var,
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5], 
 #    extend='both')
-## 2-meter temperature anomaly, jet position, and cyclone frequency on days 
-## where the jet is extreme equatorward
+## O3 anomaly, jet position on days where the jet is extreme equatorward
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
-#    eqjet_t2m_anom, 
-#    '',
-#    '$\mathregular{\delta}$T [K]',
-#    np.linspace(-4, 4., 9), 
+#    eqjet_o3-np.nanmean(o3_gmi,axis=0), 
+#    'O$_{\mathregular{3,\:EW}}$ - $\overline{\mathregular{O_3}}$',
+#    '[ppbv]', 
+#    np.linspace(-6, 6, 13), 
 #    'bwr', 
 #    maparea,
-#    't2manom_eqjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    'o3anom_ewjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
 #    e_lng = lng_gmi,
 #    e_n = eqjet_lat,
 #    eerr_n = eqjet_lat_var,
-#    lat_n_binned=eqjet_lat_cyclones_binned, 
-#    lng_n_binned=eqjet_lng_cyclones_binned, 
-#    pcolor=(eqjet_cyclones_binned-cyclones_binned),
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5], 
+#    extend='both')
+## 2-meter temperature anomaly, jet position on days where the jet is extreme 
+## equatorward
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    eqjet_t2m-np.nanmean(t2m_merra,axis=0), 
+#    'T$_{\mathregular{EW}}$ - $\overline{\mathregular{T}}$',
+#    '[K]', 
+#    np.linspace(-6, 6, 13), 
+#    'bwr', 
+#    maparea,
+#    't2manom_ewjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng = lng_gmi,
+#    e_n = eqjet_lat,
+#    eerr_n = eqjet_lat_var,
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5], 
+#    extend='both')
+## 2-meter specific humidity anomaly, jet position on days where the jet is 
+## extreme poleward
+#map_hemisphere(lat_gmi, 
+#    lng_gmi,
+#    eqjet_qv2m-np.nanmean(qv2m_merra,axis=0), 
+#    'q$_{\mathregular{EW}}$ - $\overline{\mathregular{q}}$',
+#    '[g kg$^{\mathregular{-1}}$]',
+#    np.linspace(-2, 2, 9), 
+#    'bwr', 
+#    maparea,
+#    'qv2manom_ewjet_cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng = lng_gmi,
+#    e_n = eqjet_lat,
+#    eerr_n = eqjet_lat_var,
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5], 
 #    extend='both')
@@ -2949,7 +3077,7 @@ except NameError:
 #    pwjet_t2m-eqjet_t2m, 
 #    'T$_\mathregular{PW}$ - T$_\mathregular{EW}$',
 #    '[K]', 
-#    np.linspace(-10., 10., 11),
+#    np.linspace(-8., 8., 9),
 #    'bwr', 
 #    maparea,
 #    'pwjett2m-ewjett2m_%s_%d-%d'%(season, years[0],years[-1]), 
@@ -2969,19 +3097,77 @@ except NameError:
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5],
 #    extend='both')
-## Composite of cyclones on days with poleward minus equatorward jet
-#map_hemisphere(pwjet_lat_cyclones_binned, 
-#    pwjet_lng_cyclones_binned,
-#    pwjet_cyclones_binned-eqjet_cyclones_binned, 
-#    'Cyclones$_{\mathregular{PW}}$ - Cyclones$_{\mathregular{EW}}$',
-#    '[$\cdot$]', 
-#    np.linspace(-10., 10., 11),
-#    'bwr', 
+## Cyclone frequency, jet position 
+#map_hemisphere(lat_cyclones_binned, 
+#    lng_cyclones_binned, 
+#    cyclones_binned,
+#    'Cyclones',
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(0, 35, 8), 
+#    'OrRd', 
 #    maparea,
-#    'pwjetcyclone-ewjetcyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    'cyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng = lng_gmi,
+#    e_n=np.nanmean(lat_jet_ml, axis=0), 
+#    eerr_n=np.std(lat_jet_ml, axis=0),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5],
-#    extend='both')        
+#            lat_gmi.min()+1, lat_gmi.max()-5], 
+#    pcolorflag=True, 
+#    lbound=0, 
+#    ubound=5)
+## Cyclone frequency anomaly, jet position on days where the jet is extreme 
+## poleward
+#map_hemisphere(lat_cyclones_binned, 
+#    lng_cyclones_binned, 
+#    pwjet_cyclones_binned-cyclones_binned,
+#    'Cyclones$_{\mathregular{PW}}$ - Cyclones',
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(-25, 25, 11), 
+#    'coolwarm', 
+#    maparea,
+#    'pwcyclonesanom_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng=lng_gmi,
+#    e_n=pwjet_lat, 
+#    eerr_n=pwjet_lat_var, 
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5], 
+#    pcolorflag=True, 
+#    lbound=-5, 
+#    ubound=0)
+## Cyclone frequency anomaly, jet position on days where the jet is extreme 
+## equatorward
+#map_hemisphere(lat_cyclones_binned, 
+#    lng_cyclones_binned, 
+#    eqjet_cyclones_binned-cyclones_binned,
+#    'Cyclones$_{\mathregular{EW}}$ - Cyclones',
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(-25, 25, 11), 
+#    'coolwarm', 
+#    maparea,
+#    'ewcyclonesanom_%s_%d-%d'%(season, years[0],years[-1]), 
+#    e_lng=lng_gmi,
+#    e_n=eqjet_lat, 
+#    eerr_n=eqjet_lat_var, 
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5], 
+#    pcolorflag=True, 
+#    lbound=-5, 
+#    ubound=0)
+## Difference in cyclone frequency on days with poleward minus equatorward jet 
+#map_hemisphere(lat_cyclones_binned, 
+#    lng_cyclones_binned, 
+#    pwjet_cyclones_binned-eqjet_cyclones_binned,
+#    'Cyclones$_{\mathregular{PW}}$ - Cyclones$_{\mathregular{EW}}$',
+#    '[$\mathregular{\cdot}$]', 
+#    np.linspace(-12, 12, 13), 
+#    'coolwarm', 
+#    maparea,
+#    'pwcyclones-ewcyclones_%s_%d-%d'%(season, years[0],years[-1]), 
+#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#            lat_gmi.min()+1, lat_gmi.max()-5], 
+#    pcolorflag=True, 
+#    lbound=-4, 
+#    ubound=4)            
 ## CO_50
 #map_hemisphere(lat_gmi, 
 #    lng_gmi, 
@@ -3532,134 +3718,6 @@ except NameError:
 #plt.subplots_adjust(bottom=0.2)
 #plt.savefig('/Users/ghkerr/Desktop/o3_tracer_tempcorrel.png', dpi=350)
 
-"""PLOT CYCLONE COMPOSITE ON DAYS WITH POLEWARD VERSUS EQUATORWARD JET"""
-#cyclones_binned, lat_cyclones_binned, lng_cyclones_binned = \
-#    globalo3_calculate.field_binner(np.linspace(lat_gmi[0], 
-#    lat_gmi[-1], 23), np.linspace(lng_gmi[0], lng_gmi[-1], 90), 
-#    times_gmi, cyclones['Latitude'].values, 
-#    cyclones['Longitude'].values, 
-#    np.ones(shape=cyclones['Latitude'].values.shape), 
-#    cyclones['Date'].values, 'sum')
-#cyclones_binned = np.nan_to_num(cyclones_binned)
-#(eqjet_lat_cyclones, eqjet_lng_cyclones, eqjet_time_cyclones,
-# pwjet_lat_cyclones, pwjet_lng_cyclones, pwjet_time_cyclones, 
-# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_o3, 
-# eqjet_o3) = \
-#     globalo3_calculate.segregate_cyclones_bylat(cyclones, o3_gmi, 
-#     lng_gmi, lat_jet_ml, times_gmi)
-#
-#eqjet_cyclones_binned, eqjet_lat_cyclones_binned, eqjet_lng_cyclones_binned = \
-#    globalo3_calculate.field_binner(np.linspace(lat_gmi[0], 
-#    lat_gmi[-1], 23), np.linspace(lng_gmi[0], lng_gmi[-1], 90), 
-#    times_gmi, eqjet_lat_cyclones, eqjet_lng_cyclones, 
-#    np.ones(shape=eqjet_lat_cyclones.shape[0]), eqjet_time_cyclones,
-#    'sum')
-#eqjet_cyclones_binned = np.nan_to_num(eqjet_cyclones_binned)             
-## Same as above but for days with poleward jet
-#pwjet_cyclones_binned, pwjet_lat_cyclones_binned, pwjet_lng_cyclones_binned = \
-#    globalo3_calculate.field_binner(np.linspace(lat_gmi[0], 
-#    lat_gmi[-1], 23), np.linspace(lng_gmi[0], lng_gmi[-1], 90), 
-#    times_gmi, pwjet_lat_cyclones, pwjet_lng_cyclones, 
-#    np.ones(shape=pwjet_lat_cyclones.shape[0]), pwjet_time_cyclones, 
-#    'sum')
-#lng_n_binned = pwjet_lng_cyclones_binned
-#lat_n_binned = pwjet_lat_cyclones_binned
-#pcolor = pwjet_cyclones_binned - eqjet_cyclones_binned
-#import numpy as np
-#import matplotlib as mpl
-#mpl.rcParams['hatch.linewidth'] = 0.3     
-#import matplotlib.pyplot as plt
-#import cartopy.crs as ccrs
-#import cartopy.feature as cfeature
-#fig = plt.figure(figsize=(8,3.5))
-#ax=plt.subplot2grid((1,2), (0,0), colspan=2,
-#                    projection=ccrs.Miller(central_longitude=0.))
-#ax.add_feature(cfeature.OCEAN, zorder = 2, lw = 0.0, 
-#               color = 'lightgrey')
-#ax.set_title('(a) Cyclones$_{\:\mathregular{PW}}$ - Cyclones$_{\:\mathregular{EW}}$', 
-#    fontsize=14, x=0.02, ha='left')    
-#ax.coastlines(lw = 0.25, color = 'k', zorder = 3)
-#ax.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
-#    lat_gmi.min()+1, lat_gmi.max()-5])
-## Poleward and equatorward jets
-#skiplng = 6
-#ax.errorbar(lng_gmi[::skiplng], pwjet_lat[::skiplng], 
-#            yerr = pwjet_lat_var[::skiplng], 
-#    zorder = 12, color = 'k', markersize = 2, elinewidth = 0.5, 
-#    ecolor = 'k', fmt = 'o', transform = ccrs.PlateCarree())
-#ax.errorbar(lng_gmi[::skiplng], eqjet_lat[::skiplng], 
-#    yerr = eqjet_lat_var[::skiplng], zorder = 12, color = 'k', markersize = 2, 
-#    elinewidth = 0.5, ecolor = 'k', fmt = 'o', transform = ccrs.PlateCarree())
-## Pcolor for cyclone composite
-#pcolor = np.ma.masked_inside(pcolor,-3,3)
-#pcolor_clevs = np.linspace(-15, 15, 11)
-#mb = ax.pcolor(lng_n_binned, lat_n_binned, pcolor, 
-#    cmap = plt.get_cmap('bwr', len(pcolor_clevs)-1), 
-#    vmin = pcolor_clevs[0], vmax = pcolor_clevs[-1], 
-#    transform = ccrs.PlateCarree(), zorder = 10)
-## Add colorbar
-#colorbar_axes = plt.gcf().add_axes([0.78,0.25,0.02,0.5])
-#colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-#                        extend='both', ticks=pcolor_clevs[::2])
-#colorbar.ax.tick_params(labelsize=12)
-#colorbar.set_label('[$\cdot$]', fontsize=14)
-#plt.gcf().subplots_adjust(right = 0.75, hspace = -0.2)
-#ax.outline_patch.set_zorder(20)
-#plt.savefig('/Users/ghkerr/Desktop/'+
-#    'map_cyclones_pwjet-eqjet.png', dpi = 350)
-#lat = lat_gmi
-#lng_jet =  lng_gmi
-#lat_jet = lat_jet_ml
-#t2m = t2m_merra
-#o3 = o3_gmi
-#pwjet_r = np.empty(shape=o3.shape[1:])
-#pwjet_r[:] = np.nan
-#eqjet_r = np.empty(shape=o3.shape[1:])
-#eqjet_r[:] = np.nan
-#for ilng in np.arange(0, len(lng_jet), 1):
-#    # Find threshold (latitude) for what qualifies as an "extreme" poleward
-#    # or equatoward jet at a particular longitude
-#    highthresh_ilng = np.percentile(lat_jet[:,ilng], 70)
-#    lowthresh_ilng = np.percentile(lat_jet[:,ilng], 30)
-#    highthresh_days = np.where(lat_jet[:,ilng] > highthresh_ilng)[0]
-#    lowthresh_days = np.where(lat_jet[:,ilng] < lowthresh_ilng)[0]
-#    # 
-#    for ilat in np.arange(0, len(lat), 1):
-#        pwjet_r[ilat, ilng] = np.corrcoef(t2m[highthresh_days, ilat, ilng], 
-#            o3[highthresh_days, ilat, ilng])[0,1]
-#        eqjet_r[ilat, ilng] = np.corrcoef(t2m[lowthresh_days, ilat, ilng], 
-#            o3[lowthresh_days, ilat, ilng])[0,1]        
-#map_hemisphere(lat_gmi, 
-#    lng_gmi,
-#    pwjet_r, 
-#    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
-#    '[$\cdot$]', 
-#    np.linspace(-1., 1., 11),
-#    'bwr', 
-#    maparea,
-#    'rt2mo3_pwjet_%s_%d-%d'%(season, years[0],years[-1]), 
-#    e_lng = lng_gmi,
-#    e_n = pwjet_lat,
-#    eerr_n = pwjet_lat_var,
-#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5],
-#    extend='neither')
-#map_hemisphere(lat_gmi, 
-#    lng_gmi,
-#    eqjet_r, 
-#    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
-#    '[$\cdot$]', 
-#    np.linspace(-1., 1., 11),
-#    'bwr', 
-#    maparea,
-#    'rt2mo3_eqjet_%s_%d-%d'%(season, years[0],years[-1]), 
-#    e_lng = lng_gmi,
-#    e_n = eqjet_lat,
-#    eerr_n = eqjet_lat_var,
-#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5],
-#    extend='neither')            
-
 """PLOT VERTICALLY-INTEGRATED MERIDIONAL TRACER FLUXES"""
 #co_50_column, lat_replay, lng_replay, lev_replay = globalo3_open.open_m2g_c90(
 #    years, 'co_50', 1000., 800., lngmin, latmax, lngmax, latmin, 
@@ -4081,17 +4139,6 @@ JETS"""
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 ## FIGURE 1; Mean O3, mean eddy-driven jet position and variability
 #map_hemisphere(lat_gmi, 
 #    lng_gmi, 
@@ -4142,7 +4189,7 @@ JETS"""
 #    '[$\mathregular{\cdot}$]', 
 #    np.linspace(0., 1., 11), 
 #    'Reds', 
-#    'both',
+#    'neither',
 #    'fac2')
 ## AQPI
 #map_obso3ctmo3_performancemetric(aqpi_aqs,
@@ -4164,3 +4211,5 @@ JETS"""
 #    eqjet_lat_cyclones_binned, eqjet_lng_cyclones_binned, 
 #    pwjet_cyclones_binned, eqjet_cyclones_binned, pwjet_lat, pwjet_lat_var, 
 #    eqjet_lat, eqjet_lat_var)
+## Figure 8; O3 anomaly at cyclone
+#o3anom_atcyclones(o3_anom, o3_all, o3_anom_rotated, o3_rotated)
