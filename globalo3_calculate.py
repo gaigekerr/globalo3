@@ -56,6 +56,8 @@ Revision History
     27102019 -- function 'convolve_jet' added
     13112019 -- functions 'calculate_initial_compass_bearing' and 
                 'o3anom_cyclone' added
+    20112019 -- function 'segregate_cyclones_bylat' changed to 
+                'segregate_field_bylat'
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -1384,20 +1386,19 @@ def field_binner(lat_grid, lng_grid, times_grid, lat_obs, lng_obs, val_obs,
     print('Observations binned in %.2f seconds!' %(time.time() - start_time))                
     return val_grid, lat_grid, lng_grid
 
-def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times): 
-    """function identifies cyclone locations on days when the eddy-driven jet
-    is "extreme" poleward (> 70th percentile) and equatorward (< 30th 
-    percentile). These operations are done locally, meaning that the poleward 
-    and equatorward positions of the jet are indentified using the timeseries 
-    for each longitudinal band and thereafter finding cyclones within these 
-    bands. The position and variability of the jet on these extreme days is 
-    also saved. 
-
+def segregate_field_bylat(field, lng_jet, lat_jet, times, cyclones=None): 
+    """function finds the mean value of the given field on days when the eddy-
+    driven jet is in a poleward (> 70th percentile) and equatorward (< 30th 
+    percentile) posotion. These operations are done locally, meaning that the 
+    poleward and equatorward positions of the jet are indentified using the 
+    timeseries for each longitudinal band and thereafter the mean value of the 
+    field on those days. The position and variability of the jet on these 
+    extreme days is also saved. If the cyclones DataFrame is passed to the 
+    function, cyclones center locations are also filtered by the poleward or
+    equatorward jet position. 
+    
     Parameters
-    ----------
-    cyclones : pandas.core.frame.DataFrame
-        DataFrame containing the date, hour, fraction of land cover, latitude, 
-        longitude, SLP, and storm ID
+    ----------    
     field : numpy.ndarray
         3D (tyx) field that will be parsed on days with "extreme" poleward
         and equatorward jet. 
@@ -1408,8 +1409,11 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
         in region, units of degrees north[time, lng]
     times : numpy.ndarray
         datetime.date objects corresponding to every day in measuring period, 
-        [time,]        
-
+        [time,]  
+    cyclones : NoneType or pandas.core.frame.DataFrame
+        DataFrame containing the date, hour, fraction of land cover, latitude, 
+        longitude, SLP, and storm ID      
+    
     Returns
     -------
     lowthresh_lat_cyclone : numpy.ndarray
@@ -1452,13 +1456,14 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
     import time
     start_time = time.time()
     print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
-          'Separating cyclones on days with equator/poleward jet...')
+          'Separating field on days with equator/poleward jet...')
     import numpy as np
-    lowthresh_lng_cyclone, lowthresh_lat_cyclone = [], []
-    highthresh_lng_cyclone, highthresh_lat_cyclone = [], []
-    highthresh_time_cyclone, lowthresh_time_cyclone = [], []
     lowthresh_lat_jet, lowthresh_lat_jet_var = [], []
     highthresh_lat_jet, highthresh_lat_jet_var = [], []
+    if cyclones is not None:
+        lowthresh_lng_cyclone, lowthresh_lat_cyclone = [], []
+        highthresh_lng_cyclone, highthresh_lat_cyclone = [], []
+        highthresh_time_cyclone, lowthresh_time_cyclone = [], []
     # Return empty arrays to fill with value of 3D (tyx) field on days with 
     # poleward/equatorward jet 
     pwjet_field_anom = np.empty(shape=field.shape[1:])
@@ -1477,57 +1482,64 @@ def segregate_cyclones_bylat(cyclones, field, lng_jet, lat_jet, times):
         # Mean values of the field on days when the jet extreme poleward or 
         # equatorward at longitude 
         pwjet_field_anom[:, ilng] = (
-            np.nanmean(field[highthresh_days, :, ilng], axis=0))#-
-#            np.nanmean(field[:, :, ilng], axis=0))
+            np.nanmean(field[highthresh_days, :, ilng], axis=0))
         eqjet_field_anom[:, ilng] = (
-            np.nanmean(field[lowthresh_days, :, ilng], axis=0))#-
-#            np.nanmean(field[:, :, ilng], axis=0))    
+            np.nanmean(field[lowthresh_days, :, ilng], axis=0))
         # Find mean jet latitude and its variability on days when jet is 
         # extreme poleward or equatorward at longitude of interest
         lowthresh_lat_jet.append(np.nanmean(lat_jet[lowthresh_days,ilng]))
         lowthresh_lat_jet_var.append(np.nanstd(lat_jet[lowthresh_days,ilng]))
         highthresh_lat_jet.append(np.nanmean(lat_jet[highthresh_days,ilng]))
         highthresh_lat_jet_var.append(np.nanstd(lat_jet[highthresh_days,ilng]))
-        # Dates ('YYYY-mm-dd' format) when jet is extreme poleward or 
-        # equatorward at longitude of interest
-        highthresh_days = [x.strftime('%Y-%m-%d') for x in 
-            times[highthresh_days]]
-        lowthresh_days = [x.strftime('%Y-%m-%d') for x in 
-            times[lowthresh_days]]
-        # Find cyclones at (near) longitude (here near is defined as the 
-        # area within +/- the longitude of interest and half its resolution) on 
-        # day of interest
-        highthresh_cyclones = cyclones.loc[
-            (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
-            (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
-            (cyclones['Date'].isin(highthresh_days))]
-        highthresh_lng_cyclone.append(
-            highthresh_cyclones['Longitude'].values)
-        highthresh_lat_cyclone.append(
-            highthresh_cyclones['Latitude'].values)  
-        highthresh_time_cyclone.append(highthresh_cyclones['Date'].values)                  
-        lowthresh_cyclones = cyclones.loc[
-            (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
-            (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
-            (cyclones['Date'].isin(lowthresh_days))]    
-        lowthresh_lng_cyclone.append(
-            lowthresh_cyclones['Longitude'].values)
-        lowthresh_lat_cyclone.append(
-            lowthresh_cyclones['Latitude'].values)
-        lowthresh_time_cyclone.append(lowthresh_cyclones['Date'].values)
-    lowthresh_lat_cyclone = np.hstack(lowthresh_lat_cyclone) 
-    lowthresh_lng_cyclone = np.hstack(lowthresh_lng_cyclone) 
-    highthresh_lat_cyclone = np.hstack(highthresh_lat_cyclone) 
-    highthresh_lng_cyclone = np.hstack(highthresh_lng_cyclone) 
-    highthresh_time_cyclone = np.hstack(highthresh_time_cyclone)
-    lowthresh_time_cyclone = np.hstack(lowthresh_time_cyclone)
-    print('Cyclones separated in %.2f seconds!' %(time.time() - start_time))                    
-    return (lowthresh_lat_cyclone, lowthresh_lng_cyclone, 
-        lowthresh_time_cyclone, highthresh_lat_cyclone, highthresh_lng_cyclone, 
-        highthresh_time_cyclone, lowthresh_lat_jet, 
-        lowthresh_lat_jet_var, highthresh_lat_jet, highthresh_lat_jet_var,
-        pwjet_field_anom, eqjet_field_anom)
-    
+    if cyclones is not None:
+        for ilng in np.arange(0, len(lng_jet), 1):    
+            highthresh_ilng = np.percentile(lat_jet[:,ilng], 70)
+            lowthresh_ilng = np.percentile(lat_jet[:,ilng], 30)
+            highthresh_days = np.where(lat_jet[:,ilng] > highthresh_ilng)[0]
+            lowthresh_days = np.where(lat_jet[:,ilng] < lowthresh_ilng)[0]
+            # Dates ('YYYY-mm-dd' format) when jet is extreme poleward or 
+            # equatorward at longitude of interest
+            highthresh_days = [x.strftime('%Y-%m-%d') for x in 
+                times[highthresh_days]]
+            lowthresh_days = [x.strftime('%Y-%m-%d') for x in 
+                times[lowthresh_days]]            
+            # Find cyclones at (near) longitude (here near is defined as the 
+            # area within +/- the longitude of interest and half its 
+            # resolution) on day of interest
+            highthresh_cyclones = cyclones.loc[
+                (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
+                (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
+                (cyclones['Date'].isin(highthresh_days))]
+            highthresh_lng_cyclone.append(
+                highthresh_cyclones['Longitude'].values)
+            highthresh_lat_cyclone.append(
+                highthresh_cyclones['Latitude'].values)  
+            highthresh_time_cyclone.append(highthresh_cyclones['Date'].values)                  
+            lowthresh_cyclones = cyclones.loc[
+                (cyclones['Longitude'] > lng_jet[ilng]-(res_lng/2.)) &
+                (cyclones['Longitude'] <= lng_jet[ilng]+(res_lng/2.)) & 
+                (cyclones['Date'].isin(lowthresh_days))]    
+            lowthresh_lng_cyclone.append(
+                lowthresh_cyclones['Longitude'].values)
+            lowthresh_lat_cyclone.append(
+                lowthresh_cyclones['Latitude'].values)
+            lowthresh_time_cyclone.append(lowthresh_cyclones['Date'].values)
+        lowthresh_lat_cyclone = np.hstack(lowthresh_lat_cyclone) 
+        lowthresh_lng_cyclone = np.hstack(lowthresh_lng_cyclone) 
+        highthresh_lat_cyclone = np.hstack(highthresh_lat_cyclone) 
+        highthresh_lng_cyclone = np.hstack(highthresh_lng_cyclone) 
+        highthresh_time_cyclone = np.hstack(highthresh_time_cyclone)
+        lowthresh_time_cyclone = np.hstack(lowthresh_time_cyclone)
+        print('Field separated in %.2f seconds!' %(time.time() - start_time)) 
+        return (lowthresh_lat_cyclone, lowthresh_lng_cyclone, 
+            lowthresh_time_cyclone, highthresh_lat_cyclone, 
+            highthresh_lng_cyclone, highthresh_time_cyclone, lowthresh_lat_jet, 
+            lowthresh_lat_jet_var, highthresh_lat_jet, highthresh_lat_jet_var,
+            pwjet_field_anom, eqjet_field_anom)
+    print('Field separated in %.2f seconds!' %(time.time() - start_time)) 
+    return (lowthresh_lat_jet, lowthresh_lat_jet_var, highthresh_lat_jet, 
+            highthresh_lat_jet_var, pwjet_field_anom, eqjet_field_anom)
+  
 def reynolds_decomposition(x, dtime, lat, lng):
     """function computes eddy fluxes through Reynolds decomposition 
     into mean and eddy transports. 
