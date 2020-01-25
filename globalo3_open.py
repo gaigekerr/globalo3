@@ -40,6 +40,8 @@ Revision History
     07112019 -- function 'open_merra2_cyclones' edited to also extract the 
                 hour of cyclone detection (in addition to just the date) in 
                 output dataframs
+    24012019 -- reuse_weights argument to regridder added in function
+                interpolate_merra_to_ctmresolution
 """
 
 def open_overpass2_specifieddomain(years, months, latmin, latmax, lngmin,
@@ -789,7 +791,7 @@ def open_m2g_c90(years, varname, levmax, levmin, lngmin, latmax, lngmax,
         infiles.append(infiles_ty)
     infiles = list(np.hstack(infiles))
     # Open multiple NetCDF files and store in Dataset
-    ds = xr.open_mfdataset(infiles, concat_dim='time')
+    ds = xr.open_mfdataset(infiles, concat_dim='time', combine='nested')
     # Extract relevant variable 
     ds = ds[[varname]]
     ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
@@ -1173,7 +1175,7 @@ def open_merra2u_specifieddomain(years, varname, levmax, levmin, lngmin,
     years : list
         Year or range of years in measuring period, [years,]
     varname : str
-        Variable of interest from GSFC/Held-Suarez runs. Options include
+        Variable of interest from GSFC runs. Options include
         ps (surface pressure), u (wind), t (temperature), co50 (CO emissions
         over mainly Asia with a 50 day life time), co25 (same as co50 but with 
         a 25 day lifetime), nh50 (fixed mixing ratio at the surface between 
@@ -1224,24 +1226,23 @@ def open_merra2u_specifieddomain(years, varname, levmax, levmin, lngmin,
     # varname
     infiles = []
     for year in years:
-        PATH_MERRA = '/Users/ghkerr/phd/meteorology/data/inst6_3d_ana_Np/%d/'%year
+        PATH_MERRA = '/Users/ghkerr/phd/meteorology/data/inst3_3d_asm_Np/%d/'%year
         infiles_ty = [PATH_MERRA+fn for fn in os.listdir(PATH_MERRA) if 
             any(ext in fn for ext in [str(y) for y in years])]
         infiles_ty.sort()
         infiles.append(infiles_ty)
     infiles = list(np.hstack(infiles))
     # Open multiple NetCDF files and store in Dataset
-    ds = xr.open_mfdataset(infiles, concat_dim='time')
+    ds = xr.open_mfdataset(infiles, concat_dim='time', combine='nested')
     # Extract relevant variable 
     ds = ds[[varname]]
     ds = ds.assign_coords(lon=(ds.lon % 360)).roll(
         lon = (ds.dims['lon']//2-1), roll_coords = True)
     # Subset Dataset with respect to spatial coordinates 
-    ds = ds.sel(lat = slice(latmin, latmax), lon = slice(lngmin, lngmax))
-    # Sample appropriate level if pressure coordinates exist 
-    ds = ds.sel(lev = slice(levmax,levmin))
+    ds = ds[varname].sel(lat=slice(latmin, latmax), lon=slice(lngmin, lngmax),
+        lev=slice(levmax,levmin))
     # Extract
-    var = ds[varname].values
+    var = ds.values
     lat = ds.lat.values
     lng = ds.lon.values
     lev = ds.lev.values
@@ -1255,121 +1256,4 @@ def open_merra2u_specifieddomain(years, varname, levmax, levmin, lngmin,
     print('%d-%d hPa %s for %d-%d loaded in '%(lev[0], lev[-1], 
           varname, years[0], years[-1])+'%.2f seconds!'
           %(time.time() - start_time))
-    return var, lat, lng, lev
-
-def open_geoschem_merra2_2x25_RnPbBe(years, months, varname, latmin, latmax,
-    lngmin, lngmax, pmin, pmax, operation):
-    """function opens daily mean GEOSChem RnPbBe output for tracer of interest
-    and extracts columned diagnostics for the latitudes, longitudes, and levels
-    of interest. A sum, average, standard deviation is performed over the 
-    column, if desired.
-    
-    Parameters
-    ----------
-    years : list
-        Year or range of years in measuring period
-    months : list
-        Three letter abbreviations (lowercase) for months in measuring period
-    varname : str
-        Variable name (options: SpeciesConc_GLOBAL_50, SpeciesConc_MIDLAT_50, 
-        SpeciesConc_POLAR_50, SpeciesConc_TROPIC_50)
-    latmin : float    
-        Latitude (degrees north) of bottom edge of bounding box for focus 
-        region. For this parameter and others defining the bounding box, 
-        function finds the closest index to bounding box edges
-    latmax : float
-        Latitude (degrees north) of upper edge of bounding box for focus region
-    lngmin : float
-        Longitude (degrees east, 0-360) of left edge of bounding box for focus 
-        region        
-    lngmax : float
-        Longitude (degrees east, 0-360) of right edge of bounding box for focus 
-        region
-    pmin : float
-        The upper pressure level of interest, units of hPa
-    pmax : float
-        The lower pressure level of interest, units of hPa    
-    operation : str
-        This operation will be conducted on the column of tracer diagnostics
-        (options: mean, sum, standard deviation, none)
-        
-    Returns
-    -------
-    var : numpy.ndarray
-        GEOSChem tracer diagnostics for the region of interest, units of dry 
-        mixing ratio (mol mol-1), [time, lat, lng] or [time, lev, lat, lng]
-    lat : numpy.ndarray
-        GEOSChem latitude coordinates, units of degrees north, [lat,]    
-    lng : numpy.ndarray
-        GEOSChem longitude coordinates, units of degrees east, [lat,]    
-    lev : numpy.ndarray
-        GEOSChem pressure level coordinates, units of hPa, [lev,]
-    """
-    import time
-    start_time = time.time()
-    print('# # # # # # # # # # # # # # # # # # # # # # # # # #\n'+
-          'Loading GEOSChem %s...' %varname)        
-    import numpy as np
-    from netCDF4 import Dataset
-    import sys
-    sys.path.append('/Users/ghkerr/phd/GMI/')
-    from geo_idx import geo_idx
-    # Convert month abbrevations to integers
-    months_int = []
-    for m in months:
-        months_int.append(str(time.strptime(m,'%b').tm_mon).zfill(2))
-    # List will filled with monthly GEOSChem output for variable of interest
-    var = []    
-    # Loop through years, months of interest    
-    for year in years:
-        PATH_GEOSCHEM='/Users/ghkerr/phd/globalo3/data/GEOSChem/%d/'%(year)
-        for month in months_int:
-            infile = Dataset(PATH_GEOSCHEM+'GEOSChem.SpeciesConc.%d%s.nc4'
-                %(year,month),'r') 
-            # On first iteration, extract dimensions and find indicies 
-            # corresponding to (closest to) desired domain
-            if (year==years[0]) and (month==months_int[0]):
-                lat = infile.variables['lat'][:]
-                lng = infile.variables['lon'][:] 
-                lev = infile.variables['lev'][:]*1000. # Convert to hPa
-                # Convert longitude from (-180-180) to (0-360)
-                lng = lng%360          
-                # Shift grid such that it spans (0-360) rather than (180-360, w
-                # 0-180)
-                lng = np.roll(lng,int(lng.shape[0]/2))
-                latmin = geo_idx(latmin,lat)
-                latmax = geo_idx(latmax,lat)
-                lngmin = geo_idx(lngmin,lng)
-                lngmax = geo_idx(lngmax,lng)
-                pmax = (np.abs(lev-pmax)).argmin()
-                pmin = (np.abs(lev-pmin)).argmin()
-                lnglen = lng.shape[0]
-                # Restrict coordinates over focus region 
-                lat = lat[latmin:latmax+1]
-                lng = lng[lngmin:lngmax+1] 
-                lev = lev[pmax:pmin+1]
-            # Extract variable for the month
-            var_month = infile.variables[varname][:]
-            # Roll grid similar to longitude grid
-            var_month = np.roll(var_month, int(var_month.shape[-1]/2), 
-                axis=np.where(np.array(var_month.shape)==lnglen)[0][0])
-            # Extract output for horizontal and verticle domain of interest;
-            # for this to work, dimensions must be (time, lev, lat, lng)
-            var_month = var_month[:, pmax:pmin+1, latmin:latmax+1, 
-                lngmin:lngmax+1]
-            if operation == 'mean':
-                var_month = np.nanmean(var_month, axis=1)
-                var.append(var_month)
-            elif operation == 'sum':
-                var_month = np.nansum(var_month, axis=1)            
-                var.append(var_month)
-            elif operation == 'std':
-                var_month = np.nanstd(var_month, axis=1)
-                var.append(var_month)
-            elif operation == 'none':
-                var.append(var_month)
-    # Stack 
-    var = np.vstack(var)
-    print('%s for %d-%d loaded in %.2f seconds!' %(varname, years[0], 
-        years[-1], (time.time()-start_time)))
     return var, lat, lng, lev
