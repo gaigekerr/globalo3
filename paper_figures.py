@@ -6,6 +6,8 @@ meteorology relationships: Spatial vaariations and the role of the jet stream"
 
 Revision History
     05022020 -- initial version created
+    07022020 -- edit function 'fig8' to only include the rotated O3 anomalies
+                rather than also unrotated
 """
 # Change font
 import sys
@@ -65,6 +67,11 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     # Load EDGAR NOx
     lat_edgar, lng_edgar, nox_edgar = globalo3_open.open_edgar_specifieddomain(
         years, latmin, latmax, lngmin, lngmax, 'NOx')
+    # For wrapping around the Prime Meridian
+    if lng_edgar[-1] != 360:
+        lng_edgar[-1] = 360.
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.        
     # Convert from kg NOx m-2 s-1 to kg NOx km-2 day-1
     nox_edgar = np.nanmean(nox_edgar, axis=0)*3600.*1000000.*24.
     # Load ocean shapefiles
@@ -308,6 +315,9 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,7))
+    # For wrapping around the Prime Meridian
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -856,6 +866,9 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,7))
+    # For wrapping around the Prime Meridian
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -982,6 +995,8 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,10.5))
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # O3(PW - EW) 
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -1117,6 +1132,8 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,7))
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # Total cyclone frequency
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -1187,7 +1204,7 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
         'fig7.pdf', dpi=600)
     return 
     
-def fig8(o3_anom, o3_all, o3_anom_rotated, o3_rotated):
+def fig8(o3_anom_rotated):
     """Plot mean O3 anomaly and the standard deviation in the vicinity (+/- 5 
     grid cells) of cyclones for the (left) unrotated case and (right) rotated
     case, where the east side of the subplot is the direction of cyclone 
@@ -1197,17 +1214,11 @@ def fig8(o3_anom, o3_all, o3_anom_rotated, o3_rotated):
 
     Parameters
     ----------
-    o3_anom_all : list
-        The daily O3 anomaly in the vicinity of cyclone, [cyclones,]
-    o3_all : list
-        O3 in the vicinity of cyclone, [cyclones,]    
     o3_anom_rotated : list 
         The daily O3 anomaly in the vicinity of cyclone rotated such that 
         the upward direction is the direction of cyclone motion (n.b., the mean 
         rotated anomaly is further rotated 90˚ in the subplot such that the 
         direction of cyclone motion is to the right), [cyclones,]    
-    o3_rotated : list 
-        O3 in the vicinity of cyclone rotated 90˚, [cyclones,]
     
     Returns
     -------
@@ -1216,52 +1227,39 @@ def fig8(o3_anom, o3_all, o3_anom_rotated, o3_rotated):
     import numpy as np
     import matplotlib.pyplot as plt
     # Plotting unrotated and rotated cases
-    fig = plt.figure(figsize=(8,4))
-    axl = plt.subplot2grid((1, 2), (0, 0))
-    axr = plt.subplot2grid((1, 2), (0, 1))
+    fig = plt.figure(figsize=(5.5,4.2))
+    ax = plt.subplot2grid((1,1),(0,0))
     clevs = np.linspace(-1.5, 1.5, 13)
-    axl.set_aspect('equal')
-    axr.set_aspect('equal')
-    axl.set_title('(a) Unrotated', fontsize=16, x=0.02, ha='left')
-    axr.set_title('(b) Rotated', fontsize=16, x=0.02, ha='left') 
-    mb = axl.contourf(np.nanmean(np.stack(o3_anom),axis=0), 
+    ax.set_aspect('equal')
+    mb = ax.contourf(np.rot90(np.nanmean(np.stack(o3_anom_rotated),axis=0)),
         clevs, cmap=plt.get_cmap('bwr'), extend='both', zorder=1)
-    CS = axl.contour(np.nanstd(np.stack(o3_anom),axis=0), 
-        [6.0, 6.25, 6.5, 6.75, 7.0, 7.25, 7.5],
-        linewidths=1.5, colors='k', zorder=3)
-    plt.clabel(CS, fontsize=10, fmt='%.2f', inline=True)
-    axr.contourf(np.rot90(np.nanmean(np.stack(o3_anom_rotated),axis=0)),
-        clevs, cmap=plt.get_cmap('bwr'), extend='both', zorder=1)
-    CS = axr.contour(np.nanstd(np.stack(o3_anom_rotated), axis=0), 
+    CS = ax.contour(np.nanstd(np.stack(o3_anom_rotated), axis=0), 
         [6.0, 6.25, 6.5, 6.75, 7.0, 7.25, 7.5],
         linewidths=1.5, colors='k', zorder=3)                     
     plt.clabel(CS, fontsize=10, fmt='%.2f', inline=True)
     # Axis labels
-    axl.set_xlabel('E$\:$-W', fontsize=16)
-    axl.set_ylabel('N$\:$-S', fontsize=16)
-    axr.set_xlabel('Tangential', fontsize=16)
-    axr.set_ylabel('Orthogonal', fontsize=16)
+    ax.set_xlabel('Tangential', fontsize=16)
+    ax.set_ylabel('Orthogonal', fontsize=16)
     # Since rotation handles interpolation around the periphery in a non-
     # ideal way, strip off the edge grid cells in unrotated and rotated 
     # cases
-    for ax in [axl, axr]:
-        # Aesthetics (crosshairs for system's center, axes labels)
-        ax.axhline(y=6, xmin=ax.get_xlim()[0], xmax=ax.get_xlim()[1], ls='--', 
-            lw=0.75, color='k', zorder=2)
-        ax.axvline(x=6, ymin=ax.get_ylim()[0], ymax=ax.get_ylim()[1], ls='--', 
-            lw=0.75, color='k', zorder=2)        
-        ax.set_xlim([1, o3_anom_rotated[0].shape[0]-2])
-        ax.set_ylim([1, o3_anom_rotated[0].shape[0]-2])    
-        ax.set_xticks(np.arange(1, o3_anom_rotated[0].shape[0]-1, 1))
-        ax.set_xticklabels(['', '-4', '', '-2', '', '0', '', '2', '', '4', ''], 
-            fontsize=12)
-        ax.set_yticks(np.arange(1, o3_anom_rotated[0].shape[0]-1, 1))
-        ax.set_yticklabels(['', '-4', '', '-2', '', '0', '', '2', '', '4', ''],
-            fontsize=12)
-    plt.gcf().subplots_adjust(left=0.1, right=0.86, wspace=0.35)  
+    # Aesthetics (crosshairs for system's center, axes labels)
+    ax.axhline(y=6, xmin=ax.get_xlim()[0], xmax=ax.get_xlim()[1], ls='--', 
+        lw=0.75, color='k', zorder=2)
+    ax.axvline(x=6, ymin=ax.get_ylim()[0], ymax=ax.get_ylim()[1], ls='--', 
+        lw=0.75, color='k', zorder=2)        
+    ax.set_xlim([1, o3_anom_rotated[0].shape[0]-2])
+    ax.set_ylim([1, o3_anom_rotated[0].shape[0]-2])    
+    ax.set_xticks(np.arange(1, o3_anom_rotated[0].shape[0]-1, 1))
+    ax.set_xticklabels(['', '-4', '', '-2', '', '0', '', '2', '', '4', ''], 
+        fontsize=12)
+    ax.set_yticks(np.arange(1, o3_anom_rotated[0].shape[0]-1, 1))
+    ax.set_yticklabels(['', '-4', '', '-2', '', '0', '', '2', '', '4', ''],
+        fontsize=12)
+    plt.gcf().subplots_adjust(left=0.03, right=0.86, wspace=0.35)  
     # Add colorbar
-    colorbar_axes = plt.gcf().add_axes([0.89, axr.get_position().y0,
-        0.02, (axr.get_position().y1-axr.get_position().y0)]) 
+    colorbar_axes = plt.gcf().add_axes([0.8, ax.get_position().y0,
+        0.04, (ax.get_position().y1-ax.get_position().y0)]) 
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
         extend='both')
     colorbar.ax.tick_params(labelsize=12)
@@ -1339,6 +1337,8 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,10.5))
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # PBLH(PW - EW) 
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -1672,6 +1672,8 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,7))
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # dO3/dT
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -1787,6 +1789,8 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,10.5))
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # r(O3, jet lat - lat)
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -1914,6 +1918,8 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,10.5))
+    if lng_gmi[-1] != 360:
+        lng_gmi[-1] = 360.    
     # r(PBLH, jet lat - lat)
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
@@ -2330,7 +2336,7 @@ except NameError:
 #     pwjet_cyclones_binned, eqjet_cyclones_binned, lat_gmi, lng_gmi, 
 #     lat_jet_ml)
 # # FIGURE 8; O3 anomaly at cyclone
-# fig8(o3_anom, o3_all, o3_anom_rotated, o3_rotated)
+# fig8(o3_anom_rotated)
 # # FIGURE 9; difference in PBLH, U10, and V10 on days with a poleward versus 
 # # equatorward jet
 # fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi, 
