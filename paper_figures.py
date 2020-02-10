@@ -225,7 +225,7 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
     ax5.set_extent([-14, 37, 34, 70])
     ax6.set_extent([95, 139, 15, 53])
     # Define colormap 
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     # Extract all colors from the colormap
     cmaplist = [cmap(i) for i in range(cmap.N)]
     cmap = mpl.colors.LinearSegmentedColormap.from_list(
@@ -327,7 +327,7 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, r_t2mo3, np.linspace(-1, 1, 9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
@@ -878,7 +878,7 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, r_t2mo3_transport, np.linspace(-1, 1, 9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
@@ -1006,9 +1006,9 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_o3-eqjet_o3), 
-        np.linspace(-10,10,11), cmap=cmap, extend='both', 
+        np.linspace(-8,8,9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(O3, jetlat)
     ax1.contourf(lng_gmi, lat_gmi, significance_r_o3jetdist, 
@@ -1020,7 +1020,7 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
         ax1.get_position().y0)]) 
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-        ticks=np.linspace(-10,10,9), extend='neither')
+        ticks=np.linspace(-8,8,9), extend='neither')
     colorbar.ax.tick_params(labelsize=12)
     colorbar.set_label('[ppbv]', fontsize=16)
     ax1.outline_patch.set_zorder(20)
@@ -1177,7 +1177,7 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     clevs = np.linspace(-12, 12, 13)
     diff = pwjet_cyclones_binned-eqjet_cyclones_binned
     diff_mask = np.ma.masked_array(diff, ((diff >= -4) & (diff <= 4)))
@@ -1232,7 +1232,7 @@ def fig8(o3_anom_rotated):
     clevs = np.linspace(-1.5, 1.5, 13)
     ax.set_aspect('equal')
     mb = ax.contourf(np.rot90(np.nanmean(np.stack(o3_anom_rotated),axis=0)),
-        clevs, cmap=plt.get_cmap('bwr'), extend='both', zorder=1)
+        clevs, cmap=plt.get_cmap('coolwarm'), extend='both', zorder=1)
     CS = ax.contour(np.nanstd(np.stack(o3_anom_rotated), axis=0), 
         [6.0, 6.25, 6.5, 6.75, 7.0, 7.25, 7.5],
         linewidths=1.5, colors='k', zorder=3)                     
@@ -1348,7 +1348,7 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_pblh-eqjet_pblh), 
         np.linspace(-300,300,7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
@@ -1683,7 +1683,7 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, do3dt2m, np.linspace(-2, 2, 9), 
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
@@ -1801,7 +1801,7 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, r_o3jetdist, np.linspace(-1,1,9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(O3, jet lat - lat)
@@ -1929,7 +1929,7 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, r_pblhjetdist, np.linspace(-1,1,9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(PBLH, jetlat)
@@ -2356,7 +2356,3 @@ except NameError:
 # figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist, 
 #     lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
 #     significance_r_V10Mjetdist)
-
-
-
-
