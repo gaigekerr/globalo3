@@ -58,6 +58,8 @@ Revision History
                 'o3anom_cyclone' added
     20112019 -- function 'segregate_cyclones_bylat' changed to 
                 'segregate_field_bylat'
+    15022020 -- consider all cyclones (not just those over land) in function
+                'o3anom_cyclone'
 """
 
 def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
@@ -2217,8 +2219,8 @@ def o3anom_cyclone(cyclones, time_model, lat_model, lng_model, o3_model):
         # Only consider cyclones that are detected for at least two 6-hourly 
         # periods; if this is not done, we can't find the bearing (degrees) 
         # which corresponds to the direction that the cyclone is tracking
-        if ((len(np.unique(cycloneid.Date.dt.date.values))>1)  & 
-            (cycloneid['Land Cover'].values.mean()>0.5)): 
+        if ((len(np.unique(cycloneid.Date.dt.date.values))>1)):
+            # & (cycloneid['Land Cover'].values.mean()>0.5)): 
             tothours.append(len(cycloneid))
             # Calculate daily mean value
             cycloneid = cycloneid.resample('D', on='Date').mean()
