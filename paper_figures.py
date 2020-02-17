@@ -8,6 +8,10 @@ Revision History
     05022020 -- initial version created
     07022020 -- edit function 'fig8' to only include the rotated O3 anomalies
                 rather than also unrotated
+    11022020 -- function 'fig5' edited to show difference of correlations 
+                between control and transport-only simulations
+    14022020 -- happy Valentine's day! Changed map projections, added lat/lon
+                ticks, and made several other small edits
 """
 # Change font
 import sys
@@ -64,6 +68,7 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
     # Load EDGAR NOx
     lat_edgar, lng_edgar, nox_edgar = globalo3_open.open_edgar_specifieddomain(
         years, latmin, latmax, lngmin, lngmax, 'NOx')
@@ -77,17 +82,20 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,5))
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title('(a) O$_{\mathregular{3}}$', fontsize=16, x=0.02, ha='left')    
-    ax1.add_feature(ocean50m)
+    # ax1.add_feature(ocean50m)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax1.yaxis.set_major_formatter(lat_formatter)
     cmap = plt.get_cmap('OrRd')
     mb = ax1.contourf(lng_gmi, lat_gmi, np.mean(o3_gmi, axis=0), 
-        np.linspace(30, 60, 7), cmap=cmap, extend='both',
+        np.linspace(10, 60, 11), cmap=cmap, extend='both',
         transform=ccrs.PlateCarree(), zorder=1)
     csthick = ax1.contour(lng_gmi, lat_gmi, np.nanstd(o3_gmi, axis=0), [10.], 
         colors='k', linewidths=1.5, transform=ccrs.PlateCarree(), zorder=15)
@@ -99,23 +107,26 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
         yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
         markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
         transform=ccrs.PlateCarree())
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)    
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
     colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
         ax1.get_position().y0)])
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-        ticks=np.linspace(30, 60, 7), extend='both')
+        ticks=np.linspace(10, 60, 6), extend='both')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[ppbv]', fontsize=16)
+    colorbar.set_label('[ppbv]', fontsize=16, labelpad=11)
     ax1.outline_patch.set_zorder(20)
     # NOx emissions
     ax2=plt.subplot2grid((2,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title('(b) NO$_{x}$', fontsize=16, x=0.02, ha='left')    
-    ax2.add_feature(ocean50m)
+    # ax2.add_feature(ocean50m)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax2.yaxis.set_major_formatter(lat_formatter)    
     mb = ax2.pcolormesh(lng_edgar, lat_edgar, nox_edgar, 
         cmap=plt.get_cmap('Blues', len(np.linspace(0, 8, 9))-1), 
         vmin=np.linspace(0, 8, 9)[0], vmax=np.linspace(0, 8, 9)[-1], 
@@ -135,17 +146,16 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
         ticks=np.linspace(0, 8, 9), extend='max')
     colorbar.ax.tick_params(labelsize=12)
     colorbar.set_label('[kg km$^{\mathregular{-2}}$ day$^{\mathregular{-1}}$]', 
-        fontsize=16)
+        labelpad=15, fontsize=16)
     ax2.outline_patch.set_zorder(20)      
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig1.pdf', dpi=600)
     return
 
-def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
-    mfb_emep, mfb_china): 
+def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china): 
     """Figure 2 of Kerr et al. (2020). Plot maps of the correlation coefficient 
-    (a-c) and mean fractional bias (d-f) calculated between modeled O3 and 
-    observed O3 from AQS, NAPS, EMEP, and MEE.
+    (a-c) calculated between modeled O3 and observed O3 from AQS, NAPS, EMEP, 
+    and MEE.
     
     Parameters
     ----------
@@ -165,18 +175,6 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
     r_china : numpy.ndarray
         Correlation coefficients (r) calculated between O3 from China and GMI 
         CTM, [lat, lng]
-    mfb_aqs : numpy.ndarray
-        Mean fractional bias (MFB) calculated between O3 from AQS and GMI 
-        CTM, [lat, lng]
-    mfb_naps : numpy.ndarray
-        Mean fractional bias (MFB) calculated between O3 from NAPS and GMI 
-        CTM, [lat, lng]
-    mfb_emep : numpy.ndarray
-        Mean fractional bias (MFB) calculated between O3 from EMEP and GMI 
-        CTM, [lat, lng]
-    mfb_china : numpy.ndarray
-        Mean fractional bias (MFB) calculated between O3 from China and GMI 
-        CTM, [lat, lng]
 
     Returns
     -------
@@ -188,31 +186,22 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    fig = plt.figure(figsize=(8.8,6))
+    fig = plt.figure(figsize=(4,6))
     # Enforce equal size (height) of subplots 
     # stackoverflow.com/questions/37767026/matplotlib-enforce-equal-size-
     # height-of-subplots
-    ax1 = plt.subplot2grid((2,4),(0,0), colspan=2,
+    ax1 = plt.subplot2grid((2,2),(0,0), colspan=2,
         projection=ccrs.Miller(central_longitude=0.))
-    ax2 = plt.subplot2grid((2,4),(1,0), aspect='auto', adjustable='box',
+    ax2 = plt.subplot2grid((2,2),(1,0), aspect='auto', adjustable='box',
         projection=ccrs.Miller(central_longitude=0.))
-    ax3 = plt.subplot2grid((2,4),(1,1), aspect='auto', adjustable='box',
-        projection=ccrs.Miller(central_longitude=0.))
-    ax4 = plt.subplot2grid((2,4),(0,2), colspan=2, aspect='auto', 
-        adjustable='box', projection=ccrs.Miller(central_longitude=0.))
-    ax5 = plt.subplot2grid((2,4),(1,2), aspect='auto', adjustable='box',
-        projection=ccrs.Miller(central_longitude=0.))
-    ax6 = plt.subplot2grid((2,4),(1,3), aspect='auto', adjustable='box',
+    ax3 = plt.subplot2grid((2,2),(1,1), aspect='auto', adjustable='box',
         projection=ccrs.Miller(central_longitude=0.))
     # Set subplot labels and titles
     ax1.set_title('(a) r NAPS, AQS', fontsize=16, x=0.02, ha='left')  
     ax2.set_title('(b) r EMEP', fontsize=16, x=0.02, ha='left')
     ax3.set_title('(c) r MEE', fontsize=16, x=0.02, ha='left')
-    ax4.set_title('(d) MFB NAPS, AQS', fontsize=16, x=0.02, ha='left')  
-    ax5.set_title('(e) MFB EMEP', fontsize=16, x=0.02, ha='left')
-    ax6.set_title('(f) MFB MEE', fontsize=16, x=0.02, ha='left')
     # Add oceans and coasts
-    for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
+    for ax in [ax1, ax2, ax3]:
         ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',
                                     scale='50m', facecolor='lightgrey')
         ax.add_feature(ocean)
@@ -221,9 +210,6 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
     ax1.set_extent([-165, -50, 24, 55])    
     ax2.set_extent([-14, 37, 34, 70])
     ax3.set_extent([95, 139, 15, 53])
-    ax4.set_extent([-165, -50, 24, 55])    
-    ax5.set_extent([-14, 37, 34, 70])
-    ax6.set_extent([95, 139, 15, 53])
     # Define colormap 
     cmap = plt.get_cmap('coolwarm')
     # Extract all colors from the colormap
@@ -246,25 +232,12 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
         transform=ccrs.PlateCarree(), zorder=20)
     clevs = np.linspace(-40, 40, 9)
     norm = mpl.colors.BoundaryNorm(clevs, cmap.N)
-    mb2 = ax4.pcolor(lng_gmi, lat_gmi, mfb_aqs*100., cmap=cmap, norm=norm, 
-        transform=ccrs.PlateCarree(), zorder=20)
-    ax4.pcolor(lng_gmi, lat_gmi, mfb_naps*100., cmap=cmap, norm=norm, 
-        transform=ccrs.PlateCarree(), zorder=20)
-    ax5.pcolor(lng_gmi, lat_gmi, mfb_emep*100., cmap=cmap, norm=norm, 
-        transform=ccrs.PlateCarree(), zorder=20)
-    ax6.pcolor(lng_gmi, lat_gmi, mfb_china*100., cmap=cmap, norm=norm, 
-        transform=ccrs.PlateCarree(), zorder=20)
     # Add colorbars
-    colorbar_axes = plt.gcf().add_axes([0.05+0.05,0.11,0.35,0.03])
+    colorbar_axes = plt.gcf().add_axes([0.05+0.05,0.11,0.8,0.03])
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='horizontal', 
         extend='neither')
     colorbar.ax.tick_params(labelsize=12)
     colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=15)
-    colorbar_axes = plt.gcf().add_axes([0.519+0.05,0.11,0.35,0.03])
-    colorbar = plt.colorbar(mb2, colorbar_axes, orientation='horizontal', 
-        extend='both')
-    colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[%]', fontsize=15)
     plt.gcf().subplots_adjust(left=0.05, right=0.95, bottom=0.17)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig2.pdf', dpi=600)
@@ -311,28 +284,58 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    import matplotlib.patches as mpatches
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,5))
     # For wrapping around the Prime Meridian
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title(r'(a) r(T, O$_{\mathregular{3}}$)', fontsize=16, 
         x=0.02, ha='left')    
-    ax1.add_feature(ocean50m, zorder=3)
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, r_t2mo3, np.linspace(-1, 1, 9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
     ax1.contourf(lng_gmi, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree(), zorder=2)
+    # Add boxes corresponding to regions from Figure 4
+    # Western North America
+    ax1.add_patch(mpatches.Rectangle(xy=[-125, 25], width=24, height=45,
+        fill=None, lw=2, edgecolor='k', transform=ccrs.PlateCarree(), 
+        zorder=3))
+    ax1.text(-130, 15, 'Western\nNorth\nAmerica', ha='right',
+        fontweight='bold', fontsize=12, transform=ccrs.PlateCarree())
+    # Eastern North America    
+    ax1.add_patch(mpatches.Rectangle(xy=[-99, 25], width=24, height=45,
+        fill=None, lw=2, edgecolor='k', transform=ccrs.PlateCarree(), 
+        zorder=3))
+    ax1.text(-70, 15, 'Eastern\nNorth\nAmerica', ha='left',
+        fontweight='bold', fontsize=12, transform=ccrs.PlateCarree())    
+    # European Union 
+    ax1.add_patch(mpatches.Rectangle(xy=[-10, 25], width=40, height=45,
+        fill=None, lw=2, edgecolor='k', transform=ccrs.PlateCarree(), 
+        zorder=3))
+    ax1.text(-10, 74, 'Europe', ha='left', fontsize=12, 
+        fontweight='bold', transform=ccrs.PlateCarree())      
+    # China
+    ax1.add_patch(mpatches.Rectangle(xy=[90, 25], width=35, height=45,
+        fill=None, lw=2, edgecolor='k', transform=ccrs.PlateCarree(), 
+        zorder=3))     
+    ax1.text(128, 63, 'China', ha='left', fontsize=12, 
+        fontweight='bold', transform=ccrs.PlateCarree())
     # Eddy-driven jet
     skiplng = 6
     ax1.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
@@ -342,13 +345,16 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ax1.outline_patch.set_zorder(20)
     # r(q, O3)
     ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title(r'(b) r(q, O$_{\mathregular{3}}$)', fontsize=16, x=0.02, 
         ha='left')
-    ax2.add_feature(ocean50m)
+    # ax2.add_feature(ocean50m)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax2.yaxis.set_major_formatter(lat_formatter)
     mb = ax2.contourf(lng_gmi, lat_gmi, r_qv2mo3, np.linspace(-1,1,9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     ax2.contourf(lng_gmi, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
@@ -370,7 +376,7 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
         ticks=np.linspace(-1, 1, 9), extend='neither')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16)
+    colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16, labelpad=11)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig3.pdf', dpi=600)
 
@@ -468,14 +474,16 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     # Model
     field_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
         r_t2mo3, lat_gmi, lng_gmi, 235., 260., 25., 70.) 
+    # # Create grid to sub-sample model; the step to create the empty grid 
+    # # occurs now (to get the correct shape of "field_wna" before the zonal 
+    # # average is taken), and this grid will be filled with NaNs for grid cells
+    # # without monitors and 1s for grid cells with monitors
+    # subsample_wna = np.empty(shape=field_wna.shape)
     wna_left = geo_idx(235., lng_ml)
     wna_right = geo_idx(260., lng_ml)
     lat_jet_wna = lat_jet_ml[:, wna_left:wna_right+1]
     lat_jet_err_wna = np.nanstd(np.nanmean(lat_jet_wna, axis = 1))
     lat_jet_mean_wna = np.nanmean(lat_jet_wna)
-    land_wna = globalo3_calculate.find_grid_overland(lat_wna, lng_wna)
-    field_err_wna = 2*np.nanstd(field_wna*land_wna, axis=1)
-    field_wna = np.nanmean(field_wna*land_wna, axis=1)
     # Observations
     obs_wna = np.where((np.array(lat_naps+lat_aqs) < 70.) &
                      (np.array(lat_naps+lat_aqs) > 25.) &
@@ -484,6 +492,16 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     # Combine NAPS and AQS observations 
     lat_obs_wna = np.array(lat_naps+lat_aqs)[obs_wna]
     obs_wna = np.array(r_t2mo3_naps+r_t2mo3_aqs)[obs_wna]
+    # # OPTIONAL: Select grid cells containing in-situ monitors (if this is not
+    # # preferred, then go the route of finding land-based grid cells)
+    # subsample_wna[:] = np.nan
+    # for ilat, ilng in zip(lat_obs_wna, lng_obs_wna):
+    #     ilat = geo_idx(ilat, lat_wna)
+    #     ilng = geo_idx(ilng, lng_wna)
+    #     subsample_wna[ilat, ilng] = 1.   
+    land_wna = globalo3_calculate.find_grid_overland(lat_wna, lng_wna)
+    field_err_wna = 2*np.nanstd(field_wna*land_wna, axis=1)
+    field_wna = np.nanmean(field_wna*land_wna, axis=1)
     # Bin observations by latitude 
     lat_obs_wna, obs_mean_wna, obs_std_wna = \
         globalo3_calculate.bin_observations_bylat(lat_wna[::2], obs_wna, 
@@ -578,6 +596,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax4 = plt.subplot2grid((4,4), (3,0), colspan=2)
     color_r = '#EF9802'
     color_jet = 'k'
+    color_obs = '#3F79B7'
     for ax in [ax1, ax2, ax3, ax4]: 
         ax.set_xlim([25, 70])
         ax.set_xticks(np.linspace(25, 70, 10))
@@ -594,65 +613,66 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax1.text(0.98, 0.8, 'Western North America', ha = 'right', 
         transform=ax1.transAxes, fontsize=12, zorder=20)
     p1, = ax1.plot(lat_wna, field_wna, ls='-', lw=2, color=color_r, 
-        zorder=5)
+        zorder=6)
     p2 = ax1.fill_between(lat_wna, field_wna-field_err_wna,
         field_wna+field_err_wna, color = color_r, alpha=0.2, zorder=5)
-    p3, = ax1.plot(lat_obs_wna, obs_mean_wna, '-', lw=2, color='grey',     
+    p3, = ax1.plot(lat_obs_wna, obs_mean_wna, '-', lw=2, color=color_obs,
     zorder=4)
     p4 = ax1.fill_between(lat_obs_wna, (obs_mean_wna-obs_std_wna),
         (obs_mean_wna+obs_std_wna), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     # Western North America eddy-driven jet
     p7 = ax1.errorbar(lat_jet_mean_wna, 0., xerr=[lat_jet_err_wna], 
-        fmt = 'o', color = color_jet, ecolor = color_jet, elinewidth = 2, 
-        capsize = 3, zorder = 20)
+        fmt = 'o', color = color_jet, ecolor = color_jet, elinewidth=2, 
+        capsize=0, zorder=10)
     # Add legend
     leg = ax1.legend([(p3, p4), (p1, p2), p7], 
         ['Observed $\mathregular{\pm}$ 2$\mathregular{\sigma}$',
         'Modeled $\mathregular{\pm}$ 2$\mathregular{\sigma}$',
-        'Eddy-driven jet'], loc=6, ncol=3, bbox_to_anchor=(0.56, 1.3), 
-        fontsize=12, frameon=False)
+        'Jet stream'], loc=6, ncol=3, bbox_to_anchor=(0.3, 1.3), 
+        fontsize=16, frameon=False)
     # Change the marker size manually for observations
     leg.legendHandles[0]._legmarker.set_markersize(5)
     # Eastern North America
     ax2.text(0.98, 0.8, 'Eastern North America', ha='right', 
         transform=ax2.transAxes, fontsize=12, zorder=20)
-    ax2.plot(lat_ena, field_ena, ls='-', lw=2, color=color_r, zorder=5)
+    ax2.plot(lat_ena, field_ena, ls='-', lw=2, color=color_r, zorder=6)
     ax2.fill_between(lat_ena, field_ena-field_err_ena, field_ena+field_err_ena, 
         color=color_r, alpha=0.2, zorder=5)
-    ax2.plot(lat_obs_ena, obs_mean_ena, '-', lw=2, color='grey', zorder=4)
+    ax2.plot(lat_obs_ena, obs_mean_ena, '-', lw=2, color=color_obs, zorder=4)
     ax2.fill_between(lat_obs_ena, (obs_mean_ena-obs_std_ena),
         (obs_mean_ena+obs_std_ena), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     # Eastern North America eddy-driven jet
     ax2.errorbar(lat_jet_mean_ena, 0., xerr=[lat_jet_err_ena], fmt='o', 
-    color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, zorder=20)
+    color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     # Europe
     ax3.text(0.98, 0.8, 'Europe', ha='right', transform=ax3.transAxes, 
         fontsize=12, zorder=20)
-    ax3.plot(lat_eu, field_eu, ls='-', lw=2, color=color_r, zorder=5)
+    ax3.plot(lat_eu, field_eu, ls='-', lw=2, color=color_r, zorder=6)
     ax3.fill_between(lat_eu, field_eu-field_err_eu, field_eu+field_err_eu, 
         color=color_r, alpha=0.2, zorder=5)
-    ax3.plot(lat_obs_eu, obs_mean_eu, '-', lw=2, color='grey', zorder=4)
+    ax3.plot(lat_obs_eu, obs_mean_eu, '-', lw=2, color=color_obs, zorder=4)
     ax3.fill_between(lat_obs_eu, (obs_mean_eu-obs_std_eu),
         (obs_mean_eu+obs_std_eu), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     # Europe eddy-driven jet
     ax3.errorbar(lat_jet_mean_eu, 0., xerr=[lat_jet_err_eu], fmt='o', 
-        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, zorder=20)
+        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     # East Asia
     ax4.text(0.98, 0.8, 'China', ha='right', transform=ax4.transAxes, 
         fontsize=12, zorder=20)
-    ax4.plot(lat_asia, field_asia, ls='-', lw=2, color=color_r, zorder=5)
+    ax4.plot(lat_asia, field_asia, ls='-', lw=2, color=color_r, zorder=6)
     ax4.fill_between(lat_asia, field_asia-field_err_asia,
         field_asia+field_err_asia, color=color_r, alpha=0.2, zorder=5)
-    ax4.plot(lat_obs_china, obs_mean_china, '-', lw=2, color='grey', zorder=4)
+    ax4.plot(lat_obs_china, obs_mean_china, '-', lw=2, color=color_obs, 
+        zorder=4)
     ax4.fill_between(lat_obs_china, (obs_mean_china-obs_std_china),
         (obs_mean_china+obs_std_china), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     # East Asia eddy-driven jet
     ax4.errorbar(lat_jet_mean_asia, 0., xerr=[lat_jet_err_asia], fmt='o', 
-        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=2, zorder=10)
+        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     # For O3-humidity relationship
     ax1 = plt.subplot2grid((4,4), (0,2), colspan=2)
     ax2 = plt.subplot2grid((4,4), (1,2), colspan=2)
@@ -767,55 +787,59 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax1.text(0.98, 0.8, 'Western North America', ha = 'right', 
         transform=ax1.transAxes, fontsize=12, zorder=20)
     p1, = ax1.plot(lat_wna, field_wna, ls='-', lw=2, color=color_r, 
-        zorder=5)
+        zorder=6)
     p2 = ax1.fill_between(lat_wna, field_wna-field_err_wna,
         field_wna+field_err_wna, color = color_r, alpha=0.2, zorder=5)
-    p3, = ax1.plot(lat_obs_wna, obs_mean_wna, '-', lw=2, color='grey',     
+    p3, = ax1.plot(lat_obs_wna, obs_mean_wna, '-', lw=2, color=color_obs,     
         zorder=4)
     p4 = ax1.fill_between(lat_obs_wna, (obs_mean_wna-obs_std_wna),
         (obs_mean_wna+obs_std_wna), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     p7 = ax1.errorbar(lat_jet_mean_wna, 0., xerr=[lat_jet_err_wna], 
-        fmt = 'o', color = color_jet, ecolor = color_jet, elinewidth = 2, 
-        capsize = 3, zorder = 20)
+        fmt='o', color=color_jet, ecolor=color_jet, elinewidth=2, 
+        capsize=0, zorder=10)
     leg.legendHandles[0]._legmarker.set_markersize(5)
     ax2.text(0.98, 0.8, 'Eastern North America', ha='right', 
         transform=ax2.transAxes, fontsize=12, zorder=20)
-    ax2.plot(lat_ena, field_ena, ls='-', lw=2, color=color_r, zorder=5)
+    ax2.plot(lat_ena, field_ena, ls='-', lw=2, color=color_r, zorder=6)
     ax2.fill_between(lat_ena, field_ena-field_err_ena, field_ena+field_err_ena, 
         color=color_r, alpha=0.2, zorder=5)
-    ax2.plot(lat_obs_ena, obs_mean_ena, '-', lw=2, color='grey', zorder=4)
+    ax2.plot(lat_obs_ena, obs_mean_ena, '-', lw=2, color=color_obs, zorder=4)
     ax2.fill_between(lat_obs_ena, (obs_mean_ena-obs_std_ena),
         (obs_mean_ena+obs_std_ena), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     ax2.errorbar(lat_jet_mean_ena, 0., xerr=[lat_jet_err_ena], fmt='o', 
-        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, zorder=20)
+        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     ax3.text(0.98, 0.8, 'Europe', ha='right', transform=ax3.transAxes, 
         fontsize=12, zorder=20)
-    ax3.plot(lat_eu, field_eu, ls='-', lw=2, color=color_r, zorder=5)
+    ax3.plot(lat_eu, field_eu, ls='-', lw=2, color=color_r, zorder=6)
     ax3.fill_between(lat_eu, field_eu-field_err_eu, field_eu+field_err_eu, 
         color=color_r, alpha=0.2, zorder=5)
-    ax3.plot(lat_obs_eu, obs_mean_eu, '-', lw=2, color='grey', zorder=4)
+    ax3.plot(lat_obs_eu, obs_mean_eu, '-', lw=2, color=color_obs, zorder=4)
     ax3.fill_between(lat_obs_eu, (obs_mean_eu-obs_std_eu),
         (obs_mean_eu+obs_std_eu), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
     ax3.errorbar(lat_jet_mean_eu, 0., xerr=[lat_jet_err_eu], fmt='o', 
-        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=3, zorder=20)
+        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     ax4.text(0.98, 0.8, 'China', ha='right', transform=ax4.transAxes, 
         fontsize=12, zorder=20)
-    ax4.plot(lat_asia, field_asia, ls='-', lw=2, color=color_r, zorder=5)
+    ax4.plot(lat_asia, field_asia, ls='-', lw=2, color=color_r, zorder=6)
     ax4.fill_between(lat_asia, field_asia-field_err_asia,
         field_asia+field_err_asia, color=color_r, alpha=0.2, zorder=5)
-    ax4.plot(lat_obs_china, obs_mean_china, '-', lw=2, color='grey', zorder=4)
+    ax4.plot(lat_obs_china, obs_mean_china, '-', lw=2, color=color_obs, 
+        zorder=4)
     ax4.fill_between(lat_obs_china, (obs_mean_china-obs_std_china),
         (obs_mean_china+obs_std_china), facecolor='None', hatch='////', 
-        edgecolor='grey', linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=3)
+    ax4.errorbar(lat_jet_mean_asia, 0., xerr=[lat_jet_err_asia], fmt='o', 
+        color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
             'fig4.pdf', dpi=600)
     return
 
-def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport, 
-    significance_diff_r_t2mo3, significance_diff_r_qv2mo3, lat_jet_ml): 
+def fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
+    r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
+    lat_jet_ml): 
     """Figure 5 of Kerr et al. (2020). (a) r(T, O3) from the transport only 
     simulation is shown with colored shading. Hatching indicates regions that 
     were significant in the full simulation that became insignificant in the 
@@ -862,25 +886,30 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,5))
     # For wrapping around the Prime Meridian
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
-    ax1.set_title(r'(a) r(T, O$_{\mathregular{3}})$', fontsize=16, x=0.02,
-        ha='left')    
-    ax1.add_feature(ocean50m, zorder=3)
+        projection=ccrs.PlateCarree(central_longitude=0.))
+    ax1.set_title(r'(a) $\mathregular{\delta}$ r(T, O$_{\mathregular{3}})$', 
+        fontsize=16, x=0.02, ha='left')    
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, r_t2mo3_transport, np.linspace(-1, 1, 9), 
-        cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
+    mb = ax1.contourf(lng_gmi, lat_gmi, (r_t2mo3-r_t2mo3_transport), 
+        np.linspace(-0.4, 0.4, 9), cmap=cmap, extend='both', 
+        transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
     ax1.contourf(lng_gmi, lat_gmi, significance_diff_r_t2mo3, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
@@ -894,15 +923,19 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport,
     ax1.outline_patch.set_zorder(20)
     # r(q, O3)
     ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
-    ax2.set_title(r'(b) r(q, O$_{\mathregular{3}}$)', fontsize=16, 
-        x=0.02, ha='left')
-    ax2.add_feature(ocean50m)
+        projection=ccrs.PlateCarree(central_longitude=0.))
+    ax2.set_title(r'(b) $\mathregular{\delta}$ r(q, O$_{\mathregular{3}}$)', 
+        fontsize=16, x=0.02, ha='left')
+    # ax2.add_feature(ocean50m)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    mb = ax2.contourf(lng_gmi, lat_gmi, r_qv2mo3_transport, np.linspace(-1,1,9), 
-        cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax2.yaxis.set_major_formatter(lat_formatter)    
+    mb = ax2.contourf(lng_gmi, lat_gmi, r_qv2mo3-r_qv2mo3_transport, 
+        np.linspace(-0.4,0.4,9), cmap=cmap, extend='both', 
+        transform=ccrs.PlateCarree(), zorder=1)
     ax2.contourf(lng_gmi, lat_gmi, significance_diff_r_qv2mo3, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree())
     skiplng = 6
@@ -912,7 +945,7 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport,
         transform=ccrs.PlateCarree())
     ax2.outline_patch.set_zorder(20)      
     # Add colorbar
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)
     colorbar_axes = plt.gcf().add_axes([
         ax1.get_position().x1+0.03, # Left
         (ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0, # Bottom 
@@ -920,11 +953,12 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport,
         ((ax1.get_position().y1-ax1.get_position().y0)/2.+ax1.get_position().y0)-
         ((ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0)])    
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-        ticks=np.linspace(-1, 1, 9), extend='neither')
+        ticks=np.linspace(-0.4, 0.4, 9), extend='both')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16)
+    colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16, labelpad=11)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig5.pdf', dpi=600)
+    return
     
 def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml, 
     times_gmi, significance_r_o3jetdist, significance_r_t2mjetdist, 
@@ -981,6 +1015,7 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
     # Composites of flow at surface on days with poleward or equatorward jet 
     eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_o3, eqjet_o3 = \
         globalo3_calculate.segregate_field_bylat(o3_gmi, lng_gmi, lat_jet_ml, 
@@ -994,18 +1029,21 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,10.5))
+    fig = plt.figure(figsize=(9,7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # O3(PW - EW) 
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title('(a) O$_\mathregular{3,\:PW}$ $-$ O$_\mathregular{3,\:EW}$', 
         fontsize=16, x=0.02, ha='left')
-    ax1.add_feature(ocean50m, zorder=3)
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_o3-eqjet_o3), 
         np.linspace(-8,8,9), cmap=cmap, extend='both', 
@@ -1015,24 +1053,27 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # Add colorbar
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)
     colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
         ax1.get_position().y0)]) 
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
         ticks=np.linspace(-8,8,9), extend='neither')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[ppbv]', fontsize=16)
+    colorbar.set_label('[ppbv]', fontsize=16, labelpad=15)
     ax1.outline_patch.set_zorder(20)
     # T(PW - EW) 
     ax2 = plt.subplot2grid((3,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title('(b) T$_\mathregular{PW}$ $-$ T$_\mathregular{EW}$', 
         fontsize=16, x=0.02, ha='left')
-    ax2.add_feature(ocean50m, zorder=3)
+    # ax2.add_feature(ocean50m, zorder=3)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax2.yaxis.set_major_formatter(lat_formatter)    
     mb = ax2.contourf(lng_gmi, lat_gmi, (pwjet_t2m-eqjet_t2m), 
         np.linspace(-8,8,9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
@@ -1045,19 +1086,22 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
         ticks=np.linspace(-8,8,9), extend='neither')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[K]', fontsize=16, labelpad=22)
+    colorbar.set_label('[K]', fontsize=16, labelpad=15)
     ax2.outline_patch.set_zorder(20)
     # q(PW - EW) 
     ax3 = plt.subplot2grid((3,2), (2,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax3.set_title('(c) q$_\mathregular{PW}$ $-$ q$_\mathregular{EW}$', 
         fontsize=16, x=0.02, ha='left')
-    ax3.add_feature(ocean50m, zorder=3)
+    # ax3.add_feature(ocean50m, zorder=3)
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax3.yaxis.set_major_formatter(lat_formatter)    
     mb = ax3.contourf(lng_gmi, lat_gmi, (pwjet_qv2m-eqjet_qv2m), 
-        np.linspace(-3,3,9), cmap=cmap, extend='both', 
+        np.linspace(-3,3,7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
     ax3.contourf(lng_gmi, lat_gmi, significance_r_qv2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
@@ -1066,9 +1110,9 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
         ax3.get_position().y0, 0.02, (ax3.get_position().y1-
         ax3.get_position().y0)]) 
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-        ticks=np.linspace(-3,3,9), extend='neither')
+        ticks=np.linspace(-3,3,7), extend='neither')
     colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[g kg$^{\mathregular{-1}}$]', fontsize=16)
+    colorbar.set_label('[g kg$^{\mathregular{-1}}$]', fontsize=16, labelpad=13)
     ax3.outline_patch.set_zorder(20)
     # Mean position of the eddy-driven jet
     for ax in [ax1, ax2, ax3]:
@@ -1077,6 +1121,15 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
             yerr=np.std(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
             markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
             transform=ccrs.PlateCarree())
+    # Add examples of PW and EW jet to O3 plot 
+    ax1.errorbar(lng_gmi[3::skiplng], np.array(pwjet_lat)[3::skiplng],
+        yerr=np.array(pwjet_lat_var)[3::skiplng], zorder=10, color='k', 
+        markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
+        transform=ccrs.PlateCarree())    
+    ax1.errorbar(lng_gmi[3::skiplng], np.array(eqjet_lat)[3::skiplng],
+        yerr=np.array(eqjet_lat_var)[3::skiplng], zorder=10, color='k', 
+        markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
+        transform=ccrs.PlateCarree())        
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig6.pdf', dpi=600)
     return
@@ -1128,20 +1181,24 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter        
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,5))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # Total cyclone frequency
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title(r'(a) Cyclone frequency', fontsize=16, x=0.02, ha='left')    
     ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('OrRd')
     clevs = np.linspace(0, 35, 8)
     # Mask small frequencies of cyclones 
@@ -1170,17 +1227,20 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     ax1.outline_patch.set_zorder(20)
     # (PW - EW) cyclone difference
     ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title('(b) Cyclones$_{\:\mathregular{PW}}$ - '+\
         'Cyclones$_{\: \mathregular{EW}}$', fontsize=16, x=0.02, ha='left')
     ax2.add_feature(ocean50m)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax2.yaxis.set_major_formatter(lat_formatter)
     cmap = plt.get_cmap('coolwarm')
     clevs = np.linspace(-12, 12, 13)
     diff = pwjet_cyclones_binned-eqjet_cyclones_binned
-    diff_mask = np.ma.masked_array(diff, ((diff >= -4) & (diff <= 4)))
+    diff_mask = np.ma.masked_array(diff, ((diff >= -2) & (diff <= 2)))
     mb = ax2.pcolor(lng_cyclones_binned, lat_cyclones_binned, diff_mask, 
         cmap=plt.get_cmap(cmap, len(clevs)-1), vmin=clevs[0], 
         vmax=clevs[-1], norm = mpl.colors.BoundaryNorm(clevs, 
@@ -1229,7 +1289,7 @@ def fig8(o3_anom_rotated):
     # Plotting unrotated and rotated cases
     fig = plt.figure(figsize=(5.5,4.2))
     ax = plt.subplot2grid((1,1),(0,0))
-    clevs = np.linspace(-1.5, 1.5, 13)
+    clevs = np.linspace(-1., 1., 11)
     ax.set_aspect('equal')
     mb = ax.contourf(np.rot90(np.nanmean(np.stack(o3_anom_rotated),axis=0)),
         clevs, cmap=plt.get_cmap('coolwarm'), extend='both', zorder=1)
@@ -1261,10 +1321,10 @@ def fig8(o3_anom_rotated):
     colorbar_axes = plt.gcf().add_axes([0.8, ax.get_position().y0,
         0.04, (ax.get_position().y1-ax.get_position().y0)]) 
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-        extend='both')
+        ticks=np.linspace(-1.,1.,11), extend='both')
     colorbar.ax.tick_params(labelsize=12)
     colorbar.set_label('$\mathregular{\delta}\:$O$_{\mathregular{3}}$ [ppbv]', 
-        fontsize=16)
+        fontsize=16, labelpad=15)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig8.pdf', dpi=600)
     return 
@@ -1323,6 +1383,7 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
     # Composites of flow at surface on days with poleward or equatorward jet 
     eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_pblh, eqjet_pblh = \
         globalo3_calculate.segregate_field_bylat(pblh_merra, lng_gmi, lat_jet_ml, 
@@ -1336,18 +1397,21 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,10.5))
+    fig = plt.figure(figsize=(9,7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # PBLH(PW - EW) 
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title('(a) PBLH$_\mathregular{PW}$ $-$ PBLH$_\mathregular{EW}$', 
         fontsize=16, x=0.02, ha='left')
-    ax1.add_feature(ocean50m, zorder=3)
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax1.yaxis.set_major_formatter(lat_formatter)
     cmap = plt.get_cmap('coolwarm')
     mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_pblh-eqjet_pblh), 
         np.linspace(-300,300,7), cmap=cmap, extend='both', 
@@ -1357,7 +1421,7 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # Add colorbar
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)
     colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
         ax1.get_position().y0)]) 
@@ -1368,13 +1432,16 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ax1.outline_patch.set_zorder(20)
     # U10M-jet position relationship 
     ax2 = plt.subplot2grid((3,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title('(b) U$_\mathregular{10,\:PW}$ $-$ U$_\mathregular{10,\:EW}$', 
         fontsize=16, x=0.02, ha='left')
-    ax2.add_feature(ocean50m, zorder=3)
+    # ax2.add_feature(ocean50m, zorder=3)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax2.yaxis.set_major_formatter(lat_formatter)    
     mb = ax2.contourf(lng_gmi, lat_gmi, (pwjet_U10M-eqjet_U10M), 
         np.linspace(-4, 4, 9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
@@ -1391,13 +1458,16 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ax2.outline_patch.set_zorder(20)
     # V10M-jet position relationship
     ax3 = plt.subplot2grid((3,2), (2,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax3.set_title('(c) V$_\mathregular{10,\:PW}$ $-$ V$_\mathregular{10,\:EW}$', 
         fontsize=16, x=0.02, ha='left')
-    ax3.add_feature(ocean50m, zorder=3)
+    # ax3.add_feature(ocean50m, zorder=3)
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()    
+    ax3.yaxis.set_major_formatter(lat_formatter)    
     mb = ax3.contourf(lng_gmi, lat_gmi, (pwjet_V10M-eqjet_V10M), 
         np.linspace(-3,3,7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
@@ -1668,18 +1738,19 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,5))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # dO3/dT
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title('(a) dO$_{\mathregular{3}}$/dT', fontsize=16, 
         x=0.02, ha='left')    
-    ax1.add_feature(ocean50m, zorder=3)
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1689,13 +1760,16 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     # Hatching for significance of r(T, O3)
     ax1.contourf(lng_gmi, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree(), zorder=2)
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax1.yaxis.set_major_formatter(lat_formatter)    
     # Eddy-driven jet
     skiplng = 6
     ax1.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
         yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], color='k', markersize=3, 
         elinewidth=1.25, ecolor='k', fmt='o', transform=ccrs.PlateCarree(), 
         zorder=5)
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)    
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
     colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
         ax1.get_position().y0)])
@@ -1706,10 +1780,10 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     ax1.outline_patch.set_zorder(20)
     # dO3/dq
     ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title(r'(b) dO$_{\mathregular{3}}$/dq', fontsize=16, x=0.02, 
         ha='left')
-    ax2.add_feature(ocean50m)
+    # ax2.add_feature(ocean50m)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1717,6 +1791,9 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
     ax2.contourf(lng_gmi, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree())
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax2.yaxis.set_major_formatter(lat_formatter)    
     # skiplng = 6
     ax2.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
         yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
@@ -1731,7 +1808,7 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     colorbar.set_label('[ppbv kg g$^{\mathregular{-1}}$]', fontsize=16)
     ax2.outline_patch.set_zorder(20)      
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'figS1.pdf', dpi=600)
+        'figS1_oceanoff.pdf', dpi=600)
     return    
 
 def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
@@ -1785,19 +1862,20 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,10.5))
+    fig = plt.figure(figsize=(9,7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # r(O3, jet lat - lat)
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title(r'(a) r(O$_{\mathregular{3}}$, '+
         '$\mathregular{\phi_{jet}}$ $-$ ${\mathregular{\phi}}$)', fontsize=16, 
         x=0.02, ha='left')    
-    ax1.add_feature(ocean50m, zorder=3)
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1808,13 +1886,16 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax1.contourf(lng_gmi, lat_gmi, significance_r_o3jetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax1.yaxis.set_major_formatter(lat_formatter)    
     ax1.outline_patch.set_zorder(20)
     # r(T, jet lat - lat)
     ax2 = plt.subplot2grid((3,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title(r'(b) r(T, $\mathregular{\phi_{jet}}$ $-$ ' +
         '${\mathregular{\phi}}$)', fontsize=16, x=0.02, ha='left')    
-    ax2.add_feature(ocean50m, zorder=3)
+    # ax2.add_feature(ocean50m, zorder=3)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1824,13 +1905,16 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax2.contourf(lng_gmi, lat_gmi, significance_r_t2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax2.yaxis.set_major_formatter(lat_formatter)    
     ax2.outline_patch.set_zorder(20)
     # r(q, jet lat - lat)
     ax3 = plt.subplot2grid((3,2), (2,0), colspan=2,
-            projection=ccrs.Miller(central_longitude=0.))
+            projection=ccrs.PlateCarree(central_longitude=0.))
     ax3.set_title(r'(c) r(q, $\mathregular{\phi_{jet}}$ $-$ ' +
         '${\mathregular{\phi}}$)', fontsize=16, x=0.02, ha='left')    
-    ax3.add_feature(ocean50m, zorder=3)
+    # ax3.add_feature(ocean50m, zorder=3)
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1840,6 +1924,9 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax3.contourf(lng_gmi, lat_gmi, significance_r_qv2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax3.yaxis.set_major_formatter(lat_formatter)    
     ax3.outline_patch.set_zorder(20)
     for ax in [ax1, ax2, ax3]:
         skiplng = 6
@@ -1848,7 +1935,7 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
             color='k', markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
             transform=ccrs.PlateCarree(), zorder=5)
     # Add colorbar
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)
     colorbar_axes = plt.gcf().add_axes([
         ax1.get_position().x1+0.03, # Left
         (ax3.get_position().y1-ax3.get_position().y0)/2.+ax3.get_position().y0, # Bottom 
@@ -1914,18 +2001,19 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,10.5))
+    fig = plt.figure(figsize=(9,7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # r(PBLH, jet lat - lat)
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax1.set_title(r'(a) r(PBLH, $\mathregular{\phi_{jet}}$ $-$ '+
         '${\mathregular{\phi}}$)', fontsize=16, x=0.02, ha='left')    
-    ax1.add_feature(ocean50m, zorder=3)
+    # ax1.add_feature(ocean50m, zorder=3)
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1936,14 +2024,17 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax1.contourf(lng_gmi, lat_gmi, significance_r_pblhjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax1.yaxis.set_major_formatter(lat_formatter)      
     ax1.outline_patch.set_zorder(20)
     # r(U10M, jet lat - lat)
     ax2 = plt.subplot2grid((3,2), (1,0), colspan=2,
-        projection=ccrs.Miller(central_longitude=0.))
+        projection=ccrs.PlateCarree(central_longitude=0.))
     ax2.set_title(r'(b) r(U$_\mathregular{10}$, '+
         '$\mathregular{\phi_{jet}}$ $-$ ${\mathregular{\phi}}$)', fontsize=16, 
         x=0.02, ha='left')    
-    ax2.add_feature(ocean50m, zorder=3)
+    # ax2.add_feature(ocean50m, zorder=3)
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1953,14 +2044,17 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax2.contourf(lng_gmi, lat_gmi, significance_r_U10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax2.yaxis.set_major_formatter(lat_formatter)      
     ax2.outline_patch.set_zorder(20)
     # r(V10M, jet lat - lat)
     ax3 = plt.subplot2grid((3,2), (2,0), colspan=2,
-            projection=ccrs.Miller(central_longitude=0.))
+            projection=ccrs.PlateCarree(central_longitude=0.))
     ax3.set_title(r'(c) r(V$_\mathregular{10}$, '+
         '$\mathregular{\phi_{jet}}$ $-$ ${\mathregular{\phi}}$)', fontsize=16, 
         x=0.02, ha='left')    
-    ax3.add_feature(ocean50m, zorder=3)
+    # ax3.add_feature(ocean50m, zorder=3)
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
@@ -1970,6 +2064,9 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax3.contourf(lng_gmi, lat_gmi, significance_r_V10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+    lat_formatter = LatitudeFormatter()
+    ax3.yaxis.set_major_formatter(lat_formatter)      
     ax3.outline_patch.set_zorder(20)
     for ax in [ax1, ax2, ax3]:
         skiplng = 6
@@ -1978,7 +2075,7 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
             color='k', markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
             transform=ccrs.PlateCarree(), zorder=5)
     # Add colorbar
-    plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)
     colorbar_axes = plt.gcf().add_axes([
         ax1.get_position().x1+0.03, # Left
         (ax3.get_position().y1-ax3.get_position().y0)/2.+ax3.get_position().y0, # Bottom 
@@ -2313,8 +2410,7 @@ except NameError:
 # # FIGURE 1; Mean O3 and NOx
 # fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
 # # FIGURE 2; model performance
-# fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china, mfb_aqs, mfb_naps,
-#     mfb_emep, mfb_china)
+# fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
 # # FIGURE 3; r(T, O3) and r(q, O3)
 # fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
 #     significance_r_qv2mo3, lat_jet_ml)    
@@ -2322,15 +2418,16 @@ except NameError:
 # fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
 #     lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
 #     r_t2mo3_emep, r_qv2mo3_emep, lat_emep, lng_emep, r_t2mo3_china, 
-#     r_qv2mo3_china, lat_china, lng_china, lng_ml, lat_jet_ml)    
+#     r_qv2mo3_china, lat_china, lng_china, lng_ml, lat_jet_ml)
 # # FIGURE 5: r(T, O3) and r(q, O3) from the transport only simulation 
-# fig5(lat_gmi, lng_gmi, r_t2mo3_transport, r_qv2mo3_transport, 
-#     significance_diff_r_t2mo3, significance_diff_r_qv2mo3, lat_jet_ml)
+# fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
+#     r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
+#     lat_jet_ml)
 # # FIGURE 6; difference in O3, T2M, and qv2M on days with a poleward versus
 # # equatorward jet
 # fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml, 
 #     times_gmi, significance_r_o3jetdist, significance_r_t2mjetdist, 
-#     significance_r_qv2mjetdist)    
+#     significance_r_qv2mjetdist)
 # # FIGURE 7; cyclone frequency and poleward-equatorward jet differences
 # fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
 #     pwjet_cyclones_binned, eqjet_cyclones_binned, lat_gmi, lng_gmi, 
