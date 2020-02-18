@@ -378,7 +378,7 @@ def open_chinao3(years, months, hours, cityavg=False):
     import numpy as np
     PATH_CHINA = '/Users/ghkerr/phd/observations/o3/china/'
     infiles = xr.open_mfdataset(PATH_CHINA+'site/'+'china_sites_*.nc',
-        concat_dim='time')
+        concat_dim='time', combine='nested')
     o3 = infiles.o3.values
     # Data from Ke Li is for 2016-2017
     date_range = pd.date_range(start='01/01/2016', end='12/31/2017')
