@@ -90,6 +90,10 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax1.yaxis.set_major_formatter(lat_formatter)
@@ -124,6 +128,9 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)      
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)    
@@ -302,6 +309,10 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])    
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
@@ -352,6 +363,9 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)          
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)
@@ -903,6 +917,10 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
@@ -930,6 +948,9 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)          
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)    
@@ -1029,7 +1050,7 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,7.7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # O3(PW - EW) 
@@ -1041,6 +1062,10 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
@@ -1071,6 +1096,10 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)         
+    ax2.get_xaxis().set_ticklabels([])
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)    
@@ -1097,6 +1126,9 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax3.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax3.xaxis.set_major_formatter(lng_formatter)          
     ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax3.yaxis.set_major_formatter(lat_formatter)    
@@ -1196,6 +1228,10 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
@@ -1234,6 +1270,9 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)      
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)
@@ -1397,7 +1436,7 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,7.7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # PBLH(PW - EW) 
@@ -1409,6 +1448,10 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])    
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)
@@ -1439,6 +1482,10 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)         
+    ax2.get_xaxis().set_ticklabels([])    
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)    
@@ -1465,6 +1512,9 @@ def fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi,
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
+    ax3.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax3.xaxis.set_major_formatter(lng_formatter)        
     ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax3.yaxis.set_major_formatter(lat_formatter)    
@@ -1574,26 +1624,25 @@ def fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra):
         ax.set_xlim([25,70])
         ax.set_xticks([25,40,55,70])
         ax.set_xticklabels([])
-        ax.set_ylim([-25, 25])
-        ax.set_yticks(np.linspace(-25, 25, 6))
-        ax.set_yticklabels(np.linspace(-25, 25, 6), fontsize=12)
+        ax.set_ylim([-30, 35])
+        ax.set_yticks(np.linspace(-30, 35, 6))
+        ax.set_yticklabels([-30, -17, -4, 9, 22, 35], fontsize=12)
         # Add horizontal line for field = 0
         ax.axhline(y=0.0, color='k', lw=1., linestyle='--', zorder=1)
     ax2.set_yticklabels([]); ax3.set_yticklabels([]) 
-    latweight = np.cos(np.deg2rad(lat_gmi))
     # O3 meridional flux for all days
-    ax1.plot(o3_total*latweight, lw=2, ls='-', color='#A2C3E0')
-    ax1.plot(o3_mean*latweight, lw=2, ls='--', color='#EF9802')
-    ax1.plot((o3_stationary+o3_transient)*latweight, lw=2, ls='-', color='#3F79B7')
+    ax1.plot(o3_total, lw=2, ls='-', color='#A2C3E0')
+    ax1.plot(o3_mean, lw=2, ls='--', color='#EF9802')
+    ax1.plot((o3_stationary+o3_transient), lw=2, ls='-', color='#3F79B7')
     # O3 meridional flux for PW jet days
-    ax2.plot(o3_total_pwjet*latweight, lw=2, color='#A2C3E0')
-    ax2.plot(o3_mean_pwjet*latweight, ls='--', lw=2, color='#EF9802')
-    ax2.plot((o3_stationary_pwjet+o3_transient_pwjet)*latweight, 
+    ax2.plot(o3_total_pwjet, lw=2, color='#A2C3E0')
+    ax2.plot(o3_mean_pwjet, ls='--', lw=2, color='#EF9802')
+    ax2.plot((o3_stationary_pwjet+o3_transient_pwjet), 
         lw=2, color='#3F79B7')
     # O3 meridional flux for EW jet days
-    ax3.plot(o3_total_eqjet*latweight, lw=2, color='#A2C3E0')
-    ax3.plot(o3_mean_eqjet*latweight, ls='--', lw=2, color='#EF9802')
-    ax3.plot((o3_stationary_eqjet+o3_transient_eqjet)*latweight, lw=2, 
+    ax3.plot(o3_total_eqjet, lw=2, color='#A2C3E0')
+    ax3.plot(o3_mean_eqjet, ls='--', lw=2, color='#EF9802')
+    ax3.plot((o3_stationary_eqjet+o3_transient_eqjet), lw=2, 
         color='#3F79B7')
     # Set titles, axis labels
     ax1.text(0.04, 0.9, '(a)', ha='left', transform=ax1.transAxes, 
@@ -1607,7 +1656,7 @@ def fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra):
         fontsize=16, zorder=20) 
     ax1.set_ylabel('O$_{\mathregular{3}}$ flux [ppbv m s$^{\mathregular{-1}}$]', 
         fontsize=16)
-    ax1.get_yaxis().set_label_coords(-0.25,0.5)
+    ax1.get_yaxis().set_label_coords(-0.20,0.5)
     # 2-meter temperature meridional flux    
     ax4 = plt.subplot2grid((3,3),(1,0))
     ax5 = plt.subplot2grid((3,3),(1,1))
@@ -1616,25 +1665,24 @@ def fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra):
         ax.set_xlim([25,70])
         ax.set_xticks([25,40,55,70])
         ax.set_xticklabels([])
-        ax.set_ylim([-200, 200])
-        ax.set_yticks(np.linspace(-200,200,6))
-        ax.set_yticklabels(np.linspace(-200,200,6), fontsize=12)
+        ax.set_ylim([-200, 350])
+        ax.set_yticks(np.linspace(-200, 350, 6))
+        ax.set_yticklabels([-200, -90, 20, 130, 240, 350], fontsize=12)
         ax.axhline(y=0.0, color='k', lw=1., linestyle='--', zorder=1)
     ax5.set_yticklabels([]); ax6.set_yticklabels([])
-    latweight = np.cos(np.deg2rad(lat_gmi))
     # 2-meter meridional temperature flux for all days
-    ax4.plot(t2m_total*latweight, lw=2, ls='-', color='#A2C3E0')
-    ax4.plot(t2m_mean*latweight, lw=2, ls='--', color='#EF9802')
-    ax4.plot((t2m_stationary+t2m_transient)*latweight, lw=2, ls='-', color='#3F79B7')
+    ax4.plot(t2m_total, lw=2, ls='-', color='#A2C3E0')
+    ax4.plot(t2m_mean, lw=2, ls='--', color='#EF9802')
+    ax4.plot((t2m_stationary+t2m_transient), lw=2, ls='-', color='#3F79B7')
     # 2-meter meridional temperature for PW jet days
-    ax5.plot(t2m_total_pwjet*latweight, lw=2, color='#A2C3E0')
-    ax5.plot(t2m_mean_pwjet*latweight, lw=2, ls='--', color='#EF9802')
-    ax5.plot((t2m_stationary_pwjet+t2m_transient_pwjet)*latweight, 
+    ax5.plot(t2m_total_pwjet, lw=2, color='#A2C3E0')
+    ax5.plot(t2m_mean_pwjet, lw=2, ls='--', color='#EF9802')
+    ax5.plot((t2m_stationary_pwjet+t2m_transient_pwjet), 
         lw=2, color='#3F79B7')
     # 2-meter meridional temperature for EW jet days
-    ax6.plot(t2m_total_eqjet*latweight, lw=2, color='#A2C3E0')
-    ax6.plot(t2m_mean_eqjet*latweight, lw=2, ls='--', color='#EF9802')
-    ax6.plot((t2m_stationary_eqjet+t2m_transient_eqjet)*latweight, lw=2, 
+    ax6.plot(t2m_total_eqjet, lw=2, color='#A2C3E0')
+    ax6.plot(t2m_mean_eqjet, lw=2, ls='--', color='#EF9802')
+    ax6.plot((t2m_stationary_eqjet+t2m_transient_eqjet), lw=2, 
         color='#3F79B7')
     # Set titles, axis labels
     ax4.text(0.04, 0.9, '(d)', ha='left', transform=ax4.transAxes, 
@@ -1645,7 +1693,7 @@ def fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra):
         fontsize=16, zorder=20)
     ax4.set_ylabel('Temperature flux [K m s$^{\mathregular{-1}}$]', 
         fontsize=16)   
-    ax4.get_yaxis().set_label_coords(-0.25,0.55)
+    ax4.get_yaxis().set_label_coords(-0.20,0.55)
     # 2-meter specific humidity meridional flux    
     ax7 = plt.subplot2grid((3,3),(2,0))
     ax8 = plt.subplot2grid((3,3),(2,1))
@@ -1656,25 +1704,24 @@ def fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra):
         ax.set_xticklabels([25, 40, 55, 70], fontsize=12)
         ax.set_ylim([-10, 10])
         ax.set_yticks(np.linspace(-10,10,6))
-        ax.set_yticklabels(np.linspace(-10,10,6), fontsize=12)
+        ax.set_yticklabels([-10, -6, -2, 2, 6, 10], fontsize=12)
         ax.axhline(y=0.0, color='k', lw=1., linestyle='--', zorder=1)
     ax8.set_yticklabels([]); ax9.set_yticklabels([])
-    latweight = np.cos(np.deg2rad(lat_gmi))
     # 2-meter meridional humidity flux for all days
-    ax7.plot(qv2m_total*latweight, lw=2, ls='-', color='#A2C3E0')
-    ax7.plot(qv2m_mean*latweight, lw=2, ls='--', color='#EF9802')
-    ax7.plot((qv2m_stationary+qv2m_transient)*latweight, lw=2, ls='-', 
+    ax7.plot(qv2m_total, lw=2, ls='-', color='#A2C3E0')
+    ax7.plot(qv2m_mean, lw=2, ls='--', color='#EF9802')
+    ax7.plot((qv2m_stationary+qv2m_transient), lw=2, ls='-', 
         color='#3F79B7')
     # 2-meter meridional humidity for PW jet days
-    ax8.plot(qv2m_total_pwjet*latweight, lw=2, color='#A2C3E0', label='Total')
-    ax8.plot(qv2m_mean_pwjet*latweight, lw=2, ls='--', color='#EF9802', 
+    ax8.plot(qv2m_total_pwjet, lw=2, color='#A2C3E0', label='Total')
+    ax8.plot(qv2m_mean_pwjet, lw=2, ls='--', color='#EF9802', 
         label='Mean')
-    ax8.plot((qv2m_stationary_pwjet+qv2m_transient_pwjet)*latweight, 
+    ax8.plot((qv2m_stationary_pwjet+qv2m_transient_pwjet), 
         lw=2, color='#3F79B7', label='Eddy (Transient + Stationary)')
     # 2-meter meridional humidity for EW jet days
-    ax9.plot(qv2m_total_eqjet*latweight, lw=2, color='#A2C3E0')
-    ax9.plot(qv2m_mean_eqjet*latweight, lw=2, ls='--', color='#EF9802')
-    ax9.plot((qv2m_stationary_eqjet+qv2m_transient_eqjet)*latweight, lw=2, 
+    ax9.plot(qv2m_total_eqjet, lw=2, color='#A2C3E0')
+    ax9.plot(qv2m_mean_eqjet, lw=2, ls='--', color='#EF9802')
+    ax9.plot((qv2m_stationary_eqjet+qv2m_transient_eqjet), lw=2, 
         color='#3F79B7')
     # Set titles, axis labels
     ax7.text(0.04, 0.9, '(g)', ha='left', transform=ax7.transAxes, 
@@ -1686,7 +1733,7 @@ def fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra):
     ax8.set_xlabel('Latitude [$^{\circ}$N]', fontsize=16)
     ax7.set_ylabel('Humidity flux [g m kg$^{\mathregular{-1}}$ s$^{\mathregular{-1}}$]', 
         fontsize=16)   
-    ax7.get_yaxis().set_label_coords(-0.25,0.45)
+    ax7.get_yaxis().set_label_coords(-0.20,0.45)
     # Add legend
     ax8.legend(loc=2, bbox_to_anchor=(-0.8,-0.22), ncol=3, fontsize=16, 
         frameon=False)
@@ -1760,6 +1807,10 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     # Hatching for significance of r(T, O3)
     ax1.contourf(lng_gmi, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree(), zorder=2)
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])    
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax1.yaxis.set_major_formatter(lat_formatter)    
@@ -1791,6 +1842,9 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
     ax2.contourf(lng_gmi, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree())
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)      
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)    
@@ -1808,7 +1862,7 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     colorbar.set_label('[ppbv kg g$^{\mathregular{-1}}$]', fontsize=16)
     ax2.outline_patch.set_zorder(20)      
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'figS1_oceanoff.pdf', dpi=600)
+        'figS1.pdf', dpi=600)
     return    
 
 def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
@@ -1866,7 +1920,7 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,7.7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # r(O3, jet lat - lat)
@@ -1886,6 +1940,10 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax1.contourf(lng_gmi, lat_gmi, significance_r_o3jetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])    
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax1.yaxis.set_major_formatter(lat_formatter)    
@@ -1905,6 +1963,10 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax2.contourf(lng_gmi, lat_gmi, significance_r_t2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)         
+    ax2.get_xaxis().set_ticklabels([])    
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)    
@@ -1924,6 +1986,9 @@ def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax3.contourf(lng_gmi, lat_gmi, significance_r_qv2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax3.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax3.xaxis.set_major_formatter(lng_formatter)         
     ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax3.yaxis.set_major_formatter(lat_formatter)    
@@ -2005,7 +2070,7 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
-    fig = plt.figure(figsize=(9,7))
+    fig = plt.figure(figsize=(9,7.7))
     if lng_gmi[-1] != 360:
         lng_gmi[-1] = 360.    
     # r(PBLH, jet lat - lat)
@@ -2024,6 +2089,10 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax1.contourf(lng_gmi, lat_gmi, significance_r_pblhjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax1.xaxis.set_major_formatter(lng_formatter)         
+    ax1.get_xaxis().set_ticklabels([])    
     ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax1.yaxis.set_major_formatter(lat_formatter)      
@@ -2044,6 +2113,10 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax2.contourf(lng_gmi, lat_gmi, significance_r_U10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax2.xaxis.set_major_formatter(lng_formatter)         
+    ax2.get_xaxis().set_ticklabels([])    
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)      
@@ -2064,6 +2137,9 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     ax3.contourf(lng_gmi, lat_gmi, significance_r_V10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
+    ax3.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+    lng_formatter = LongitudeFormatter()
+    ax3.xaxis.set_major_formatter(lng_formatter)         
     ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax3.yaxis.set_major_formatter(lat_formatter)      
@@ -2407,49 +2483,49 @@ except NameError:
             globalo3_calculate.calculate_r_significance(pblh_merra,
             diff_pblhjetdist, r_pblhjetdist, lat_gmi, lng_gmi)
             
-# # FIGURE 1; Mean O3 and NOx
-# fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
-# # FIGURE 2; model performance
-# fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
-# # FIGURE 3; r(T, O3) and r(q, O3)
-# fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
-#     significance_r_qv2mo3, lat_jet_ml)    
-# # FIGURE 4; zonally-averaged O3-meteorology relationships 
-# fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
-#     lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
-#     r_t2mo3_emep, r_qv2mo3_emep, lat_emep, lng_emep, r_t2mo3_china, 
-#     r_qv2mo3_china, lat_china, lng_china, lng_ml, lat_jet_ml)
-# # FIGURE 5: r(T, O3) and r(q, O3) from the transport only simulation 
-# fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
-#     r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
-#     lat_jet_ml)
-# # FIGURE 6; difference in O3, T2M, and qv2M on days with a poleward versus
-# # equatorward jet
-# fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml, 
-#     times_gmi, significance_r_o3jetdist, significance_r_t2mjetdist, 
-#     significance_r_qv2mjetdist)
-# # FIGURE 7; cyclone frequency and poleward-equatorward jet differences
-# fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
-#     pwjet_cyclones_binned, eqjet_cyclones_binned, lat_gmi, lng_gmi, 
-#     lat_jet_ml)
-# # FIGURE 8; O3 anomaly at cyclone
-# fig8(o3_anom_rotated)
-# # FIGURE 9; difference in PBLH, U10, and V10 on days with a poleward versus 
-# # equatorward jet
-# fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi, 
-#     significance_r_pblhjetdist, significance_r_U10Mjetdist, 
-#     significance_r_V10Mjetdist)
-# # FIGURE 10; zonally-averaged mean and eddy fluxes
-# fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra)    
-# # FIGURE S1; dO3/dT and dO3/dq
-# figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3, 
-#     significance_r_qv2mo3, lat_jet_ml)
-# # FIGURE S2: r(O3, jet distance), r(T, jet distance), and r(q, jet distance)
-# figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
-#     lat_jet_ml, significance_r_o3jetdist, significance_r_t2mjetdist, 
-#     significance_r_qv2mjetdist)
-# # FIGURE S3: r(PBLH, jet distance), r(U10, jet distance), and r(V10, jet
-# # distance)
-# figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist, 
-#     lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
-#     significance_r_V10Mjetdist)
+# FIGURE 1; Mean O3 and NOx
+fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
+# FIGURE 2; model performance
+fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
+# FIGURE 3; r(T, O3) and r(q, O3)
+fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
+    significance_r_qv2mo3, lat_jet_ml)    
+# FIGURE 4; zonally-averaged O3-meteorology relationships 
+fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
+    lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
+    r_t2mo3_emep, r_qv2mo3_emep, lat_emep, lng_emep, r_t2mo3_china, 
+    r_qv2mo3_china, lat_china, lng_china, lng_ml, lat_jet_ml)
+# FIGURE 5: r(T, O3) and r(q, O3) from the transport only simulation 
+fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
+    r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
+    lat_jet_ml)
+# FIGURE 6; difference in O3, T2M, and qv2M on days with a poleward versus
+# equatorward jet
+fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml, 
+    times_gmi, significance_r_o3jetdist, significance_r_t2mjetdist, 
+    significance_r_qv2mjetdist)
+# FIGURE 7; cyclone frequency and poleward-equatorward jet differences
+fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
+    pwjet_cyclones_binned, eqjet_cyclones_binned, lat_gmi, lng_gmi, 
+    lat_jet_ml)
+# FIGURE 8; O3 anomaly at cyclone
+fig8(o3_anom_rotated)
+# FIGURE 9; difference in PBLH, U10, and V10 on days with a poleward versus 
+# equatorward jet
+fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi, 
+    significance_r_pblhjetdist, significance_r_U10Mjetdist, 
+    significance_r_V10Mjetdist)
+# FIGURE 10; zonally-averaged mean and eddy fluxes
+fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra)    
+# FIGURE S1; dO3/dT and dO3/dq
+figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3, 
+    significance_r_qv2mo3, lat_jet_ml)
+# FIGURE S2: r(O3, jet distance), r(T, jet distance), and r(q, jet distance)
+figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
+    lat_jet_ml, significance_r_o3jetdist, significance_r_t2mjetdist, 
+    significance_r_qv2mjetdist)
+# FIGURE S3: r(PBLH, jet distance), r(U10, jet distance), and r(V10, jet
+# distance)
+figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist, 
+    lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
+    significance_r_V10Mjetdist)
