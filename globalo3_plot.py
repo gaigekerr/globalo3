@@ -2541,6 +2541,72 @@ except NameError:
 #    eerr_n=np.std(lat_jet_ml, axis=0),
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5])    
+# # Mean 2-meter temperature
+# map_hemisphere(lat_gmi, 
+#     lng_gmi,
+#     np.nanmean(t2m_merra, axis=0), 
+#     '$\overline{\mathregular{T}}$',
+#     '[K]', 
+#     np.linspace(280, 310, 11), 
+#     'OrRd',
+#     'nh',
+#     't2m_%s_%d-%d'%(season, years[0],years[-1]), 
+#     oceanon='no',
+#     e_lng = lng_gmi,    
+#     e_n=np.nanmean(lat_jet_ml,axis=0), 
+#     eerr_n=np.std(lat_jet_ml,axis=0),
+#     extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5])
+# # Mean 2-meter specific humidity
+# map_hemisphere(lat_gmi, 
+#     lng_gmi,
+#     np.nanmean(qv2m_merra, axis=0), 
+#     '$\overline{\mathregular{q}}$',
+#     '[g kg$^{\mathregular{-1}}$]', 
+#     np.linspace(0, 20, 11), 
+#     'OrRd',
+#     'nh',
+#     'qv2m_%s_%d-%d'%(season, years[0],years[-1]), 
+#     oceanon='no',
+#     extend='max',
+#     e_lng = lng_gmi,    
+#     e_n=np.nanmean(lat_jet_ml,axis=0), 
+#     eerr_n=np.std(lat_jet_ml,axis=0),
+#     extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5])
+
+# # Mean 2-meter eastward 10-meter wind
+# map_hemisphere(lat_gmi, 
+#     lng_gmi,
+#     np.nanmean(U10M, axis=0), 
+#     '$\overline{\mathregular{U}_{\mathregular{10}}}$',
+#     '[m s$^{\mathregular{-1}}$]', 
+#     np.linspace(-5, 5, 11), 
+#     'RdBu_r',
+#     'nh',
+#     'U10M_%s_%d-%d'%(season, years[0],years[-1]), 
+#     oceanon='no',
+#     e_lng = lng_gmi,    
+#     e_n=np.nanmean(lat_jet_ml,axis=0), 
+#     eerr_n=np.std(lat_jet_ml,axis=0),
+#     extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5])
+# # Mean 2-meter northward 10-meter wind
+# map_hemisphere(lat_gmi, 
+#     lng_gmi,
+#     np.nanmean(V10M, axis=0), 
+#     '$\overline{\mathregular{V}_{\mathregular{10}}}$',
+#     '[m s$^{\mathregular{-1}}$]', 
+#     np.linspace(-5, 5, 11), 
+#     'RdBu_r',
+#     'nh',
+#     'V10M_%s_%d-%d'%(season, years[0],years[-1]), 
+#     oceanon='no',
+#     e_lng = lng_gmi,    
+#     e_n=np.nanmean(lat_jet_ml,axis=0), 
+#     eerr_n=np.std(lat_jet_ml,axis=0),
+#     extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5])            
 ## dO3/dT
 #map_hemisphere(lat_gmi, 
 #    lng_gmi,
@@ -4051,182 +4117,425 @@ except NameError:
 #    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
 #            lat_gmi.min()+1, lat_gmi.max()-5])
 
-"""PLOT V-WIND, O3 AND THEIR TIME AVERAGES ON DAYS WITH POLE- AND EQUATORWARD
-JETS"""
-#import matplotlib as mpl
-#mpl.rcParams['hatch.linewidth'] = 0.3     
-#import matplotlib.pyplot as plt
-#import cartopy.crs as ccrs
-#import cartopy.feature as cfeature
-## Mean of 1000-800hPa averaged V wind 
-#map_hemisphere(lat_gmi, 
-#    lng_gmi,
-#    np.nanmean(V_column_mean, axis=0), 
-#    'Mean V$_{\mathregular{1000-800hPa\:mean}}$', 
-#    '[m s$^\mathregular{-1}$]', 
-#    np.linspace(-6, 6, 11), 
-#    'bwr',
-#    maparea,
-#    'meanv_1000-800hPa_jet',
-#    e_lng = lng_gmi,    
-#    e_n = np.nanmean(lat_jet_ml,axis=0), 
-#    eerr_n = np.std(lat_jet_ml,axis=0),    
-#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5])
-## Variability of 1000-800hPa averaged V wind 
-#map_hemisphere(lat_gmi, 
-#    lng_gmi,
-#    np.nanstd(V_column_mean, axis=0), 
-#    'Std. V$_{\mathregular{1000-800hPa\:mean}}$', 
-#    '[m s$^\mathregular{-1}$]', 
-#    np.linspace(0, 8, 11), 
-#    'Reds',
-#    maparea,
-#    'stdv_1000-800hPa_jet',
-#    e_lng = lng_gmi,    
-#    e_n = np.nanmean(lat_jet_ml,axis=0), 
-#    eerr_n = np.std(lat_jet_ml,axis=0),    
-#    extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
-#            lat_gmi.min()+1, lat_gmi.max()-5])
-# # Plot column mean V wind versus jet latitude to determine whether the 
-# # relationship is linear
-# fig = plt.figure()
-# ax1 = plt.subplot2grid((2,2),(0,0), colspan=2)
-# ax2 = plt.subplot2grid((2,2),(1,0), colspan=2)
-# # For US grid cell
-# lat_us, lng_us = 41, 222
-# ax1.plot(lat_jet_ml[:, lng_us], V_column_mean[:, lat_us, lng_us], 'ko')
-# m1,b1 = np.polyfit(lat_jet_ml[:, lng_us], V_column_mean[:, lat_us, lng_us], 1) 
-# ax1.plot(lat_jet_ml[:, lng_us], m1*lat_jet_ml[:, lng_us]+b1, '-r')  
-# ax1.set_title('U.S.; %.1f$^\mathregular{\circ}$N, ' %(lat_gmi[lat_us]) +
-#     '%.1f$^\mathregular{\circ}$E' %(lng_gmi[lng_us]))
-# ax1.text(0.05, 0.8, '%.2f m s$^{\mathregular{-1}}$ deg$^{\mathregular{-1}}$'%m1, 
-#     transform = ax1.transAxes, fontsize=14)
-# # For Siberia grid cell
-# lat_russ, lng_russ = 58, 62
-# ax2.plot(lat_jet_ml[:, lng_russ], V_column_mean[:, lat_russ, lng_russ], 'ko')
-# m2,b2 = np.polyfit(lat_jet_ml[:, lng_russ], 
-#     V_column_mean[:, lat_russ, lng_russ], 1) 
-# ax2.plot(lat_jet_ml[:, lng_russ], m2*lat_jet_ml[:, lng_russ]+b2, '-r') 
-# ax2.set_title('Russia; %.1f$^\mathregular{\circ}$N, ' %(lat_gmi[lat_russ]) +
-#     '%.1f$^\mathregular{\circ}$E' %(lng_gmi[lng_russ]))
-# ax2.text(0.05, 0.8, '%.2f m s$^{\mathregular{-1}}$ deg$^{\mathregular{-1}}$'%m2, 
-#     transform = ax2.transAxes, fontsize=14)
+"""MEAN AND EDDY FLUXES OF OTHER TRACER GASES"""
+# lat_gmi, lng_gmi, times_gmi, no2_gmi = \
+#     globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
+#     latmax, lngmin, lngmax, 'NO2', 'HindcastMR2')
+# lat_gmi, lng_gmi, times_gmi, no_gmi = \
+#     globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
+#     latmax, lngmin, lngmax, 'NO', 'HindcastMR2')
+# lat_gmi, lng_gmi, times_gmi, co_gmi = \
+#     globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
+#     latmax, lngmin, lngmax, 'CO', 'HindcastMR2')
+# co_gmi = co_gmi*1e9
+# no_gmi = no_gmi*1e9
+# no2_gmi = no2_gmi*1e9
+# nox_gmi = (no_gmi+no2_gmi)
+# species = no2_gmi*1e9
+# import numpy as np
+# # Separate 10-meter meridional wind and O3 by jet position
+# V10M_eqjet, V10M_pwjet, species_eqjet, species_pwjet = \
+#     globalo3_calculate.sortfield_byjetlat_column(
+#     np.reshape(V10M, (276,1,92,288)), np.reshape(species, (276,1,92,288)),
+#     lat_jet_ml, lng_gmi, lat_gmi, np.array([1000.]), psize=30)
+# species_mean, species_stationary, species_transient, species_total = \
+#     globalo3_calculate.meridional_flux(V10M, species, mtime, lat_gmi, lng_gmi)
+# (species_mean_pwjet, species_stationary_pwjet, species_transient_pwjet, 
+#     species_total_pwjet) = globalo3_calculate.meridional_flux(V10M_pwjet[:,0], 
+#     species_pwjet[:,0], mtime[:len(V10M_pwjet)], lat_gmi, lng_gmi)
+# (species_mean_eqjet, species_stationary_eqjet, species_transient_eqjet, 
+#     species_total_eqjet) = globalo3_calculate.meridional_flux(V10M_eqjet[:,0], 
+#     species_eqjet[:,0], mtime[:len(V10M_eqjet)], lat_gmi, lng_gmi)   
+# import matplotlib.pyplot as plt
+# # O3 meridional flux
+# fig = plt.figure(figsize=(11, 3))
+# ax1 = plt.subplot2grid((1,3),(0,0))
+# ax2 = plt.subplot2grid((1,3),(0,1))
+# ax3 = plt.subplot2grid((1,3),(0,2))
+# for ax in [ax1, ax2, ax3]:
+#     ax.set_xlim([25,70])
+#     ax.set_xticks([25,40,55,70])
+#     ax.set_xticklabels([25, 40, 55, 70], fontsize=12)
+#     ax.set_ylim([-0.20, 0.20])
+#     # ax.set_yticks(np.linspace(-0.08, 0.08, 5))
+#     # ax.set_yticklabels([-0.08, -0.04, 0, 0.04, 0.08], fontsize=12)
+#     # ax.set_ylim([-60, 60])
+#     # ax.set_yticks(np.linspace(-60, 60, 7))
+#     # ax.set_yticklabels(np.linspace(-60, 60, 7), fontsize=12)
+#     # Add horizontal line for field = 0
+#     ax.axhline(y=0.0, color='k', lw=1., linestyle='--', zorder=1)
+# ax2.set_yticklabels([]); ax3.set_yticklabels([]) 
+# latweight = np.cos(np.deg2rad(lat_gmi))
+# # O3 meridional flux for all days
+# ax1.plot(species_total*latweight, lw=2, ls='-', color='#A2C3E0')
+# ax1.plot(species_mean*latweight, lw=2, ls='--', color='#EF9802')
+# ax1.plot((species_stationary+species_transient)*latweight, lw=2, ls='-', color='#3F79B7')
+# # O3 meridional flux for PW jet days
+# ax2.plot(species_total_pwjet*latweight, lw=2, color='#A2C3E0', label='Total')
+# ax2.plot(species_mean_pwjet*latweight, ls='--', lw=2, color='#EF9802', label='Mean')
+# ax2.plot((species_stationary_pwjet+species_transient_pwjet)*latweight, 
+#     lw=2, color='#3F79B7', label='Eddy (Transient + Stationary)')
+# # O3 meridional flux for EW jet days
+# ax3.plot(species_total_eqjet*latweight, lw=2, color='#A2C3E0')
+# ax3.plot(species_mean_eqjet*latweight, ls='--', lw=2, color='#EF9802')
+# ax3.plot((species_stationary_eqjet+species_transient_eqjet)*latweight, lw=2, 
+#     color='#3F79B7')
+# # Set titles, axis labels
+# ax1.text(0.04, 0.9, '(a)', ha='left', transform=ax1.transAxes, 
+#     fontsize=16, zorder=20)
+# ax1.set_title('All', fontsize=16)#, x=0.02, ha='left')
+# ax2.set_title('PW', fontsize=16)
+# ax3.set_title('EW', fontsize=16)
+# ax2.text(0.04, 0.9, '(b)', ha='left', transform=ax2.transAxes, 
+#     fontsize=18, zorder=20)
+# ax3.text(0.04, 0.9, '(c)', ha='left', transform=ax3.transAxes, 
+#     fontsize=16, zorder=20) 
+# # ax1.set_ylabel('O$_{\mathregular{3}}$ flux [ppbv m s$^{\mathregular{-1}}$]', 
+# #     fontsize=16)
+# ax1.set_ylabel('NO$_{\mathregular{2}}$ flux [ppbv m s$^{\mathregular{-1}}$]', 
+#     fontsize=16)
+# ax1.get_yaxis().set_label_coords(-0.25,0.5)
+# # Add legend
+# ax2.legend(loc=2, bbox_to_anchor=(-0.8,-0.08), ncol=3, fontsize=16, 
+#     frameon=False)
+# plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+#             'no2flux_pwewjet.png', dpi=300)
+# # (PW - EW) composites of CO, NOx
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, co_pwjet, co_eqjet = \
+#     globalo3_calculate.segregate_field_bylat(co_gmi, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# map_hemisphere(lat_gmi, 
+#     lng_gmi,
+#     co_pwjet-co_eqjet,
+#     'CO$_{\mathregular{PW}}$ - CO$_{\mathregular{EW}}$',
+#     '[ppbv]', 
+#     np.linspace(-20, 20, 13), 
+#     'bwr', 
+#     maparea,
+#     'pwjetco-ewjetco_%s_%d-%d'%(season, years[0],years[-1]), 
+#     e_lng = lng_gmi,
+#     e_n=np.nanmean(lat_jet_ml,axis=0), 
+#     eerr_n=np.std(lat_jet_ml,axis=0),
+#     extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5], 
+#     extend='both')
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, nox_pwjet, nox_eqjet = \
+#     globalo3_calculate.segregate_field_bylat(nox_gmi, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# map_hemisphere(lat_gmi, 
+#     lng_gmi,
+#     nox_pwjet-nox_eqjet,
+#     'NO$_{x\mathregular{,\:PW}}$ - NO$_{x\mathregular{,\:EW}}$',
+#     '[ppbv]', 
+#     np.linspace(-0.1, 0.1, 11), 
+#     'bwr', 
+#     maparea,
+#     'pwjetnox-ewjetnox_%s_%d-%d'%(season, years[0],years[-1]), 
+#     e_lng = lng_gmi,
+#     e_n=np.nanmean(lat_jet_ml,axis=0), 
+#     eerr_n=np.std(lat_jet_ml,axis=0),
+#     extent=[lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5], 
+#     extend='both')
+
+
+
+        
+# import numpy as np
+# import matplotlib as mpl
+# mpl.rcParams['hatch.linewidth']=0.3     
+# import matplotlib.pyplot as plt
+# import cartopy.crs as ccrs
+# import cartopy.feature as cfeature
+# from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
+# # Composites of flow at surface on days with poleward or equatorward jet 
+# ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
+#                                         edgecolor=None, facecolor='lightgrey')
+# fig = plt.figure(figsize=(10,7))
+# # PBLH(PW - EW) 
+# ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
+# projection=ccrs.PlateCarree(central_longitude=0.))
+# ax1.set_title('(a) PBLH$_\mathregular{PW}$ $-$ PBLH$_\mathregular{EW}$', 
+#               fontsize=16, x=0.02, ha='left')
+# # ax1.add_feature(ocean50m, zorder=3)
+# ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
+# ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
+#                 lat_gmi.min()+1, lat_gmi.max()-5])
+# ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+# lat_formatter = LatitudeFormatter()    
+# ax1.yaxis.set_major_formatter(lat_formatter)
+# cmap = plt.get_cmap('RdBu')
+# mb = ax1.contourf(lng_gmi, lat_gmi, np.nanmean(o3_gmi, axis=0),
+#                   np.linspace(30,65,7), cmap=cmap, extend='both', 
+#                   transform=ccrs.PlateCarree(), zorder=1)
+# # Add colorbar
+# plt.gcf().subplots_adjust(left=0.15, right=0.9, hspace=0.3)
+# # plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
+# colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
+#     ax1.get_position().y0, 0.02, (ax1.get_position().y1-
+#     ax1.get_position().y0)]) 
+# colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+# ticks=np.linspace(-300,300,7), extend='neither')
+# colorbar.ax.tick_params(labelsize=12)
+# colorbar.set_label('[m]', fontsize=16)
+# ax1.outline_patch.set_zorder(20)
+# # Add axis for zonal mean PBLH
+# ax1l = plt.gcf().add_axes([ax1.get_position().x0-0.15, ax1.get_position().y0, 
+#             0.1,(ax1.get_position().y1-ax1.get_position().y0)])
+# ax1l.plot()        
+# import numpy as np
+# import matplotlib as mpl
+# mpl.rcParams['hatch.linewidth']=0.3     
+# import matplotlib.pyplot as plt
+# import cartopy.crs as ccrs
+# import cartopy.feature as cfeature
+# # Separate O3 into pole- and equatorward jet days
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_o3, eqjet_o3 = \
+#     globalo3_calculate.segregate_field_bylat(o3_gmi, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# # Load ocean shapefiles
+# ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
+#     edgecolor=None, facecolor='lightgrey')
+# fig = plt.figure(figsize=(9,7))
+# # For wrapping around the Prime Meridian
+# if lng_gmi[-1] != 360:
+#     lng_gmi[-1] = 360.    
+# # O3 on days with a poleward jet
+# ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
+#     projection=ccrs.Miller(central_longitude=0.))
+# ax1.set_title('(a) O$_\mathregular{3,\:PW}$', fontsize=16, x=0.02, ha='left')
+# # ax1.add_feature(ocean50m, zorder=3)
+# ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
+# ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
+#     lat_gmi.min()+1, lat_gmi.max()-5])
+# cmap = plt.get_cmap('OrRd')
+# mb = ax1.contourf(lng_gmi, lat_gmi, pwjet_o3, np.linspace(30, 60, 7), 
+#     cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
+# # Eddy-driven jet
+# skiplng = 6
+# ax1.errorbar(lng_gmi[::skiplng], np.array(pwjet_lat)[::skiplng], 
+#     yerr=np.array(pwjet_lat_var)[::skiplng], color='k', markersize=3, 
+#     elinewidth=1.25, ecolor='k', fmt='o', transform=ccrs.PlateCarree(), 
+#     zorder=5)
+# ax1.outline_patch.set_zorder(20)
+# # O3 on days with an equatorward jet
+# ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
+#     projection=ccrs.Miller(central_longitude=0.))
+# ax2.set_title('(b) O$_\mathregular{3,\:EW}$', fontsize=16, x=0.02, ha='left')
+# # ax2.add_feature(ocean50m)
+# ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
+# ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
+#     lat_gmi.min()+1, lat_gmi.max()-5])
+# mb = ax2.contourf(lng_gmi, lat_gmi, eqjet_o3, np.linspace(30, 60, 7), 
+#     cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
+# ax2.errorbar(lng_gmi[::skiplng], np.array(eqjet_lat)[::skiplng], 
+#     yerr=np.array(eqjet_lat_var)[::skiplng], color='k', markersize=3, 
+#     elinewidth=1.25, ecolor='k', fmt='o', transform=ccrs.PlateCarree(), 
+#     zorder=5)
+# ax1.outline_patch.set_zorder(20)
+# ax2.outline_patch.set_zorder(20)      
+# # Add colorbar
+# plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+# colorbar_axes = plt.gcf().add_axes([
+#     ax1.get_position().x1+0.03, # Left
+#     (ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0, # Bottom 
+#     0.02, # Width
+#     ((ax1.get_position().y1-ax1.get_position().y0)/2.+ax1.get_position().y0)-
+#     ((ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0)])
+# colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+#     ticks=np.linspace(30, 60, 7), extend='both')
+# colorbar.ax.tick_params(labelsize=12)
+# colorbar.set_label('[ppbv]', fontsize=16)
+# plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+#     'o3pwew_oceanoff.pdf', dpi=600)
+
+"""FIND ZONALLY-AVERAGED 03, U10, AND V10 FOR DIFFERENT REGIONS ON PW/EW DAYS"""
+# import matplotlib.pyplot as plt
+# import sys
+# sys.path.append('/Users/ghkerr/phd/GMI/')
+# from geo_idx import geo_idx            
+# # Find fields in region 
+# o3_region, lat_region, lng_region = globalo3_calculate.find_grid_in_bb(
+#     o3_gmi, lat_gmi, lng_gmi, 140., 180., 25., 70.)
+# t2m_region, lat_region, lng_region = globalo3_calculate.find_grid_in_bb(
+#     t2m_merra, lat_gmi, lng_gmi, 140., 180., 25., 70.)
+# qv2m_region, lat_region, lng_region = globalo3_calculate.find_grid_in_bb(
+#     qv2m_merra, lat_gmi, lng_gmi, 140., 180., 25., 70.)
+# V10M_region, lat_region, lng_region = globalo3_calculate.find_grid_in_bb(
+#     V10M, lat_gmi, lng_gmi, 140., 180., 25., 70.)
+# ena_left = geo_idx(140., lng_ml)
+# ena_right = geo_idx(180., lng_ml)
+# lat_jet_region = lat_jet_ml[:, ena_left:ena_right+1]
+# # Separate based on jet latitude
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_o3, eqjet_o3 = \
+#     globalo3_calculate.segregate_field_bylat(o3_region, lng_region, 
+#     lat_jet_region, times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_t2m, eqjet_t2m = \
+#     globalo3_calculate.segregate_field_bylat(t2m_region, lng_region, 
+#     lat_jet_region, times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_qv2m, eqjet_qv2m = \
+#     globalo3_calculate.segregate_field_bylat(qv2m_region, lng_region, 
+#     lat_jet_region, times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_V10M, eqjet_V10M = \
+#     globalo3_calculate.segregate_field_bylat(V10M_region, lng_region, 
+#     lat_jet_region, times_gmi)
+# ax1 = plt.subplot2grid((2,2),(0,0))
+# ax2 = plt.subplot2grid((2,2),(0,1))
+# ax3 = plt.subplot2grid((2,2),(1,0))
+# ax4 = plt.subplot2grid((2,2),(1,1))
+# # O3
+# ax1.plot(lat_region, np.nanmean(o3_region, axis=tuple((0,2))), '-k')
+# ax1.plot(lat_region, np.nanmean(pwjet_o3, axis=-1), '-r')
+# ax1.plot(lat_region, np.nanmean(eqjet_o3, axis=-1), '-g')
+# ax1.set_title('O3')
+# ax1.set_ylabel('ppbv')
+# # T
+# ax2.plot(lat_region, np.nanmean(t2m_region, axis=tuple((0,2))), '-k')
+# ax2.plot(lat_region, np.nanmean(pwjet_t2m, axis=-1), '-r')
+# ax2.plot(lat_region, np.nanmean(eqjet_t2m, axis=-1), '-g')
+# ax2.set_title('T')
+# ax2.set_ylabel('K')
+# # q
+# ax3.plot(lat_region, np.nanmean(qv2m_region, axis=tuple((0,2))), '-k')
+# ax3.plot(lat_region, np.nanmean(pwjet_qv2m, axis=-1), '-r')
+# ax3.plot(lat_region, np.nanmean(eqjet_qv2m, axis=-1), '-g')
+# ax3.set_title('q')
+# ax3.set_ylabel('g kg-1')
+# ax3.set_xlabel('deg')
+# # 10-meter meridional wind
+# ax4.plot(lat_region, np.nanmean(V10M_region, axis=tuple((0,2))), '-k', label='all')
+# ax4.plot(lat_region, np.nanmean(pwjet_V10M, axis=-1), '-r', label='PW jet')
+# ax4.plot(lat_region, np.nanmean(eqjet_V10M, axis=-1), '-g', label='EW jet')
+# ax4.legend(loc=2, bbox_to_anchor=(1.05, 1.))
+# ax4.set_title('V10')
+# ax4.set_ylabel('m s-1')
+# ax4.set_xlabel('deg')
+# plt.subplots_adjust(left=0.1, hspace=0.4, wspace=0.35, right=0.8)
+# plt.savefig('/Users/ghkerr/Desktop/zonalavg_pwewjet_eastp.png', dpi=300)
+
+"""LAND VERSUS OCEAN ZONALLY-AVERAGED O3, TEMPERATURE, AND HUMIDITY"""
+# land = globalo3_calculate.find_grid_overland(lat_gmi[0:-5], lng_gmi)
+# wherenan = np.where(land != 1)
+# ocean = np.empty(shape=land.shape)
+# ocean[:] = np.nan
+# ocean[wherenan] = 1.
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_o3, eqjet_o3 = \
+#     globalo3_calculate.segregate_field_bylat(o3_gmi, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_t2m, eqjet_t2m = \
+#     globalo3_calculate.segregate_field_bylat(t2m_merra, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_qv2m, eqjet_qv2m = \
+#     globalo3_calculate.segregate_field_bylat(qv2m_merra, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_U10M, eqjet_U10M = \
+#     globalo3_calculate.segregate_field_bylat(U10M, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_V10M, eqjet_V10M = \
+#     globalo3_calculate.segregate_field_bylat(V10M, lng_gmi, lat_jet_ml, 
+#     times_gmi)
+# fig = plt.figure(figsize=(6,8))
+# ax1 = plt.subplot2grid((3,2),(0,0))
+# ax2 = plt.subplot2grid((3,2),(0,1))
+# ax3 = plt.subplot2grid((3,2),(1,0))
+# ax4 = plt.subplot2grid((3,2),(1,1))
+# ax5 = plt.subplot2grid((3,2),(2,0))
+# ax6 = plt.subplot2grid((3,2),(2,1))
+# latweight = np.cos(np.deg2rad(lat_gmi[:-5]))
+# # Land U10M
+# ax1.plot(lat_gmi[:-5], np.nanmean(U10M[:,:-5]*land, axis=tuple((0,2))),#*latweight, 
+#    lw=2, color='k')
+# ax1.plot(lat_gmi[:-5], np.nanmean(pwjet_U10M[:-5]*land, axis=-1),#*latweight, 
+#    lw=2, color='#3F79B7')
+# ax1.plot(lat_gmi[:-5], np.nanmean(eqjet_U10M[:-5]*land, axis=-1),#*latweight, 
+#    lw=2, color='#EF9802')
+# # Ocean U10M
+# ax2.plot(lat_gmi[:-5], np.nanmean(U10M[:,:-5]*ocean, axis=tuple((0,2))),#*latweight, 
+#    lw=2, color='k')
+# ax2.plot(lat_gmi[:-5], np.nanmean(pwjet_U10M[:-5]*ocean, axis=-1),#*latweight, 
+#    lw=2, color='#3F79B7')
+# ax2.plot(lat_gmi[:-5], np.nanmean(eqjet_U10M[:-5]*ocean, axis=-1),#*latweight, 
+#    lw=2, color='#EF9802')
 # for ax in [ax1, ax2]:
-#     ax.set_xlim([20, 70])
-#     ax.set_ylim([-15, 15])
-#     ax.set_ylabel('V$_{\mathregular{mean\:1000-800hPa}}$', fontsize=14)
-# ax2.set_xlabel('$\mathregular{\phi_{jet}}$ [$^{\mathregular{\circ}}$]', 
-#     fontsize=14)
-# plt.tight_layout()
-# plt.savefig('/Users/ghkerr/Desktop/scatter_latjet_vwind.png', dpi=300)
-# Separate V wind by equator- and poleward jet
-
-
-V_column = V10M
-V_column_eqjet, V_column_pwjet, V_column_eqjet, V_column_pwjet = \
-    globalo3_calculate.sortfield_byjetlat_column(V_column, V_column, 
-    lat_jet_ml, lng_gmi, lat_gmi, np.array([1.]), psize=30)
-V_column_pwjet_mean = np.nanmean(V_column_pwjet, axis=1)
-V_column_eqjet_mean = np.nanmean(V_column_eqjet, axis=1)
-V_column_mean = np.nanmean(V_column, axis=1)
-vbar_pwjet, vbar_star_pwjet, vbar_zm_pwjet, vprime_pwjet = \
-    globalo3_calculate.reynolds_decomposition(V_column_pwjet_mean,
-    mtime[:len(V_column_pwjet_mean)], lat_gmi, lng_gmi)
-vbar_eqjet, vbar_star_eqjet, vbar_zm_eqjet, vprime_eqjet = \
-    globalo3_calculate.reynolds_decomposition(V_column_eqjet_mean, 
-    mtime[:len(V_column_pwjet_mean)], lat_gmi, lng_gmi)      
-# Plot zonally-averaged V wind and \bar{V} for PW and EW jets
-fig = plt.figure()
-ax = plt.subplot2grid((1,1),(0,0))
-p1, = ax.plot(np.nanmean(V_column_mean, axis=tuple((0,2))), color='k')
-p2 = ax.fill_between(lat_gmi, 
-    np.nanmean(V_column_mean, axis=tuple((0,2)))-np.nanstd(V_column_mean, 
-              axis=tuple((0,2))),
-    np.nanmean(V_column_mean, axis=tuple((0,2)))+np.nanstd(V_column_mean, 
-              axis=tuple((0,2))),
-    color='k', alpha=0.2, zorder=5)
-p3, = ax.plot(np.nanmean(vbar_pwjet, axis=1))
-p4, = ax.plot(np.nanmean(vbar_eqjet, axis=1))
-ax.set_xlim([0, 90])
-ax.set_xlabel('Latitude [$^\mathregular{\circ}$]', fontsize=16)
-ax.set_ylabel('m s$^{\mathregular{-1}}$', fontsize=16)
-leg = ax.legend([(p1, p2), p3, p4], 
-    ['V$_{\mathregular{1000-800hPa\:mean}}$ $\mathregular{\pm}$ 2$\mathregular{\sigma}$',
-    '$\overline{\mathregular{V_{PW}}}$',
-    '$\overline{\mathregular{V_{EW}}}$'], 
-    loc = 6, ncol = 3, 
-    bbox_to_anchor=(0.05, 1.05), frameon=False)
-plt.savefig('/Users/ghkerr/Desktop/vbar_composites_zm.png', dpi=300)
-# Plot zonally-averaged O3 and \bar{O3} for PW and EW jets
-# Separate O3 by equator- and poleward jet
-o3_eqjet, o3_pwjet, o3_eqjet, o3_pwjet = \
-    globalo3_calculate.sortfield_byjetlat_column(
-    np.reshape(o3_gmi, (276, 1, 92, 288)), np.reshape(o3_gmi, (276, 1, 92, 288)),
-    lat_jet_ml, lng_gmi, lat_gmi, np.array([1000.]), psize=30)
-o3_eqjet_mean = np.nanmean(o3_eqjet, axis=1)
-o3_pwjet_mean = np.nanmean(o3_pwjet, axis=1)
-o3bar_pwjet, o3bar_star_pwjet, o3bar_zm_pwjet, o3_pwjet = \
-    globalo3_calculate.reynolds_decomposition(o3_pwjet_mean,
-    mtime[:len(o3_pwjet_mean)], lat_gmi, lng_gmi)
-o3bar_eqjet, o3bar_star_eqjet, o3bar_zm_eqjet, o3_eqjet = \
-    globalo3_calculate.reynolds_decomposition(o3_eqjet_mean,
-    mtime[:len(o3_eqjet_mean)], lat_gmi, lng_gmi)    
-# Plot zonally-averaged O3 and \bar{O3} for PW and EW jets
-fig = plt.figure()
-ax = plt.subplot2grid((1,1),(0,0))
-p1, = ax.plot(np.nanmean(o3_gmi, axis=tuple((0,2))), color='k')
-p2 = ax.fill_between(lat_gmi, 
-    np.nanmean(o3_gmi, axis=tuple((0,2)))-np.nanstd(o3_gmi, 
-              axis=tuple((0,2))),
-    np.nanmean(o3_gmi, axis=tuple((0,2)))+np.nanstd(o3_gmi, 
-              axis=tuple((0,2))),
-    color='k', alpha=0.2, zorder=5)
-p3, = ax.plot(np.nanmean(o3bar_pwjet, axis=1))
-p4, = ax.plot(np.nanmean(o3bar_eqjet, axis=1))
-ax.set_xlim([0, 90])
-ax.set_xlabel('Latitude [$^\mathregular{\circ}$]', fontsize=16)
-ax.set_ylabel('ppbv', fontsize=16)
-leg = ax.legend([(p1, p2), p3, p4], 
-    ['O$_{\mathregular{3}}$ $\mathregular{\pm}$ 2$\mathregular{\sigma}$',
-    '$\overline{\mathregular{O_{3,\:PW}}}$',
-    '$\overline{\mathregular{0_{3,\:EW}}}$'], 
-    loc = 6, ncol = 3, 
-    bbox_to_anchor=(0.05, 1.05), frameon=False)
-plt.savefig('/Users/ghkerr/Desktop/o3bar_composites_zm.png', dpi=300)
-## MFB
-#map_obso3ctmo3_performancemetric(mfb_aqs*100., 
-#    mfb_naps*100., 
-#    mfb_emep*100., 
-#    mfb_china*100., 
-#    lat_gmi, 
-#    lng_gmi, 
-#    '[%]', 
-#    np.linspace(-40., 40., 9), 
-#    'bwr', 
-#    'both',
-#    'mfb')
-## FAC2
-#map_obso3ctmo3_performancemetric(fac2_aqs,
-#    fac2_naps,
-#    fac2_emep,
-#    fac2_china,
-#    lat_gmi, 
-#    lng_gmi, 
-#    '[$\mathregular{\cdot}$]', 
-#    np.linspace(0., 1., 11), 
-#    'Reds', 
-#    'neither',
-#    'fac2')
-## AQPI
-#map_obso3ctmo3_performancemetric(aqpi_aqs,
-#    aqpi_naps, 
-#    aqpi_emep, 
-#    aqpi_china, 
-#    lat_gmi, 
-#    lng_gmi, 
-#    '[$\mathregular{\cdot}$]', 
-#    np.linspace(0., 100., 11), 
-#    'Reds', 
-#    'min',
-#    'aqpi')
+#     ax.set_xlim([25, 70])
+#     ax.set_xticks([25, 40, 55, 70])
+#     ax.set_xticklabels([''])
+# # ax1.set_ylim([-0.5, 1])
+# # ax1.set_yticks([-0.5, -0.2,  0.1,  0.4,  0.7,  1. ])
+# # ax1.set_yticklabels([-0.5, -0.2,  0.1,  0.4,  0.7,  1. ], fontsize=12)
+# # ax2.set_ylim([-3, 2])    
+# # ax2.set_yticks([-3, -2, -1, 0, 1, 2])
+# # ax2.set_yticklabels([-3, -2, -1, 0, 1, 2], fontsize=12)
+# ax1.set_ylabel('U$_{\mathregular{10}}$ [m s$^{\mathregular{-1}}$]', 
+#     fontsize=16)
+# ax1.set_title('Land', fontsize=16)
+# ax2.set_title('Ocean', fontsize=16)
+# # Land V10M
+# ax3.plot(lat_gmi[:-5], np.nanmean(V10M[:,:-5]*land, axis=tuple((0,2))),#*latweight, 
+#    lw=2, color='k')
+# ax3.plot(lat_gmi[:-5], np.nanmean(pwjet_V10M[:-5]*land, axis=-1),#*latweight, 
+#    lw=2, color='#3F79B7')
+# ax3.plot(lat_gmi[:-5], np.nanmean(eqjet_V10M[:-5]*land, axis=-1),#*latweight, 
+#    lw=2, color='#EF9802')
+# # Ocean U10M
+# ax4.plot(lat_gmi[:-5], np.nanmean(V10M[:,:-5]*ocean, axis=tuple((0,2))),#*latweight, 
+#    lw=2, color='k')
+# ax4.plot(lat_gmi[:-5], np.nanmean(pwjet_V10M[:-5]*ocean, axis=-1),#*latweight, 
+#    lw=2, color='#3F79B7')
+# ax4.plot(lat_gmi[:-5], np.nanmean(eqjet_V10M[:-5]*ocean, axis=-1),#*latweight, 
+#    lw=2, color='#EF9802')
+# for ax in [ax3, ax4]:
+#     ax.set_xlim([25, 70])
+#     ax.set_xticks([25, 40, 55, 70])
+#     ax.set_xticklabels([''])
+# # ax3.set_ylim([-0.7, 0.3])    
+# # ax3.set_yticks([-0.7, -0.5, -0.3, -0.1,  0.1,  0.3])
+# # ax3.set_yticklabels([-0.7, -0.5, -0.3, -0.1,  0.1,  0.3], fontsize=12)
+# # ax4.set_ylim([-0.5, 1.5])    
+# # ax4.set_yticks([-0.5, -0.1,  0.3,  0.7,  1.1,  1.5])
+# # ax4.set_yticklabels([-0.5, -0.1,  0.3,  0.7,  1.1,  1.5], fontsize=12)
+# ax3.set_ylabel('V$_{\mathregular{10}}$ [m s$^{\mathregular{-1}}$]', fontsize=16)
+# # Land V10M
+# ax5.plot(lat_gmi[:-5], np.nanmean(o3_gmi[:,:-5]*land, axis=tuple((0,2))),#*latweight, 
+#    lw=2, color='k')
+# ax5.plot(lat_gmi[:-5], np.nanmean(pwjet_o3[:-5]*land, axis=-1),#*latweight, 
+#    lw=2, color='#3F79B7')
+# ax5.plot(lat_gmi[:-5], np.nanmean(eqjet_o3[:-5]*land, axis=-1),#*latweight, 
+#    lw=2, color='#EF9802')
+# # Ocean U10M
+# ax6.plot(lat_gmi[:-5], np.nanmean(o3_gmi[:,:-5]*ocean, axis=tuple((0,2))),#*latweight,
+#     lw=2, color='k', label='All')
+# ax6.plot(lat_gmi[:-5], np.nanmean(pwjet_o3[:-5]*ocean, axis=-1),#*latweight,
+#     lw=2, color='#3F79B7', label='PW')
+# ax6.plot(lat_gmi[:-5], np.nanmean(eqjet_o3[:-5]*ocean, axis=-1),#*latweight,
+#     lw=2, color='#EF9802', label='EW')
+# for ax in [ax5, ax6]:
+#     ax.set_xlim([25, 70])
+#     ax.set_xticks([25, 40, 55, 70])
+#     ax.set_xticklabels(['25', '40', '55', '70'], fontsize=12)
+#     ax.set_xlabel('Latitude [$^{\mathregular{\circ}}$N]', fontsize=16)
+# # ax5.set_ylim([5, 55])    
+# # ax5.set_yticks([5., 15., 25., 35., 45., 55.])
+# # ax5.set_yticklabels([5, 15, 25, 35, 45, 55], fontsize=12)
+# # ax6.set_ylim([6, 26])    
+# # ax6.set_yticks([6., 10., 14., 18., 22., 26.])
+# # ax6.set_yticklabels([6, 10, 14, 18, 22, 26], fontsize=12)    
+# ax5.set_ylabel('O$_{\mathregular{3}}$ [ppbv]', fontsize=16)
+# plt.subplots_adjust(wspace=0.3, top=0.95, bottom=0.15)
+# # Add legend 
+# leg = ax6.legend(loc=6, ncol=3, bbox_to_anchor=(-1.15, -0.5), 
+#     fontsize=16, frameon=False)
+# # Add labels to each subplot
+# ax1.text(0.04, 0.87, '(a)', ha='left', transform=ax1.transAxes, 
+#     fontsize=16, zorder=20)
+# ax2.text(0.04, 0.87, '(b)', ha='left', transform=ax2.transAxes, 
+#     fontsize=16, zorder=20)
+# ax3.text(0.04, 0.87, '(c)', ha='left', transform=ax3.transAxes, 
+#     fontsize=16, zorder=20)
+# ax4.text(0.04, 0.87, '(d)', ha='left', transform=ax4.transAxes, 
+#     fontsize=16, zorder=20)
+# ax5.text(0.04, 0.87, '(e)', ha='left', transform=ax5.transAxes, 
+#     fontsize=16, zorder=20)
+# ax6.text(0.04, 0.87, '(f)', ha='left', transform=ax6.transAxes, 
+#     fontsize=16, zorder=20)
+# plt.savefig('/Users/ghkerr/Desktop/zonalavg_unweighted.png', dpi=300)
