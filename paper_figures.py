@@ -1152,16 +1152,7 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
         ax.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml, axis=0)[::skiplng],
             yerr=np.std(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
             markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
-            transform=ccrs.PlateCarree())
-    # Add examples of PW and EW jet to O3 plot 
-    ax1.errorbar(lng_gmi[3::skiplng], np.array(pwjet_lat)[3::skiplng],
-        yerr=np.array(pwjet_lat_var)[3::skiplng], zorder=10, color='k', 
-        markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
-        transform=ccrs.PlateCarree())    
-    ax1.errorbar(lng_gmi[3::skiplng], np.array(eqjet_lat)[3::skiplng],
-        yerr=np.array(eqjet_lat_var)[3::skiplng], zorder=10, color='k', 
-        markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
-        transform=ccrs.PlateCarree())        
+            transform=ccrs.PlateCarree())       
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'fig6.pdf', dpi=600)
     return
