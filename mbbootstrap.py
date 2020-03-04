@@ -2,11 +2,16 @@
 # -*- coding: utf-8 -*-
 """
 This module contains statistical modules supporting the O3-temperature-jet 
-relationship, specifically bootstrapping and field significance.
+relationship, specifically bootstrapping and significance 
+
+Revision History
+    15112019 -- initial version created
+    03032020 -- edited to include function 'mmb_grid' to conduct moving block
+                bootstrap on gridded fields
 """
 
 def movingblocks_bootstrap_r(x, y, nb=10000, L=10, alpha=0.05):
-    """function performs a moving-blocks bootstrap by resampling given 1D
+    """Function performs a moving-blocks bootstrap by resampling given 1D
     timeseries (x and y) in contiguous blocks of length L and thereafter 
     calculating the correlation coefficient. The function constructs the 95% 
     (or any specified value) confidence intervals using the percentile method. 
@@ -139,39 +144,105 @@ def movingblocks_bootstrap_r(x, y, nb=10000, L=10, alpha=0.05):
     # intervals, which are more accurate that bootstrap confidence intervals 
     # (Wilks 2011)
     return ub, lb
-#lb = np.empty(shape=o3_gmi.shape[1:])
-#lb[:] = np.nan
-#ub = np.empty(shape=o3_gmi.shape[1:])
-#ub[:] = np.nan
-#for x in np.arange(0, lat_gmi.shape[0], 1):
-#    print(x)
-#    for y in np.arange(0, lng_gmi.shape[0], 1):
+
+def mmb_grid(x, y, lat, lng):
+    """Calculate significance using moving block bootstrapping for gridded 
+    fields. 
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Independent variable, [time, lat, lng]
+    y : numpy.ndarray
+        Dependent variable, [time, lat, lng]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Longitude coordinates, units of degrees east, [lng,]
+        
+    Returns
+    -------
+    sig : numpy.ndarray
+        Significance at the significance level set in function 
+        'movingblocks_bootstrap_r' denoted with grid cells equal to 1. are 
+        insignificant at specified significance level, [lat, lng]
+    """
+    import numpy as np
+    # Lower and upper bounds of confidence interval
+    lb = np.empty(shape=y.shape[1:])
+    lb[:] = np.nan
+    ub = np.empty(shape=y.shape[1:])
+    ub[:] = np.nan
+    for ilat in np.arange(0, lat.shape[0], 1):
+        print('For latitude circle %.1f deg N...'%lat[ilat])
+        for jlng in np.arange(0, lng.shape[0], 1):
+            ubxy, lbxy = movingblocks_bootstrap_r(x[:, ilat, jlng], 
+                y[:, ilat, jlng], nb=10000)
+            lb[ilat, jlng] = lbxy
+            ub[ilat, jlng] = ubxy
+    sig = np.empty(shape=y.shape[1:])
+    sig[:] = np.nan
+    for ilat in np.arange(0, lat.shape[0], 1):
+        for jlng in np.arange(0, lng.shape[0], 1):
+            if lb[ilat, jlng] <= 0.0 <= ub[ilat, jlng]:
+                sig[ilat, jlng] = 1.  
+    return sig
+    
+        
+        
+      
+         
+# datapath = '/Users/ghkerr/phd/globalo3/data/parsed/'      
+datapath = '/mnt/scratch3/gaige/kerr_surface_2020/data/parsed/'
+import netCDF4 as nc
+import xarray as xr
+o3_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['O3_control'][:].data
+o3_gmi_transport = nc.Dataset(datapath+'gmi_O3transportonly_JJA2008-2010.nc')['O3_transportonly'][:].data
+lat_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lat'][:].data
+lng_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lng'][:].data
+t2m_merra = nc.Dataset(datapath+'merra2_T2M_JJA2008-2010.nc')['T2M'][:].data
+
+x = t2m_merra
+y = o3_gmi
+lat = lat_gmi
+lng = lng_gmi
+sig = mmb_grid(x, y, lat, lng)
+# 
+ds = xr.Dataset({'sig_T2M_O3_control': (('lat', 'lng'), sig)},
+    coords={'lat': lat, 'lng': lng})
+ds.attrs['title'] ='T2M-O3 significance'
+ds.attrs['history'] ='Significance of correlation between 2-meter '+\
+    'temperature and surface-level O3 determined with moving block '+\
+    'bootstrapping  with alpha = 0.05 and 10 000 realizations. Grid cells '+\
+    'with insigificant correlation given by 1., significant given by NaN.'
+ds.attrs['author'] ='Gaige Hunter Kerr, gaige.kerr@jhu.edu'
+ds.to_netcdf(datapath+'sig_merra2_t2m_gmi_O3control_JJA2008-2010.nc')
+
+
+     
+
+
+
+
+
+
+
+
+        
+
+# lb = np.empty(shape=o3_gmi.shape[1:])
+# lb[:] = np.nan
+# ub = np.empty(shape=o3_gmi.shape[1:])
+# ub[:] = np.nan
+# for x in np.arange(0, lat.shape[0], 1):
+#     for y in np.arange(0, lng.shape[0], 1):
 #        ubxy, lbxy = movingblocks_bootstrap_r(t2m_merra[:, x, y], 
 #                                              o3_gmi[:, x, y], nb=1000)
 #        lb[x, y] = lbxy
 #        ub[x, y] = ubxy
-# 
 #sig = np.empty(shape=o3_gmi.shape[1:])
 #sig[:] = np.nan
 #for x in np.arange(0, lat_gmi.shape[0], 1):
 #    for y in np.arange(0, lng_gmi.shape[0], 1):
 #        if lb[x, y] <= 0.0 <= ub[x,y]:
 #            sig[x,y] = 1.     
-## r(T, O3)
-#map_hemisphere(lat_gmi, 
-#    lng_gmi, 
-#    r_t2mo3, 
-#    r'%s $\it{r}\:$(T, O$_\mathregular{3}$)' %season,  
-#    '[$\cdot$]', 
-#    np.linspace(-1., 1, 9),
-#    'bwr', 
-#    maparea,
-#    'rt2mo3_mbb_jet_%s_%d-%d'%(season, years[0],years[-1]), 
-#    e_lng = lng_gmi,    
-#    e_n = np.nanmean(lat_jet_ml,axis=0), 
-#    eerr_n = np.std(lat_jet_ml,axis=0),
-#    hatch = sig,
-#    hatch_freq = ['//////'],    
-#    extent = [lng_gmi.min()-180., lng_gmi.max()-180., 
-#              lat_gmi.min()+1, lat_gmi.max()-5], 
-#    extend='neither')        
