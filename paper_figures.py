@@ -71,7 +71,7 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
     # Load EDGAR NOx
     lat_edgar, lng_edgar, nox_edgar = globalo3_open.open_edgar_specifieddomain(
-        years, latmin, latmax, lngmin, lngmax, 'NOx')
+        [2008, 2009, 2010], -1., 90., 0., 360., 'NOx')
     # For wrapping around the Prime Meridian
     if lng_edgar[-1] != 360:
         lng_edgar[-1] = 360.
@@ -2158,63 +2158,36 @@ def figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist,
     return 
 
 import numpy as np
+import pandas as pd
 import sys
 sys.path.append('/Users/ghkerr/phd/globalo3/')
 import globalo3_open, globalo3_calculate, observations_open
 sys.path.append('/Users/ghkerr/phd/transporto3/')
-import transporto3_open
 # Load data the first iteration only 
 try:lat_gmi
 except NameError:
-    years = [2008, 2009, 2010]
-    hours = [14]
-    season = 'JJA'
-    months = [6, 7, 8]
-    months_str = ['jun', 'jul', 'aug']
-    # Hemisphere definition
-    latmin, lngmin, latmax, lngmax = -1., 0., 90., 360.
-    # Load Northern Hemisphere HindcastMR2 GMI CTM O3 
-    lat_gmi, lng_gmi, times_gmi, o3_gmi = \
-        globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
-        latmax, lngmin, lngmax, 'O3', 'HindcastMR2')
-    o3_gmi = o3_gmi*1e9
-    # Load Northern Hemisphere HindcastMR2-DiurnalAvgTQ GMI CTM O3 
-    lat_gmi, lng_gmi, times_gmi, o3_transport_gmi = \
-        globalo3_open.open_overpass2_specifieddomain(years, months_str, latmin, 
-        latmax, lngmin, lngmax, 'O3', 'HindcastMR2-DiurnalAvgTQ')
-    o3_transport_gmi = o3_transport_gmi*1e9    
-    # Load MERRA-2 Northern Hemisphere 2-meter temperatures, specific humidity
-    lat_merra, lng_merra, t2m_merra = \
-        globalo3_open.open_merra2t2m_specifieddomain(years, months_str, latmin, 
-        latmax, lngmin, lngmax)        
-    qv2m_merra, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(
-        years, [0, 3, 9, 12, 15, 18, 21], 'QV2M', 'tavg1_2d_slv_Nx', 
-        'JJA_rh.nc', lngmin, latmax, lngmax, latmin, dailyavg='yes')
-    # Interpolate MERRA-2 fields
-    t2m_merra = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
-        lng_gmi, lat_merra, lng_merra, t2m_merra)
-    qv2m_merra = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
-        lng_gmi, lat_merra, lng_merra, qv2m_merra)   
-    qv2m_merra = qv2m_merra*1000. # Convert from kg kg-1 to g kg-1
-    # Load Northern Hemisphere 500 hPa MERRA-2 data
-    U500, mtime, lat_merra, lng_merra = \
-        globalo3_open.open_merra2_specifieddomain(years, months_str,
-        [0,3,6,9,12,15,18,21], 'U', 'inst3_3d_asm_Np_500hPa', lngmin, latmax, 
-        lngmax, latmin, dailyavg='yes')
-    # Interpolate 500 hPa u-wind
-    U500 = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
-        lng_gmi, lat_merra, lng_merra, U500, checkplot='yes')
-    # Load 10-meter U and V wind and interpolate to native CTM resolution
-    U10M, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
-        np.arange(0, 24, 1), 'U10M', 'tavg1_2d_slv_Nx', 'JJA_wind.nc', lngmin, 
-        latmax, lngmax, latmin, dailyavg='yes')
-    U10M = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, 
-        lat_merra, lng_merra, U10M)
-    V10M, mtime, lat_merra, lng_merra = transporto3_open.open_merra2(years, 
-        np.arange(0, 24, 1), 'V10M', 'tavg1_2d_slv_Nx', 'JJA_wind.nc', lngmin, 
-        latmax, lngmax, latmin, dailyavg='yes')
-    V10M = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, lng_gmi, 
-        lat_merra, lng_merra, V10M)
+    datapath = '/Users/ghkerr/phd/globalo3/data/parsed/'      
+    import pandas as pd
+    import netCDF4 as nc
+    o3_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['O3_control'][:].data
+    o3_gmi_china = nc.Dataset(datapath+'gmi_O3control_JJA2016-2017.nc')['O3_control'][:].data
+    lat_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lat'][:].data
+    lng_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lng'][:].data
+    o3_transport_gmi = nc.Dataset(datapath+'gmi_O3transportonly_JJA2008-2010.nc')['O3_transportonly'][:].data
+    t2m_merra = nc.Dataset(datapath+'merra2_t2m_JJA2008-2010.nc')['T2M'][:].data
+    t2m_merra_china = nc.Dataset(datapath+'merra2_t2m_JJA2016-2017.nc')['T2M'][:].data
+    qv2m_merra = nc.Dataset(datapath+'merra2_qv2m_JJA2008-2010.nc')['QV2M'][:].data
+    qv2m_merra_china = nc.Dataset(datapath+'merra2_qv2m_JJA2016-2017.nc')['QV2M'][:].data    
+    lat_jet_ml = nc.Dataset(datapath+'merra2_JET_JJA2008-2010.nc')['jetlatitude'][:].data
+    U10M = nc.Dataset(datapath+'merra2_U10M_JJA2008-2010.nc')['U10M'][:].data
+    V10M = nc.Dataset(datapath+'merra2_V10M_JJA2008-2010.nc')['V10M'][:].data
+    pblh_merra = nc.Dataset(datapath+'merra2_PBLH_JJA2008-2010.nc')['PBLH'][:].data
+    cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['cyclones'][:].data
+    lat_cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['lat'][:].data
+    lng_cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['lng'][:].data
+    eqjet_cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['ewjet_cyclones'][:].data
+    pwjet_cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['pwjet_cyclones'][:].data
+    cyclones = pd.read_pickle(datapath+'cyclones.pickle')
     # Calculate dO3/dT, dO3/dq, r(T, O3), and r(q, O3) from model
     do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_gmi, lat_gmi, 
         lng_gmi)
@@ -2227,111 +2200,80 @@ except NameError:
     r_qv2mo3 = globalo3_calculate.calculate_r(qv2m_merra, o3_gmi, lat_gmi, 
         lng_gmi)
     r_qv2mo3_transport = globalo3_calculate.calculate_r(qv2m_merra, 
-        o3_transport_gmi, lat_gmi, lng_gmi)
-    # Subset fields in mid-latitudes
-    U500_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(U500, lat_gmi, 
-        lng_gmi, 0., 360., 20., 70.)
-    o3_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(o3_gmi, lat_gmi, 
-        lng_gmi, 0., 360., 20., 70.)
-    t2m_ml, lat_ml, lng_nhml = globalo3_calculate.find_grid_in_bb(t2m_merra, 
-        lat_gmi, lng_gmi, 0., 360., 20., 70.)
-    qv2m_ml, lat_ml, lng_nhml = globalo3_calculate.find_grid_in_bb(qv2m_merra, 
-        lat_gmi, lng_gmi, 0., 360., 20., 70.)    
-    do3dt2m_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(do3dt2m, 
-        lat_gmi, lng_gmi, 0., 360., 20., 70.)
-    r_t2mo3_ml, lat_ml, lng_ml = globalo3_calculate.find_grid_in_bb(r_t2mo3, 
-        lat_gmi, lng_gmi, 0., 360., 20., 70.)
-    # Find latitude of eddy-driven jet and fields at jet
-    lat_jet_ml, o3_jet_ml = globalo3_calculate.find_field_atjet(o3_ml, U500_ml, 
-        lat_ml, lng_ml, 20, anom = True)
-    scratch, t2m_jet_ml = globalo3_calculate.find_field_atjet(t2m_ml, 
-        U500_ml, lat_ml, lng_ml, 20, anom=True)
-    scratch, do3dt2m_jet_ml = globalo3_calculate.find_field_atjet(
-        do3dt2m_ml, U500_ml, lat_ml, lng_ml, 20)
-    scratch, r_t2mo3_jet_ml = globalo3_calculate.find_field_atjet(
-        r_t2mo3_ml, U500_ml, lat_ml, lng_ml, 20) 
-    # Smooth jet latitude with window size of ~10 deg
-    lat_jet_ml = globalo3_calculate.convolve_jet(lat_jet_ml, 9)    
+        o3_transport_gmi, lat_gmi, lng_gmi)  
     # Slope and correlation of O3/jet distance and 2-meter temperature and 
     # jet distance
     m_o3jetdist, r_o3jetdist, diff_o3jetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(o3_gmi, lat_gmi, 
-        lng_gmi, lat_jet_ml, lng_ml)
+        lng_gmi, lat_jet_ml, lng_gmi)
     m_t2mjetdist, r_t2mjetdist, diff_t2mjetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(t2m_merra, lat_gmi, 
-        lng_gmi, lat_jet_ml, lng_ml)
+        lng_gmi, lat_jet_ml, lng_gmi)
     m_qv2mjetdist, r_qv2mjetdist, diff_qv2mjetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(qv2m_merra, lat_gmi, 
-        lng_gmi, lat_jet_ml, lng_ml)
+        lng_gmi, lat_jet_ml, lng_gmi)
     m_U10Mjetdist, r_U10Mjetdist, diff_U10Mjetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(U10M, lat_gmi, 
-        lng_gmi, lat_jet_ml, lng_ml)
+        lng_gmi, lat_jet_ml, lng_gmi)
     m_V10Mjetdist, r_V10Mjetdist, diff_V10Mjetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(V10M, lat_gmi, 
-        lng_gmi, lat_jet_ml, lng_ml)  
+        lng_gmi, lat_jet_ml, lng_gmi)  
+    m_pblhjetdist, r_pblhjetdist, diff_pblhjetdist = \
+        globalo3_calculate.calculate_fieldjet_relationship(pblh_merra, 
+        lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)
+    times_gmi = pd.date_range(start='01/01/2008', end='12/31/2010')
+    where_months = np.where(np.in1d(times_gmi.month, 
+        np.array([6, 7, 8]))==True)[0]
+    times_gmi = times_gmi[where_months]
+    times_gmi = [x.to_pydatetime().date() for x in times_gmi]        
+    times_gmi = np.array(times_gmi)
+    times_gmi_china = pd.date_range(start='01/01/2016', end='12/31/2017')
+    where_months = np.where(np.in1d(times_gmi_china.month, 
+        np.array([6, 7, 8]))==True)[0]
+    times_gmi_china = times_gmi_china[where_months]
+    times_gmi_china = [x.to_pydatetime().date() for x in times_gmi_china]
+    times_gmi_china = np.array(times_gmi_china)
+    # Cyclones 
+    o3_anom, o3_all, o3_anom_rotated, o3_rotated = \
+        globalo3_calculate.o3anom_cyclone(cyclones, times_gmi, lat_gmi, 
+        lng_gmi, o3_gmi)    
     # Load observational datasets
     promptobs = input('Load observational datasets? [y/n]\n').lower()    
     if promptobs == 'y':    
-        naps = observations_open.open_napso3(years, months, hours)
-        aqs = observations_open.open_aqso3(years, months, hours)
-        emep = observations_open.open_emepo3(years, months, hours)
-        china = observations_open.open_chinao3([2016,2017], months, hours, 
+        naps = observations_open.open_napso3([2008, 2009, 2010], [6, 7, 8], [14])
+        aqs = observations_open.open_aqso3([2008, 2009, 2010], [6, 7, 8], [14])
+        emep = observations_open.open_emepo3([2008, 2009, 2010], [6, 7, 8], [14])
+        china = observations_open.open_chinao3([2016, 2017], [6, 7, 8], [14],
             cityavg=True)
-        # Since Chinese observations span a different measuring period than 
-        # the other observations, load different GMI and MERRA-2 data
-        lat_gmi_china, lng_gmi_china, times_gmi_china, o3_gmi_china = \
-            globalo3_open.open_overpass2_specifieddomain([2016,2017], 
-            months_str, latmin, latmax, lngmin, lngmax, 'O3', 'HindcastMR2')
-        o3_gmi_china = o3_gmi_china*1e9
-        lat_merra_china, lng_merra_china, t2m_merra_china = \
-            globalo3_open.open_merra2t2m_specifieddomain([2016,2017], 
-            months_str, latmin, latmax, lngmin, lngmax)        
-        t2m_merra_china = globalo3_open.interpolate_merra_to_ctmresolution(
-            lat_gmi, lng_gmi, lat_merra_china, lng_merra_china, 
-            t2m_merra_china)
-        qv2m_merra_china, mtime_china, lat_merra_china, lng_merra_china = \
-            transporto3_open.open_merra2([2016,2017], 
-            [0, 3, 9, 12, 15, 18, 21], 'QV2M', 'tavg1_2d_slv_Nx', 'JJA_rh.nc', 
-            lngmin, latmax, lngmax, latmin, dailyavg='yes')
-        qv2m_merra_china = globalo3_open.interpolate_merra_to_ctmresolution(
-            lat_gmi, lng_gmi, lat_merra_china, lng_merra_china, 
-            qv2m_merra_china)
-        qv2m_merra_china = qv2m_merra_china*1000. # Convert from kg kg-1 to g kg-1        
-        import pandas as pd
-        times_gmi_china = pd.date_range(start='01/01/2016', end='12/31/2017')
-        where_months = np.where(np.in1d(times_gmi_china.month, 
-            np.array(months))==True)[0]
-        times_gmi_china = times_gmi_china[where_months]
-        times_gmi_china = [x.to_pydatetime().date() for x in times_gmi_china]
         # Calculate O3-meteorology relationships from observational datasets
         (r_t2mo3_naps, do3dt2m_naps, ro3jet_naps, do3djet_naps, lat_naps, 
             lng_naps) = globalo3_calculate.calculate_obs_o3_temp_jet(naps, 
-            t2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
+            t2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)
         (r_t2mo3_aqs, do3dt2m_aqs, ro3jet_aqs, do3djet_aqs, lat_aqs, 
             lng_aqs) = globalo3_calculate.calculate_obs_o3_temp_jet(aqs, 
-            t2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)    
+            t2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)    
         (r_t2mo3_emep, do3dt2m_emep, ro3jet_emep, do3djet_emep, lat_emep, 
             lng_emep) = globalo3_calculate.calculate_obs_o3_temp_jet(emep, 
-            t2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
+            t2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)
         (r_qv2mo3_naps, do3dqv2m_naps, ro3jet_naps, do3djet_naps, lat_naps, 
             lng_naps) = globalo3_calculate.calculate_obs_o3_temp_jet(naps, 
-            qv2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
+            qv2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)
         (r_qv2mo3_aqs, do3dqv2m_aqs, ro3jet_aqs, do3djet_aqs, lat_aqs, 
             lng_aqs) = globalo3_calculate.calculate_obs_o3_temp_jet(aqs, 
-            qv2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)    
+            qv2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)    
         (r_qv2mo3_emep, do3dqv2m_emep, ro3jet_emep, do3djet_emep, lat_emep, 
             lng_emep) = globalo3_calculate.calculate_obs_o3_temp_jet(emep, 
-            qv2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_ml)        
+            qv2m_merra, times_gmi, lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)        
         # For China (2016-2017)
         (r_t2mo3_china, do3dt2m_china, ro3jet_china, do3djet_china, lat_china,
             lng_china) = globalo3_calculate.calculate_obs_o3_temp_jet(china, 
             t2m_merra_china, np.array(times_gmi_china), lat_gmi, lng_gmi, 
-            lat_jet_ml[:len(t2m_merra_china)], lng_ml)
+            lat_jet_ml[:len(t2m_merra_china)], lng_gmi)
         (r_qv2mo3_china, do3dqv2m_china, ro3jet_china, do3djet_china, 
             lat_china, lng_china) = \
             globalo3_calculate.calculate_obs_o3_temp_jet(china, 
             qv2m_merra_china, np.array(times_gmi_china), lat_gmi, lng_gmi, 
-            lat_jet_ml[:len(t2m_merra_china)], lng_ml)
+            lat_jet_ml[:len(t2m_merra_china)], lng_gmi)
         # Calculate the air quality performance index (AQPI), correlation 
         # coefficient (r), factor-of-2 fraction (FAC2), and mean fractional 
         # bias (MFB) for each observational dataset
@@ -2342,12 +2284,11 @@ except NameError:
         aqpi_emep, fac2_emep, r_emep, mfb_emep = globalo3_calculate.calculate_aqpi(
             emep, o3_gmi, lat_gmi, lng_gmi, times_gmi, 'gridwise')
         aqpi_china, fac2_china, r_china, mfb_china = \
-            globalo3_calculate.calculate_aqpi(china, o3_gmi_china, lat_gmi_china, 
-            lng_gmi_china, times_gmi_china, 'gridwise')
+            globalo3_calculate.calculate_aqpi(china, o3_gmi_china, lat_gmi,
+            lng_gmi, times_gmi_china, 'gridwise')
     # Significance (alpha = 0.05) of O3-temperature-q-jet correlations
     promptsignificance = input('Calculate significance? [y/n]\n').lower()    
     if promptsignificance == 'y':
-        # For O3-temperature
         significance_r_t2mo3 = \
             globalo3_calculate.calculate_r_significance(t2m_merra, o3_gmi, 
             r_t2mo3, lat_gmi, lng_gmi)
@@ -2373,7 +2314,10 @@ except NameError:
             r_U10Mjetdist, lat_gmi, lng_gmi)
         significance_r_V10Mjetdist = \
             globalo3_calculate.calculate_r_significance(V10M, diff_V10Mjetdist, 
-            r_V10Mjetdist, lat_gmi, lng_gmi)
+            r_V10Mjetdist, lat_gmi, lng_gmi)            
+        significance_r_pblhjetdist = \
+            globalo3_calculate.calculate_r_significance(pblh_merra,
+            diff_pblhjetdist, r_pblhjetdist, lat_gmi, lng_gmi)            
         # Regions where O3-temperature or O3-humidity correlation was 
         # significant in HindcastMR2 but not significant in 
         # HindcastMR2-DiurnalAvgTQ
@@ -2388,92 +2332,7 @@ except NameError:
         significance_diff_r_qv2mo3 = np.empty(r_qv2mo3.shape)
         significance_diff_r_qv2mo3[:] = np.nan
         significance_diff_r_qv2mo3[diff[0], diff[1]] = 1.
-    # Load GISS MERRA-2 cyclone database
-    promptcyclones = input('Load cyclones? [y/n]\n').lower()
-    if promptcyclones == 'y':    
-        cyclones = globalo3_open.open_merra2_cyclones('06/01/2008', 
-            '08/31/2010', months_str)
-        # Bin cyclones (~4.125˚ lat x ~4.045˚ lng) and determine frequency
-        cyclones_binned, lat_cyclones_binned, lng_cyclones_binned = \
-            globalo3_calculate.field_binner(np.linspace(lat_gmi[0], 
-            lat_gmi[-1], 23), np.linspace(lng_gmi[0], lng_gmi[-1], 90), 
-            times_gmi, cyclones['Latitude'].values, 
-            cyclones['Longitude'].values, 
-            np.ones(shape=cyclones['Latitude'].values.shape), 
-            cyclones['Date'].values, 'sum')
-        cyclones_binned = np.nan_to_num(cyclones_binned)
-        # Same as above but temperature on days with equatorward and poleward 
-        # jet 
-        (eqjet_lat_cyclones, eqjet_lng_cyclones, eqjet_time_cyclones,
-          pwjet_lat_cyclones, pwjet_lng_cyclones, pwjet_time_cyclones, 
-          eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_o3, 
-          eqjet_o3) = \
-              globalo3_calculate.segregate_field_bylat(o3_gmi, lng_gmi, 
-              lat_jet_ml, times_gmi, cyclones=cyclones)
-        # Same as above but humidity on days with equatorward and poleward 
-        # jet              
-        (eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_qv2m, 
-          eqjet_qv2m) = \
-              globalo3_calculate.segregate_field_bylat(qv2m_merra, lng_gmi, 
-              lat_jet_ml, times_gmi)             
-        # Same as above but find O3 on days with equatorward and poleward jet 
-        (eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_t2m, 
-          eqjet_t2m) = \
-              globalo3_calculate.segregate_field_bylat(t2m_merra, lng_gmi, 
-              lat_jet_ml, times_gmi)   
-        # Bin cyclones (~4.125˚ lat x ~4.045˚ lng) on days with equatorward jet
-        # and determine frequency
-        eqjet_cyclones_binned, eqjet_lat_cyclones_binned, eqjet_lng_cyclones_binned = \
-            globalo3_calculate.field_binner(np.linspace(lat_gmi[0], 
-            lat_gmi[-1], 23), np.linspace(lng_gmi[0], lng_gmi[-1], 90), 
-            times_gmi, eqjet_lat_cyclones, eqjet_lng_cyclones, 
-            np.ones(shape=eqjet_lat_cyclones.shape[0]), eqjet_time_cyclones,
-            'sum')
-        eqjet_cyclones_binned = np.nan_to_num(eqjet_cyclones_binned)             
-        # Same as above but for days with poleward jet
-        pwjet_cyclones_binned, pwjet_lat_cyclones_binned, pwjet_lng_cyclones_binned = \
-            globalo3_calculate.field_binner(np.linspace(lat_gmi[0], 
-            lat_gmi[-1], 23), np.linspace(lng_gmi[0], lng_gmi[-1], 90), 
-            times_gmi, pwjet_lat_cyclones, pwjet_lng_cyclones, 
-            np.ones(shape=pwjet_lat_cyclones.shape[0]), pwjet_time_cyclones, 
-            'sum')
-        pwjet_cyclones_binned = np.nan_to_num(pwjet_cyclones_binned)
-        # Add cyclic point to longitude coordinates so that it wraps around the 
-        # Prime Meridian when plotting
-        lng_cyclones_binned[0] = 0.
-        lng_cyclones_binned[-1] = 360.
-        eqjet_lng_cyclones_binned[0] = 0.
-        eqjet_lng_cyclones_binned[-1] = 360.
-        pwjet_lng_cyclones_binned[0] = 0.
-        pwjet_lng_cyclones_binned[-1] = 360.    
-        # Find O3 and O3 anomaly within 5 grid cells of cyclone centers
-        o3_anom, o3_all, o3_anom_rotated, o3_rotated = \
-            globalo3_calculate.o3anom_cyclone(cyclones, times_gmi, lat_gmi, 
-            lng_gmi, o3_gmi)
-    # Load PBL height from MERRA-2
-    promptpbl = input('Load PBL height? [y/n]\n').lower()
-    if promptpbl == 'y':    
-        # Load daily mean PBL height
-        mtime, lat_merra, lng_merra, pblh_merra = \
-            globalo3_open.open_merra2pblh_specifieddomain(years, 
-            np.arange(0, 24, 1), latmin, latmax, lngmin, lngmax, 
-            dailyavg='yes')
-        # Interpolate PBL height
-        pblh_merra = globalo3_open.interpolate_merra_to_ctmresolution(lat_gmi, 
-            lng_gmi, lat_merra, lng_merra, pblh_merra, checkplot='yes')
-        r_pblho3 = globalo3_calculate.calculate_r(pblh_merra, o3_gmi, lat_gmi, 
-            lng_gmi)
-        m_pblhjetdist, r_pblhjetdist, diff_pblhjetdist = \
-            globalo3_calculate.calculate_fieldjet_relationship(pblh_merra, 
-            lat_gmi, lng_gmi, lat_jet_ml, lng_ml)
-        # Calculate significance 
-        significance_r_pblho3 = \
-            globalo3_calculate.calculate_r_significance(pblh_merra, o3_gmi, 
-            r_pblho3, lat_gmi, lng_gmi)
-        significance_r_pblhjetdist = \
-            globalo3_calculate.calculate_r_significance(pblh_merra,
-            diff_pblhjetdist, r_pblhjetdist, lat_gmi, lng_gmi)
-            
+                        
 # FIGURE 1; Mean O3 and NOx
 fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
 # FIGURE 2; model performance
@@ -2485,7 +2344,7 @@ fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
 fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
     lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
     r_t2mo3_emep, r_qv2mo3_emep, lat_emep, lng_emep, r_t2mo3_china, 
-    r_qv2mo3_china, lat_china, lng_china, lng_ml, lat_jet_ml)
+    r_qv2mo3_china, lat_china, lng_china, lng_gmi, lat_jet_ml)
 # FIGURE 5: r(T, O3) and r(q, O3) from the transport only simulation 
 fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
     r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
