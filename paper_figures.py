@@ -634,7 +634,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     zorder=4)
     p4 = ax1.fill_between(lat_obs_wna, (obs_mean_wna-obs_std_wna),
         (obs_mean_wna+obs_std_wna), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     # Western North America eddy-driven jet
     p7 = ax1.errorbar(lat_jet_mean_wna, 0., xerr=[lat_jet_err_wna], 
         fmt = 'o', color = color_jet, ecolor = color_jet, elinewidth=2, 
@@ -656,7 +656,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax2.plot(lat_obs_ena, obs_mean_ena, '-', lw=2, color=color_obs, zorder=4)
     ax2.fill_between(lat_obs_ena, (obs_mean_ena-obs_std_ena),
         (obs_mean_ena+obs_std_ena), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     # Eastern North America eddy-driven jet
     ax2.errorbar(lat_jet_mean_ena, 0., xerr=[lat_jet_err_ena], fmt='o', 
     color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
@@ -669,7 +669,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax3.plot(lat_obs_eu, obs_mean_eu, '-', lw=2, color=color_obs, zorder=4)
     ax3.fill_between(lat_obs_eu, (obs_mean_eu-obs_std_eu),
         (obs_mean_eu+obs_std_eu), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     # Europe eddy-driven jet
     ax3.errorbar(lat_jet_mean_eu, 0., xerr=[lat_jet_err_eu], fmt='o', 
         color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
@@ -683,7 +683,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
         zorder=4)
     ax4.fill_between(lat_obs_china, (obs_mean_china-obs_std_china),
         (obs_mean_china+obs_std_china), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     # East Asia eddy-driven jet
     ax4.errorbar(lat_jet_mean_asia, 0., xerr=[lat_jet_err_asia], fmt='o', 
         color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
@@ -808,7 +808,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
         zorder=4)
     p4 = ax1.fill_between(lat_obs_wna, (obs_mean_wna-obs_std_wna),
         (obs_mean_wna+obs_std_wna), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     p7 = ax1.errorbar(lat_jet_mean_wna, 0., xerr=[lat_jet_err_wna], 
         fmt='o', color=color_jet, ecolor=color_jet, elinewidth=2, 
         capsize=0, zorder=10)
@@ -821,7 +821,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax2.plot(lat_obs_ena, obs_mean_ena, '-', lw=2, color=color_obs, zorder=4)
     ax2.fill_between(lat_obs_ena, (obs_mean_ena-obs_std_ena),
         (obs_mean_ena+obs_std_ena), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     ax2.errorbar(lat_jet_mean_ena, 0., xerr=[lat_jet_err_ena], fmt='o', 
         color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     ax3.text(0.98, 0.8, 'Europe', ha='right', transform=ax3.transAxes, 
@@ -832,7 +832,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     ax3.plot(lat_obs_eu, obs_mean_eu, '-', lw=2, color=color_obs, zorder=4)
     ax3.fill_between(lat_obs_eu, (obs_mean_eu-obs_std_eu),
         (obs_mean_eu+obs_std_eu), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     ax3.errorbar(lat_jet_mean_eu, 0., xerr=[lat_jet_err_eu], fmt='o', 
         color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     ax4.text(0.98, 0.8, 'China', ha='right', transform=ax4.transAxes, 
@@ -844,7 +844,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
         zorder=4)
     ax4.fill_between(lat_obs_china, (obs_mean_china-obs_std_china),
         (obs_mean_china+obs_std_china), facecolor='None', hatch='////', 
-        edgecolor=color_obs, linewidth=0.0, zorder=3)
+        edgecolor=color_obs, linewidth=0.0, zorder=8)
     ax4.errorbar(lat_jet_mean_asia, 0., xerr=[lat_jet_err_asia], fmt='o', 
         color=color_jet, ecolor=color_jet, elinewidth=2, capsize=0, zorder=10)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
@@ -2169,10 +2169,12 @@ except NameError:
     datapath = '/Users/ghkerr/phd/globalo3/data/parsed/'      
     import pandas as pd
     import netCDF4 as nc
+    # Load data
     o3_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['O3_control'][:].data
     o3_gmi_china = nc.Dataset(datapath+'gmi_O3control_JJA2016-2017.nc')['O3_control'][:].data
     lat_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lat'][:].data
     lng_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lng'][:].data
+    mtime = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['time'][:].data
     o3_transport_gmi = nc.Dataset(datapath+'gmi_O3transportonly_JJA2008-2010.nc')['O3_transportonly'][:].data
     t2m_merra = nc.Dataset(datapath+'merra2_t2m_JJA2008-2010.nc')['T2M'][:].data
     t2m_merra_china = nc.Dataset(datapath+'merra2_t2m_JJA2016-2017.nc')['T2M'][:].data
@@ -2188,6 +2190,28 @@ except NameError:
     eqjet_cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['ewjet_cyclones'][:].data
     pwjet_cyclones_binned = nc.Dataset(datapath+'mcms_CYCLONEFREQ_JJA2008-2010.nc')['pwjet_cyclones'][:].data
     cyclones = pd.read_pickle(datapath+'cyclones.pickle')
+    # Load calculations of significance
+    significance_r_t2mo3 = nc.Dataset(datapath+'sig_merra2_t2m_gmi_O3control.nc')['sig_T2M_O3_control'][:].data
+    significance_r_qv2mo3 = nc.Dataset(datapath+'sig_merra2_qv2m_gmi_O3control.nc')['sig_QV2M_O3_control'][:].data
+    significance_r_t2mo3_transport = nc.Dataset(datapath+'sig_merra2_t2m_gmi_O3transportonly.nc')['sig_T2M_O3_transportonly'][:].data
+    significance_r_qv2mo3_transport = nc.Dataset(datapath+'sig_merra2_qv2m_gmi_O3transportonly.nc')['sig_QV2M_O3_transportonly'][:].data
+    significance_r_t2mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_t2m.nc')['sig_JETDIST_merra2_t2m'][:].data
+    significance_r_o3jetdist = nc.Dataset(datapath+'sig_merra2_jetdist_gmi_o3control.nc')['sig_JETDIST_O3_control'][:].data
+    significance_r_qv2mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_qv2m.nc')['sig_JETDIST_merra2_qv2m'][:].data
+    # Regions where O3-temperature or O3-humidity correlation was 
+    # significant in HindcastMR2 but not significant in 
+    # HindcastMR2-DiurnalAvgTQ
+    diff = np.where(np.logical_and(significance_r_t2mo3 != 1., 
+        significance_r_t2mo3_transport == 1.))
+    significance_diff_r_t2mo3 = np.empty(r_t2mo3.shape)
+    significance_diff_r_t2mo3[:] = np.nan
+    significance_diff_r_t2mo3[diff[0], diff[1]] = 1.    
+    del diff
+    diff = np.where(np.logical_and(significance_r_qv2mo3 != 1., 
+        significance_r_qv2mo3_transport == 1.))
+    significance_diff_r_qv2mo3 = np.empty(r_qv2mo3.shape)
+    significance_diff_r_qv2mo3[:] = np.nan
+    significance_diff_r_qv2mo3[diff[0], diff[1]] = 1.    
     # Calculate dO3/dT, dO3/dq, r(T, O3), and r(q, O3) from model
     do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_gmi, lat_gmi, 
         lng_gmi)
@@ -2286,96 +2310,62 @@ except NameError:
         aqpi_china, fac2_china, r_china, mfb_china = \
             globalo3_calculate.calculate_aqpi(china, o3_gmi_china, lat_gmi,
             lng_gmi, times_gmi_china, 'gridwise')
-    # Significance (alpha = 0.05) of O3-temperature-q-jet correlations
-    promptsignificance = input('Calculate significance? [y/n]\n').lower()    
-    if promptsignificance == 'y':
-        significance_r_t2mo3 = \
-            globalo3_calculate.calculate_r_significance(t2m_merra, o3_gmi, 
-            r_t2mo3, lat_gmi, lng_gmi)
-        significance_r_t2mo3_transport = \
-            globalo3_calculate.calculate_r_significance(t2m_merra, 
-            o3_transport_gmi, r_t2mo3_transport, lat_gmi, lng_gmi)
-        significance_r_qv2mo3 = \
-            globalo3_calculate.calculate_r_significance(qv2m_merra, o3_gmi, 
-            r_qv2mo3, lat_gmi, lng_gmi)
-        significance_r_qv2mo3_transport = \
-            globalo3_calculate.calculate_r_significance(qv2m_merra, 
-            o3_transport_gmi, r_qv2mo3_transport, lat_gmi, lng_gmi)
-        significance_r_t2mjetdist = \
-            globalo3_calculate.calculate_r_significance(t2m_merra, 
-            diff_t2mjetdist, r_t2mjetdist, lat_gmi, lng_gmi)
-        significance_r_o3jetdist = globalo3_calculate.calculate_r_significance(
-            o3_gmi, diff_o3jetdist, r_o3jetdist, lat_gmi, lng_gmi)
-        significance_r_qv2mjetdist = \
-            globalo3_calculate.calculate_r_significance(o3_gmi, 
-            diff_qv2mjetdist, r_qv2mjetdist, lat_gmi, lng_gmi)    
-        significance_r_U10Mjetdist = \
-            globalo3_calculate.calculate_r_significance(U10M, diff_U10Mjetdist, 
-            r_U10Mjetdist, lat_gmi, lng_gmi)
-        significance_r_V10Mjetdist = \
-            globalo3_calculate.calculate_r_significance(V10M, diff_V10Mjetdist, 
-            r_V10Mjetdist, lat_gmi, lng_gmi)            
-        significance_r_pblhjetdist = \
-            globalo3_calculate.calculate_r_significance(pblh_merra,
-            diff_pblhjetdist, r_pblhjetdist, lat_gmi, lng_gmi)            
-        # Regions where O3-temperature or O3-humidity correlation was 
-        # significant in HindcastMR2 but not significant in 
-        # HindcastMR2-DiurnalAvgTQ
-        diff = np.where(np.logical_and(significance_r_t2mo3 != 1., 
-            significance_r_t2mo3_transport == 1.))
-        significance_diff_r_t2mo3 = np.empty(r_t2mo3.shape)
-        significance_diff_r_t2mo3[:] = np.nan
-        significance_diff_r_t2mo3[diff[0], diff[1]] = 1.    
-        del diff
-        diff = np.where(np.logical_and(significance_r_qv2mo3 != 1., 
-            significance_r_qv2mo3_transport == 1.))
-        significance_diff_r_qv2mo3 = np.empty(r_qv2mo3.shape)
-        significance_diff_r_qv2mo3[:] = np.nan
-        significance_diff_r_qv2mo3[diff[0], diff[1]] = 1.
+    # # Significance (alpha = 0.05) of O3-temperature-q-jet correlations
+    # promptsignificance = input('Calculate significance? [y/n]\n').lower()    
+    # if promptsignificance == 'y':
+        # significance_r_U10Mjetdist = \
+        #     globalo3_calculate.calculate_r_significance(U10M, diff_U10Mjetdist, 
+        #     r_U10Mjetdist, lat_gmi, lng_gmi)
+        # significance_r_V10Mjetdist = \
+        #     globalo3_calculate.calculate_r_significance(V10M, diff_V10Mjetdist, 
+        #     r_V10Mjetdist, lat_gmi, lng_gmi)
+        # significance_r_pblhjetdist = \
+        #     globalo3_calculate.calculate_r_significance(pblh_merra,
+        #     diff_pblhjetdist, r_pblhjetdist, lat_gmi, lng_gmi)
                         
-# FIGURE 1; Mean O3 and NOx
-fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
-# FIGURE 2; model performance
-fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
-# FIGURE 3; r(T, O3) and r(q, O3)
-fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
-    significance_r_qv2mo3, lat_jet_ml)    
-# FIGURE 4; zonally-averaged O3-meteorology relationships 
-fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
-    lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
-    r_t2mo3_emep, r_qv2mo3_emep, lat_emep, lng_emep, r_t2mo3_china, 
-    r_qv2mo3_china, lat_china, lng_china, lng_gmi, lat_jet_ml)
-# FIGURE 5: r(T, O3) and r(q, O3) from the transport only simulation 
-fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
-    r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
-    lat_jet_ml)
-# FIGURE 6; difference in O3, T2M, and qv2M on days with a poleward versus
-# equatorward jet
-fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml, 
-    times_gmi, significance_r_o3jetdist, significance_r_t2mjetdist, 
-    significance_r_qv2mjetdist)
-# FIGURE 7; cyclone frequency and poleward-equatorward jet differences
-fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
-    pwjet_cyclones_binned, eqjet_cyclones_binned, lat_gmi, lng_gmi, 
-    lat_jet_ml)
-# FIGURE 8; O3 anomaly at cyclone
-fig8(o3_anom_rotated)
-# FIGURE 9; difference in PBLH, U10, and V10 on days with a poleward versus 
-# equatorward jet
-fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi, 
-    significance_r_pblhjetdist, significance_r_U10Mjetdist, 
-    significance_r_V10Mjetdist)
-# FIGURE 10; zonally-averaged mean and eddy fluxes
-fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra)    
-# FIGURE S1; dO3/dT and dO3/dq
-figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3, 
-    significance_r_qv2mo3, lat_jet_ml)
-# FIGURE S2: r(O3, jet distance), r(T, jet distance), and r(q, jet distance)
-figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
-    lat_jet_ml, significance_r_o3jetdist, significance_r_t2mjetdist, 
-    significance_r_qv2mjetdist)
-# FIGURE S3: r(PBLH, jet distance), r(U10, jet distance), and r(V10, jet
-# distance)
-figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist, 
-    lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
-    significance_r_V10Mjetdist)
+# # FIGURE 1; Mean O3 and NOx
+# fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
+# # FIGURE 2; model performance
+# fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
+# # FIGURE 3; r(T, O3) and r(q, O3)
+# fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
+#     significance_r_qv2mo3, lat_jet_ml)    
+# # FIGURE 4; zonally-averaged O3-meteorology relationships 
+# fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
+#     lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
+#     r_t2mo3_emep, r_qv2mo3_emep, lat_emep, lng_emep, r_t2mo3_china, 
+#     r_qv2mo3_china, lat_china, lng_china, lng_gmi, lat_jet_ml)
+# # FIGURE 5: r(T, O3) and r(q, O3) from the transport only simulation 
+# fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3, 
+#     r_qv2mo3_transport, significance_diff_r_t2mo3, significance_diff_r_qv2mo3, 
+#     lat_jet_ml)
+# # FIGURE 6; difference in O3, T2M, and qv2M on days with a poleward versus
+# # equatorward jet
+# fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml, 
+#     times_gmi, significance_r_o3jetdist, significance_r_t2mjetdist, 
+#     significance_r_qv2mjetdist)
+# # FIGURE 7; cyclone frequency and poleward-equatorward jet differences
+# fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
+#     pwjet_cyclones_binned, eqjet_cyclones_binned, lat_gmi, lng_gmi, 
+#     lat_jet_ml)
+# # FIGURE 8; O3 anomaly at cyclone
+# fig8(o3_anom_rotated)
+# # FIGURE 9; difference in PBLH, U10, and V10 on days with a poleward versus 
+# # equatorward jet
+# fig9(lat_gmi, lng_gmi, pblh_merra, U10M, V10M, lat_jet_ml, times_gmi, 
+#     significance_r_pblhjetdist, significance_r_U10Mjetdist, 
+#     significance_r_V10Mjetdist)
+# # FIGURE 10; zonally-averaged mean and eddy fluxes
+# fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra)    
+# # FIGURE S1; dO3/dT and dO3/dq
+# figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3, 
+#     significance_r_qv2mo3, lat_jet_ml)
+# # FIGURE S2: r(O3, jet distance), r(T, jet distance), and r(q, jet distance)
+# figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
+#     lat_jet_ml, significance_r_o3jetdist, significance_r_t2mjetdist, 
+#     significance_r_qv2mjetdist)
+# # FIGURE S3: r(PBLH, jet distance), r(U10, jet distance), and r(V10, jet
+# # distance)
+# figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist, 
+#     lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
+#     significance_r_V10Mjetdist)
