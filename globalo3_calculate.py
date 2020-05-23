@@ -97,6 +97,51 @@ def calculate_do3dt(t2m, o3, lat_gmi, lng_gmi):
     print('dO3/dT in calculated in %.2f seconds' %((time.time()-start_time)))
     return do3dt
 
+def calculate_do3dt_sma(t2m, o3, lat, lng):
+    """calculate dO3/dT using an errors-in-variables method; i.e., standardized
+    major axis
+
+    Parameters
+    ----------
+    t2m : numpy.ndarray
+        Temperature, units of K, [time, lat, lng]
+    o3 : numpy.ndarray
+        O3 concentrations, units of ppbv, [time,
+        lat, lng]
+    lat : numpy.ndarray
+        Latitude coordinates, units of degrees north, [lat,]
+    lng : numpy.ndarray
+        Longitude coordinates, units of degrees east, [lng,]        
+        
+    Returns
+    -------
+    sma : numpy.ndarray     
+        dO3/dT calculated using SMA, units of ppbv K-1, 
+        [lat, lng]
+    """
+    import time
+    start_time = time.time()    
+    import numpy as np
+
+    smaarray = np.empty(shape = t2m.shape[1:])
+    smaarray[:] = np.nan
+    for i, ilat in enumerate(lat):
+        for j, jlon in enumerate(lng):
+            # SMA (ratio of standard deviations)
+            sx = np.std(t2m[:,i,j])
+            sy = np.std(o3[:,i,j])
+            sign = np.sign(np.corrcoef(t2m[:,i,j], o3[:,i,j])[0,1])            
+            sma = sign*(sy/sx)
+            # the intercept of an RMA regression can simply be calculated 
+            # from the equation of a line once the slope is known
+            # https://www2.clarku.edu/faculty/pbergmann/Resources/Biol206%20-
+            # %20Lab04-%20Bivariate%20Regression.pdf
+            sma_intercept = np.mean(o3[:,i,j]) - (sma*np.mean(t2m[:,i,j]))            
+            smaarray[i,j] = sma
+    print('New dO3/dT with SMA in calculated in %.2f seconds' 
+          %((time.time()-start_time)))            
+    return smaarray
+
 def calculate_r(x, y, lat, lng):
     """calculate the Pearson correlation coefficient between two gridded fields 
     with the same resolution.
@@ -1631,7 +1676,7 @@ def meridional_flux(v, f, dtime, lat, lng):
     # From Hartmann (2016), using the definition of time and zonal averages, 
     # the flux of field f by wind u can be written as the sum of contributions 
     # from the mean meridional circulation, stationary eddies, and the 
-    # transient eddyes
+    # transient eddies
     mean = np.nanmean(vbar, axis=1)*np.nanmean(fbar, axis=1)
     stationary = np.nanmean((vbar_star*fbar_star), axis=1)
     transient = np.nanmean((vprime*fprime), axis=tuple((0,2)))
