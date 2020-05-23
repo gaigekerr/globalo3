@@ -106,11 +106,11 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     csmedium = ax1.contour(lng_gmi, lat_gmi, np.nanstd(o3_gmi, axis=0), [8.], 
         colors='k', linestyles='--', linewidths=0.75, 
         transform=ccrs.PlateCarree(), zorder=15)
-    skiplng = 6
-    ax1.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
-        yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
-        markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
-        transform=ccrs.PlateCarree())
+    # skiplng = 6
+    # ax1.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
+    #     yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
+    #     markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
+    #     transform=ccrs.PlateCarree())
     plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
     colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
@@ -156,7 +156,7 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
         labelpad=15, fontsize=16)
     ax2.outline_patch.set_zorder(20)      
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'fig1.pdf', dpi=600)
+        'fig1_nojet.pdf', dpi=600)
     return
 
 def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china): 
@@ -220,11 +220,11 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china):
     # Define colormap 
     cmap = plt.get_cmap('coolwarm')
     # Extract all colors from the colormap
-    cmaplist = [cmap(i) for i in range(cmap.N)]
+    cmaplist = cmap(np.linspace(0.5, 1, cmap.N // 2))
     cmap = mpl.colors.LinearSegmentedColormap.from_list(
         'Custom cmap', cmaplist, cmap.N)
     # Correlation plot
-    clevs = np.linspace(-1, 1, 9)
+    clevs = np.linspace(0, 1, 11)
     norm = mpl.colors.BoundaryNorm(clevs, cmap.N)
     # North America
     mb = ax1.pcolor(lng_gmi, lat_gmi, r_aqs, cmap=cmap, norm=norm, 
@@ -237,12 +237,10 @@ def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china):
     # China
     ax3.pcolor(lng_gmi, lat_gmi, r_china, cmap=cmap, norm=norm, 
         transform=ccrs.PlateCarree(), zorder=20)
-    clevs = np.linspace(-40, 40, 9)
-    norm = mpl.colors.BoundaryNorm(clevs, cmap.N)
     # Add colorbars
     colorbar_axes = plt.gcf().add_axes([0.05+0.05,0.11,0.8,0.03])
     colorbar = plt.colorbar(mb, colorbar_axes, orientation='horizontal', 
-        extend='neither')
+        extend='neither', ticks=clevs)
     colorbar.ax.tick_params(labelsize=12)
     colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=15)
     plt.gcf().subplots_adjust(left=0.05, right=0.95, bottom=0.17)
@@ -1853,7 +1851,7 @@ def figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3,
     colorbar.set_label('[ppbv kg g$^{\mathregular{-1}}$]', fontsize=16)
     ax2.outline_patch.set_zorder(20)      
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'figS1.pdf', dpi=600)
+        'figS1_TLS.pdf', dpi=600)
     return    
 
 def figS2(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
@@ -2197,7 +2195,20 @@ except NameError:
     significance_r_qv2mo3_transport = nc.Dataset(datapath+'sig_merra2_qv2m_gmi_O3transportonly.nc')['sig_QV2M_O3_transportonly'][:].data
     significance_r_t2mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_t2m.nc')['sig_JETDIST_merra2_t2m'][:].data
     significance_r_o3jetdist = nc.Dataset(datapath+'sig_merra2_jetdist_gmi_o3control.nc')['sig_JETDIST_O3_control'][:].data
-    significance_r_qv2mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_qv2m.nc')['sig_JETDIST_merra2_qv2m'][:].data
+    significance_r_qv2mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_qv2m.nc')['sig_JETDIST_merra2_qv2m'][:].data 
+    # Calculate dO3/dT, dO3/dq, r(T, O3), and r(q, O3) from model
+    do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_gmi, lat_gmi, 
+        lng_gmi)
+    do3dq = globalo3_calculate.calculate_do3dt(qv2m_merra, o3_gmi, lat_gmi, 
+        lng_gmi)
+    r_t2mo3 = globalo3_calculate.calculate_r(t2m_merra, o3_gmi, lat_gmi, 
+        lng_gmi)
+    r_t2mo3_transport = globalo3_calculate.calculate_r(t2m_merra, 
+        o3_transport_gmi, lat_gmi, lng_gmi)
+    r_qv2mo3 = globalo3_calculate.calculate_r(qv2m_merra, o3_gmi, lat_gmi, 
+        lng_gmi)
+    r_qv2mo3_transport = globalo3_calculate.calculate_r(qv2m_merra, 
+        o3_transport_gmi, lat_gmi, lng_gmi) 
     # Regions where O3-temperature or O3-humidity correlation was 
     # significant in HindcastMR2 but not significant in 
     # HindcastMR2-DiurnalAvgTQ
@@ -2211,20 +2222,7 @@ except NameError:
         significance_r_qv2mo3_transport == 1.))
     significance_diff_r_qv2mo3 = np.empty(r_qv2mo3.shape)
     significance_diff_r_qv2mo3[:] = np.nan
-    significance_diff_r_qv2mo3[diff[0], diff[1]] = 1.    
-    # Calculate dO3/dT, dO3/dq, r(T, O3), and r(q, O3) from model
-    do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_gmi, lat_gmi, 
-        lng_gmi)
-    do3dq = globalo3_calculate.calculate_do3dt(qv2m_merra, o3_gmi, lat_gmi, 
-        lng_gmi)
-    r_t2mo3 = globalo3_calculate.calculate_r(t2m_merra, o3_gmi, lat_gmi, 
-        lng_gmi)
-    r_t2mo3_transport = globalo3_calculate.calculate_r(t2m_merra, 
-        o3_transport_gmi, lat_gmi, lng_gmi)
-    r_qv2mo3 = globalo3_calculate.calculate_r(qv2m_merra, o3_gmi, lat_gmi, 
-        lng_gmi)
-    r_qv2mo3_transport = globalo3_calculate.calculate_r(qv2m_merra, 
-        o3_transport_gmi, lat_gmi, lng_gmi)  
+    significance_diff_r_qv2mo3[diff[0], diff[1]] = 1.       
     # Slope and correlation of O3/jet distance and 2-meter temperature and 
     # jet distance
     m_o3jetdist, r_o3jetdist, diff_o3jetdist = \
@@ -2325,11 +2323,11 @@ except NameError:
                         
 # # FIGURE 1; Mean O3 and NOx
 # fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
-# # FIGURE 2; model performance
+# FIGURE 2; model performance
 # fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
 # # FIGURE 3; r(T, O3) and r(q, O3)
 # fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
-#     significance_r_qv2mo3, lat_jet_ml)    
+#     significance_r_qv2mo3, lat_jet_ml)
 # # FIGURE 4; zonally-averaged O3-meteorology relationships 
 # fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs, 
 #     lat_aqs, lng_aqs, r_t2mo3_naps, r_qv2mo3_naps, lat_naps, lng_naps, 
@@ -2357,7 +2355,7 @@ except NameError:
 #     significance_r_V10Mjetdist)
 # # FIGURE 10; zonally-averaged mean and eddy fluxes
 # fig10(lat_gmi, V10M, o3_gmi, t2m_merra, qv2m_merra)    
-# # FIGURE S1; dO3/dT and dO3/dq
+# FIGURE S1; dO3/dT and dO3/dq
 # figS1(lat_gmi, lng_gmi, do3dt2m, do3dq, significance_r_t2mo3, 
 #     significance_r_qv2mo3, lat_jet_ml)
 # # FIGURE S2: r(O3, jet distance), r(T, jet distance), and r(q, jet distance)
@@ -2369,3 +2367,59 @@ except NameError:
 # figS3(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_V10Mjetdist, 
 #     lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
 #     significance_r_V10Mjetdist)
+
+
+
+
+
+
+
+
+
+
+do3dt2m_sma = globalo3_calculate.calculate_do3dt_sma(t2m_merra, o3_gmi, lat_gmi, lng_gmi)
+do3dq_sma = globalo3_calculate.calculate_do3dt_sma(qv2m_merra, o3_gmi, lat_gmi, lng_gmi)
+
+
+
+
+
+# # Very negative
+# i = 27
+# j = 100
+# # # Very positive 
+# # i = 26
+# # j = 50
+# lat = lat_gmi
+# lng = lng_gmi
+# X = t2m_merra[:, i, j]
+# y = o3_gmi[:, i, j]
+# XX = np.linspace(X.min(), X.max(), 1000)
+# # OLS
+# p = np.polyfit(X, y, 1)
+# yfit = np.polyval(p,XX)
+# # SMA (ratio of standard deviations)
+# sx = np.std(X)
+# sy = np.std(y)
+# sign = np.sign(np.corrcoef(X, y)[0,1])
+# sma = sign*(sy/sx)
+# # the intercept of an RMA regression can simply be calculated from the 
+# # equation of a line once the slope is known
+# # https://www2.clarku.edu/faculty/pbergmann/Resources/Biol206%20-%20Lab04-%20Bivariate%20Regression.pdf
+# sma_intercept = np.mean(y) - (sma*np.mean(X))
+# fig = plt.figure()
+# plt.plot(X, y, 'ko', label='GMI O3/MERRA2 T');
+# plt.plot(XX, yfit, '-r', label='OLS; slope=%.2f'%p[0])
+# plt.plot(XX, (sma*XX)+sma_intercept, '-b', label='SMA; slope=%.2f'%sma)
+
+# plt.legend()
+# plt.xlabel('T [K]')
+# plt.ylabel('O3 [ppbv]')
+# plt.title('lat = %.1f deg, lng = %.1f deg'%(lat[i], lng[j]))
+# plt.savefig('/Users/ghkerr/Desktop/TLS_SMA_negative.png', dpi=300)
+# plt.show()
+
+
+
+
+  
