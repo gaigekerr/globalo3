@@ -8,6 +8,7 @@ Revision History
     15112019 -- initial version created
     03032020 -- edited to include function 'mmb_grid' to conduct moving block
                 bootstrap on gridded fields
+    30062020 -- add V10M-O3 correlation
 """
 
 def movingblocks_bootstrap_r(x, y, nb=10000, L=10, alpha=0.05):
@@ -188,10 +189,6 @@ def mmb_grid(x, y, lat, lng):
                 sig[ilat, jlng] = 1.  
     return sig
     
-        
-        
-      
-         
 # datapath = '/Users/ghkerr/phd/globalo3/data/parsed/'      
 datapath = '/mnt/scratch3/gaige/kerr_surface_2020/data/parsed/'
 import netCDF4 as nc
@@ -201,48 +198,20 @@ o3_gmi_transport = nc.Dataset(datapath+'gmi_O3transportonly_JJA2008-2010.nc')['O
 lat_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lat'][:].data
 lng_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lng'][:].data
 t2m_merra = nc.Dataset(datapath+'merra2_T2M_JJA2008-2010.nc')['T2M'][:].data
-
-x = t2m_merra
+V10M_merra = nc.Dataset(datapath+'merra2_V10M_JJA2008-2010.nc')['V10M'][:].data
+# Must change code below depending on which variables significance is being
+# calculated for         
+x = V10M_merra
 y = o3_gmi
 lat = lat_gmi
 lng = lng_gmi
 sig = mmb_grid(x, y, lat, lng)
-# 
-ds = xr.Dataset({'sig_T2M_O3_control': (('lat', 'lng'), sig)},
+ds = xr.Dataset({'sig_V10M_O3_control': (('lat', 'lng'), sig)},
     coords={'lat': lat, 'lng': lng})
-ds.attrs['title'] ='T2M-O3 significance'
-ds.attrs['history'] ='Significance of correlation between 2-meter '+\
-    'temperature and surface-level O3 determined with moving block '+\
+ds.attrs['title'] ='V10M-O3 significance'
+ds.attrs['history'] ='Significance of correlation between 10-meter '+\
+    'meridional wind and surface-level O3 determined with moving block '+\
     'bootstrapping  with alpha = 0.05 and 10 000 realizations. Grid cells '+\
     'with insigificant correlation given by 1., significant given by NaN.'
 ds.attrs['author'] ='Gaige Hunter Kerr, gaige.kerr@jhu.edu'
-ds.to_netcdf(datapath+'sig_merra2_t2m_gmi_O3control_JJA2008-2010.nc')
-
-
-     
-
-
-
-
-
-
-
-
-        
-
-# lb = np.empty(shape=o3_gmi.shape[1:])
-# lb[:] = np.nan
-# ub = np.empty(shape=o3_gmi.shape[1:])
-# ub[:] = np.nan
-# for x in np.arange(0, lat.shape[0], 1):
-#     for y in np.arange(0, lng.shape[0], 1):
-#        ubxy, lbxy = movingblocks_bootstrap_r(t2m_merra[:, x, y], 
-#                                              o3_gmi[:, x, y], nb=1000)
-#        lb[x, y] = lbxy
-#        ub[x, y] = ubxy
-#sig = np.empty(shape=o3_gmi.shape[1:])
-#sig[:] = np.nan
-#for x in np.arange(0, lat_gmi.shape[0], 1):
-#    for y in np.arange(0, lng_gmi.shape[0], 1):
-#        if lb[x, y] <= 0.0 <= ub[x,y]:
-#            sig[x,y] = 1.     
+ds.to_netcdf(datapath+'sig_merra2_V10M_gmi_O3control_JJA2008-2010.nc')
