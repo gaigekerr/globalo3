@@ -70,14 +70,12 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    from cartopy.util import add_cyclic_point
     # Load EDGAR NOx
     lat_edgar, lng_edgar, nox_edgar = globalo3_open.open_edgar_specifieddomain(
         [2008, 2009, 2010], -1., 90., 0., 360., 'NOx')
     # For wrapping around the Prime Meridian
-    if lng_edgar[-1] != 360:
-        lng_edgar[-1] = 360.
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.        
+    o3_gmi, lng_gmip = add_cyclic_point(o3_gmi, coord=lng_gmi)
     # Convert from kg NOx m-2 s-1 to kg NOx km-2 day-1
     nox_edgar = np.nanmean(nox_edgar, axis=0)*3600.*1000000.*24.
     # Load ocean shapefiles
@@ -99,19 +97,19 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
     lat_formatter = LatitudeFormatter()
     ax1.yaxis.set_major_formatter(lat_formatter)
     cmap = plt.get_cmap('OrRd')
-    mb = ax1.contourf(lng_gmi, lat_gmi, np.mean(o3_gmi, axis=0), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, np.mean(o3_gmi, axis=0), 
         np.linspace(10, 60, 11), cmap=cmap, extend='both',
         transform=ccrs.PlateCarree(), zorder=1)
-    csthick = ax1.contour(lng_gmi, lat_gmi, np.nanstd(o3_gmi, axis=0), [10.], 
+    csthick = ax1.contour(lng_gmip, lat_gmi, np.nanstd(o3_gmi, axis=0), [10.], 
         colors='k', linewidths=1.5, transform=ccrs.PlateCarree(), zorder=15)
-    csmedium = ax1.contour(lng_gmi, lat_gmi, np.nanstd(o3_gmi, axis=0), [8.], 
+    csmedium = ax1.contour(lng_gmip, lat_gmi, np.nanstd(o3_gmi, axis=0), [8.], 
         colors='k', linestyles='--', linewidths=0.75, 
         transform=ccrs.PlateCarree(), zorder=15)
-    # skiplng = 6
-    # ax1.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
-    #     yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
-    #     markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
-    #     transform=ccrs.PlateCarree())
+    skiplng = 6
+    ax1.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
+        yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
+        markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
+        transform=ccrs.PlateCarree())
     plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
     colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
         ax1.get_position().y0, 0.02, (ax1.get_position().y1-
@@ -141,7 +139,6 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
         norm=mpl.colors.BoundaryNorm(np.linspace(0, 8, 9), 
         ncolors=plt.get_cmap('Blues', len(np.linspace(0, 8, 9))-1).N, 
         clip=False),transform=ccrs.PlateCarree(), rasterized=True)
-    skiplng = 6
     ax2.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
         yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
         markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
@@ -157,7 +154,7 @@ def fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml):
         labelpad=15, fontsize=16)
     ax2.outline_patch.set_zorder(20)      
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'fig1_nojet.pdf', dpi=600)
+        'fig1.pdf', dpi=600)
     return
 
 def fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china): 
@@ -291,14 +288,20 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     import matplotlib.patches as mpatches
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter   
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    r_t2mo3, lng_gmip = add_cyclic_point(r_t2mo3, coord=lng_gmi)
+    r_qv2mo3, lng_gmip = add_cyclic_point(r_qv2mo3, coord=lng_gmi)
+    significance_r_t2mo3, lng_gmip = add_cyclic_point(significance_r_t2mo3, 
+        coord=lng_gmi)
+    significance_r_qv2mo3, lng_gmip = add_cyclic_point(significance_r_qv2mo3, 
+        coord=lng_gmi)
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,5))
     # For wrapping around the Prime Meridian
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -316,10 +319,10 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, r_t2mo3, np.linspace(-1, 1, 9), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, r_t2mo3, np.linspace(-1, 1, 9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree(), zorder=2)
     # Add boxes corresponding to regions from Figure 4
     # Western North America
@@ -368,9 +371,9 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)
-    mb = ax2.contourf(lng_gmi, lat_gmi, r_qv2mo3, np.linspace(-1,1,9), 
+    mb = ax2.contourf(lng_gmip, lat_gmi, r_qv2mo3, np.linspace(-1,1,9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree())
     # skiplng = 6
     ax2.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
@@ -486,7 +489,7 @@ def fig4(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, r_t2mo3_aqs, r_qv2mo3_aqs,
     # Western North America
     # Model
     field_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
-        r_t2mo3, lat_gmi, lng_gmi, 235., 260., 25., 70.) 
+        r_t2mo3, lat_gmi, lng_gmi, 235., 260., 25., 70.)
     # # Create grid to sub-sample model; the step to create the empty grid 
     # # occurs now (to get the correct shape of "field_wna" before the zonal 
     # # average is taken), and this grid will be filled with NaNs for grid cells
@@ -900,13 +903,23 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3,
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    r_t2mo3, lng_gmip = add_cyclic_point(r_t2mo3, coord=lng_gmi)
+    r_t2mo3_transport, lng_gmip = add_cyclic_point(r_t2mo3_transport, 
+        coord=lng_gmi)
+    significance_diff_r_t2mo3, lng_gmip = add_cyclic_point(
+        significance_diff_r_t2mo3, coord=lng_gmi)
+    r_qv2mo3, lng_gmip = add_cyclic_point(r_qv2mo3, coord=lng_gmi)
+    r_qv2mo3_transport, lng_gmip = add_cyclic_point(r_qv2mo3_transport, 
+        coord=lng_gmi)
+    significance_diff_r_qv2mo3, lng_gmip = add_cyclic_point(
+        significance_diff_r_qv2mo3, coord=lng_gmi)
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,5))
     # For wrapping around the Prime Meridian
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -924,11 +937,11 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3,
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, (r_t2mo3-r_t2mo3_transport), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, (r_t2mo3-r_t2mo3_transport), 
         np.linspace(-0.4, 0.4, 9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(T, O3)
-    ax1.contourf(lng_gmi, lat_gmi, significance_diff_r_t2mo3, 
+    ax1.contourf(lng_gmip, lat_gmi, significance_diff_r_t2mo3, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # Eddy-driven jet
@@ -953,10 +966,10 @@ def fig5(lat_gmi, lng_gmi, r_t2mo3, r_t2mo3_transport, r_qv2mo3,
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)    
-    mb = ax2.contourf(lng_gmi, lat_gmi, r_qv2mo3-r_qv2mo3_transport, 
+    mb = ax2.contourf(lng_gmip, lat_gmi, r_qv2mo3-r_qv2mo3_transport, 
         np.linspace(-0.4,0.4,9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_diff_r_qv2mo3, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_diff_r_qv2mo3, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree())
     skiplng = 6
     ax2.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
@@ -1046,12 +1059,24 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_qv2m, eqjet_qv2m = \
         globalo3_calculate.segregate_field_bylat(qv2m_merra, lng_gmi, lat_jet_ml, 
         times_gmi)
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    pwjet_o3, lng_gmip = add_cyclic_point(pwjet_o3, coord=lng_gmi)
+    eqjet_o3, lng_gmip = add_cyclic_point(eqjet_o3, coord=lng_gmi)
+    pwjet_t2m, lng_gmip = add_cyclic_point(pwjet_t2m, coord=lng_gmi)
+    eqjet_t2m, lng_gmip = add_cyclic_point(eqjet_t2m, coord=lng_gmi)
+    pwjet_qv2m, lng_gmip = add_cyclic_point(pwjet_qv2m, coord=lng_gmi)
+    eqjet_qv2m, lng_gmip = add_cyclic_point(eqjet_qv2m, coord=lng_gmi)
+    significance_r_o3jetdist, lng_gmip = add_cyclic_point(
+        significance_r_o3jetdist, coord=lng_gmi)
+    significance_r_t2mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_t2mjetdist, coord=lng_gmi)
+    significance_r_qv2mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_qv2mjetdist, coord=lng_gmi)        
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,7.7))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     # O3(PW - EW) 
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -1069,11 +1094,11 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_o3-eqjet_o3), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, (pwjet_o3-eqjet_o3), 
         np.linspace(-8,8,9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(O3, jetlat)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_o3jetdist, 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_o3jetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # Add colorbar
@@ -1102,10 +1127,10 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)    
-    mb = ax2.contourf(lng_gmi, lat_gmi, (pwjet_t2m-eqjet_t2m), 
+    mb = ax2.contourf(lng_gmip, lat_gmi, (pwjet_t2m-eqjet_t2m), 
         np.linspace(-8,8,9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_t2mjetdist, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_t2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     colorbar_axes = plt.gcf().add_axes([ax2.get_position().x1+0.03, 
@@ -1131,10 +1156,10 @@ def fig6(lat_gmi, lng_gmi, o3_gmi, t2m_merra, qv2m_merra, lat_jet_ml,
     ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax3.yaxis.set_major_formatter(lat_formatter)    
-    mb = ax3.contourf(lng_gmi, lat_gmi, (pwjet_qv2m-eqjet_qv2m), 
+    mb = ax3.contourf(lng_gmip, lat_gmi, (pwjet_qv2m-eqjet_qv2m), 
         np.linspace(-3,3,7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax3.contourf(lng_gmi, lat_gmi, significance_r_qv2mjetdist, 
+    ax3.contourf(lng_gmip, lat_gmi, significance_r_qv2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     colorbar_axes = plt.gcf().add_axes([ax3.get_position().x1+0.03, 
@@ -1208,8 +1233,6 @@ def fig7(lat_cyclones_binned, lng_cyclones_binned, cyclones_binned,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,5))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     # Total cyclone frequency
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -1359,7 +1382,7 @@ def fig8(o3_anom_rotated):
     return 
   
 def fig9(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml, times_gmi, 
-    significance_r_V10Mjetdist): 
+    significance_r_V10Mjetdist, r_V10Mo3, significance_r_V10Mo3):
     """Figure 9 of Kerr et al. (2020); (a) Difference in V10M on days with a
     poleward jet versus days with an equatorward jet. Hatched grid cells 
     correspond to non-statistically significant values of r(V10M, jet latitude) 
@@ -1400,17 +1423,24 @@ def fig9(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml, times_gmi,
     """
     import numpy as np
     import matplotlib as mpl
-    mpl.rcParams['hatch.linewidth']=0.3     
+    mpl.rcParams['hatch.linewidth']=0.5     
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter        
     fig = plt.figure(figsize=(9,5))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.   
     # Composites of flow at surface on days with poleward or equatorward jet 
     eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_V10M, eqjet_V10M = \
         globalo3_calculate.segregate_field_bylat(V10M, lng_gmi, lat_jet_ml, 
         times_gmi)
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    pwjet_V10M, lng_gmip = add_cyclic_point(pwjet_V10M, coord=lng_gmi)
+    eqjet_V10M, lng_gmip = add_cyclic_point(eqjet_V10M, coord=lng_gmi)
+    significance_r_V10Mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_V10Mjetdist, coord=lng_gmi)
+    r_V10Mo3, lng_gmip = add_cyclic_point(r_V10Mo3, coord=lng_gmi)
+    significance_r_V10Mo3, lng_gmip = add_cyclic_point(significance_r_V10Mo3, 
+        coord=lng_gmi)
     # (PW - EW) V10M difference
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -1427,11 +1457,11 @@ def fig9(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml, times_gmi,
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)    
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_V10M-eqjet_V10M), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, (pwjet_V10M-eqjet_V10M), 
         np.linspace(-3, 3, 7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(V10M, jetlat)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_V10Mjetdist, 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_V10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # Eddy-driven jet
@@ -1465,12 +1495,11 @@ def fig9(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml, times_gmi,
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)
     cmap = plt.get_cmap('coolwarm')
-    clevs = np.linspace(-1, 1, 13)
-    mb = ax2.contourf(lng_gmi, lat_gmi, r_V10Mo3,
+    mb = ax2.contourf(lng_gmip, lat_gmi, r_V10Mo3,
         np.linspace(-1, 1, 9), cmap=cmap, extend='neither', 
         transform=ccrs.PlateCarree(), zorder=1)
     # r(V10M, O3) significance 
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_V10Mo3, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_V10Mo3, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # O3 gradient (stippling where grad(O3) > 0)
@@ -1506,109 +1535,11 @@ def fig9(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml, times_gmi,
         'fig9.pdf', dpi=600)
     return
 
-def figS1(lat_gmi, lng_gmi,  o3_gmi, o3_transport_gmi, lat_jet_ml): 
-    """Figure S1 of Kerr et al. (2020). (a) Mean O3 from the transport-only 
-    simulation. (b) Difference in mean O3 between the control simulation 
-    (Figure 1a) and transport-only simulation (Figure S1a). Scatter points and 
-    vertical bars are identical in (a-b) and show the mean latitude of the 
-    eddy-driven jet and its variability. 
-
-    Parameters
-    ----------
-    lat_gmi : numpy.ndarray
-        GMI CTM latitude coordinates, units of degrees north, [lat,]
-    lng_gmi : numpy.ndarray
-        GMI CTM longitude coordinates, units of degrees east, [lng,]
-    o3_gmi : numpy.ndarray     
-        Daily afternoon surface-level O3 from the GMI CTM, units of ppbv, 
-        [time, lat, lng]  
-    o3_transport_gmi : numpy.ndarray     
-        Daily afternoon surface-level O3 from the transport-only simulation of 
-        the GMI CTM, units of ppbv, [time, lat, lng]          
-    lat_jet_ml : numpy.ndarray
-        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
-        in the Northern Hemisphere mid-latitudes, units of degrees north, 
-        [time, lng]
-
-    Returns
-    -------
-    None    
-    """
-    import numpy as np
-    import matplotlib as mpl
-    mpl.rcParams['hatch.linewidth'] = 0.3     
-    import matplotlib.pyplot as plt
-    import cartopy.crs as ccrs
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-    # For wrapping around the Prime Meridian
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.        
-    fig = plt.figure(figsize=(9,5))
-    ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-        projection=ccrs.PlateCarree(central_longitude=0.))
-    ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
-        projection=ccrs.PlateCarree(central_longitude=0.))
-    ax1.set_title('(a) $\mathregular{O_{3}}$', fontsize=16, x=0.02, ha='left')    
-    ax2.set_title('(b) $\mathregular{\delta}$ $\mathregular{O_{3}}$', 
-        fontsize=16, x=0.02, ha='left')    
-    for ax in [ax1, ax2]:
-        ax.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
-        ax.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
-            lat_gmi.min()+1, lat_gmi.max()-5])
-        ax.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
-        lng_formatter = LongitudeFormatter()
-        ax.xaxis.set_major_formatter(lng_formatter)         
-        ax.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
-        lat_formatter = LatitudeFormatter()
-        ax.yaxis.set_major_formatter(lat_formatter)
-        skiplng = 6
-        ax.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
-            yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
-            markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
-            transform=ccrs.PlateCarree())
-    ax1.get_xaxis().set_ticklabels([])        
-    cmap = plt.get_cmap('OrRd')    
-    # Plot mean O3/variability transport-only simulations and (control-transport-only) 
-    # percentage change
-    mb1 = ax1.contourf(lng_gmi, lat_gmi, np.mean(o3_transport_gmi, axis=0), 
-        np.linspace(10, 60, 11), cmap=cmap, extend='both',
-        transform=ccrs.PlateCarree(), zorder=1)
-    csthick = ax1.contour(lng_gmi, lat_gmi, np.nanstd(o3_transport_gmi, axis=0), [10.], 
-        colors='k', linewidths=1.5, transform=ccrs.PlateCarree(), zorder=15)
-    csmedium = ax1.contour(lng_gmi, lat_gmi, np.nanstd(o3_transport_gmi, axis=0), [8.], 
-        colors='k', linestyles='--', linewidths=0.75, 
-        transform=ccrs.PlateCarree(), zorder=15)
-    # Negative values imply decreases in transport-only simulation!
-    pc = np.nanmean((o3_transport_gmi-o3_gmi), axis=0)
-    mb2 = ax2.contourf(lng_gmi, lat_gmi, pc, np.linspace(-2, 2, 9), 
-        cmap=plt.get_cmap('coolwarm'), extend='both', transform=ccrs.PlateCarree(), 
-        zorder=1)
-    # Add colorbars
-    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
-    colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
-        ax1.get_position().y0, 0.02, (ax1.get_position().y1-
-        ax1.get_position().y0)])
-    colorbar = plt.colorbar(mb1, colorbar_axes, orientation='vertical', 
-        ticks=np.linspace(10, 60, 6), extend='both')
-    colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[ppbv]', fontsize=16, labelpad=16)
-    ax1.outline_patch.set_zorder(20)
-    colorbar_axes = plt.gcf().add_axes([ax2.get_position().x1+0.03, 
-        ax2.get_position().y0, 0.02, (ax2.get_position().y1-
-        ax2.get_position().y0)])
-    colorbar = plt.colorbar(mb2, colorbar_axes, orientation='vertical', extend='max')
-    colorbar.ax.tick_params(labelsize=12)
-    colorbar.set_label('[ppbv]', labelpad=8, fontsize=16)
-    ax2.outline_patch.set_zorder(20)
-    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'figS1.pdf', dpi=600)    
-    return
-
-def figS2(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
+def figS1(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
     significance_r_t2mo3, significance_r_qv2mo3, 
     significance_r_t2mo3_transport, significance_r_qv2mo3_transport,
     lat_jet_ml): 
-    """Figure S2 of Kerr et al. (2020). (a) The slope of the ordinary least 
+    """Figure S1 of Kerr et al. (2020). (a) The slope of the ordinary least 
     squares (OLS) regression of O3 versus temperature, dO3/dT. Hatching denotes 
     regions where the correlation between O3 and temperature is insignificant,
     determined using moving block bootstrap resampling to estimate the 95% 
@@ -1670,9 +1601,22 @@ def figS2(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    do3dq, lng_gmip = add_cyclic_point(do3dq, coord=lng_gmi)
+    do3dq_transport, lng_gmip = add_cyclic_point(do3dq_transport, coord=lng_gmi)    
+    significance_r_qv2mo3_transport, lng_gmip = add_cyclic_point(
+         significance_r_qv2mo3_transport, coord=lng_gmi)        
+    significance_r_qv2mo3, lng_gmip = add_cyclic_point(significance_r_qv2mo3, 
+        coord=lng_gmi)    
+    do3dt2m, lng_gmip = add_cyclic_point(do3dt2m, coord=lng_gmi)
+    do3dt2m_transport, lng_gmip = add_cyclic_point(do3dt2m_transport, 
+        coord=lng_gmi)
+    significance_r_t2mo3_transport, lng_gmip = add_cyclic_point(
+        significance_r_t2mo3_transport, coord=lng_gmi)    
+    significance_r_t2mo3, lng_gmip = add_cyclic_point(significance_r_t2mo3, 
+        coord=lng_gmi)    
     fig = plt.figure(figsize=(16,7.5))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     clevs = np.linspace(-3, 3, 9)
     clevs_diff = np.linspace(-1, 1, 9)
     ax1 = plt.subplot2grid((3,4), (0,0), colspan=2,
@@ -1719,41 +1663,41 @@ def figS2(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
     # Control dO3/dT
     ax1.set_title('(a) Control dO$_{\mathregular{3}}$/dT '+
         '[ppbv K$^{\mathregular{-1}}$]', fontsize=16, x=0.02, ha='left')    
-    mb = ax1.contourf(lng_gmi, lat_gmi, do3dt2m, clevs, 
+    mb = ax1.contourf(lng_gmip, lat_gmi, do3dt2m, clevs, 
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_t2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree(), zorder=2)
     # Transport-only dO3/dT
     ax2.set_title('(c) Transport-only dO$_{\mathregular{3}}$/dT '+
         '[ppbv K$^{\mathregular{-1}}$]', fontsize=16, x=0.02, ha='left')    
-    mb = ax2.contourf(lng_gmi, lat_gmi, do3dt2m_transport, clevs, 
+    mb = ax2.contourf(lng_gmip, lat_gmi, do3dt2m_transport, clevs, 
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_t2mo3_transport, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_t2mo3_transport, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree())
     # Difference in dO3/dT
     ax3.set_title('(e) = (a)$\mathregular{-}$(c) '+
         '[ppbv K$^{\mathregular{-1}}$]', fontsize=16, x=0.02, ha='left')    
-    mb_diff = ax3.contourf(lng_gmi, lat_gmi, (do3dt2m-do3dt2m_transport), 
+    mb_diff = ax3.contourf(lng_gmip, lat_gmi, (do3dt2m-do3dt2m_transport), 
         clevs_diff, cmap=cmap, extend='both', transform=ccrs.PlateCarree(), 
         zorder=1)
     # Control dO3/dq
     ax4.set_title(r'(b) Control dO$_{\mathregular{3}}$/dq '+
         '[ppbv kg g$^{\mathregular{-1}}$]', fontsize=16, x=0.02, ha='left')
-    mb = ax4.contourf(lng_gmi, lat_gmi, do3dq, clevs, 
+    mb = ax4.contourf(lng_gmip, lat_gmi, do3dq, clevs, 
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
-    ax4.contourf(lng_gmi, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
+    ax4.contourf(lng_gmip, lat_gmi, significance_r_qv2mo3, hatches=['//////'], 
         colors='none', transform=ccrs.PlateCarree())
     # Transport-only dO3/dq
     ax5.set_title(r'(d) Transport-only dO$_{\mathregular{3}}$/dq '+
         '[ppbv kg g$^{\mathregular{-1}}$]', fontsize=16, x=0.02, ha='left')
-    mb = ax5.contourf(lng_gmi, lat_gmi, do3dq_transport, clevs, 
+    mb = ax5.contourf(lng_gmip, lat_gmi, do3dq_transport, clevs, 
         cmap=cmap, extend='both', transform=ccrs.PlateCarree(), zorder=1)
-    ax5.contourf(lng_gmi, lat_gmi, significance_r_qv2mo3_transport, 
+    ax5.contourf(lng_gmip, lat_gmi, significance_r_qv2mo3_transport, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree())
     # Difference in dO3/dT
     ax6.set_title('(f) = (b)$\mathregular{-}$(d) '+
         '[ppbv kg g$^{\mathregular{-1}}$]', fontsize=16, x=0.02, ha='left')    
-    mb_diff = ax6.contourf(lng_gmi, lat_gmi, (do3dq-do3dq_transport), 
+    mb_diff = ax6.contourf(lng_gmip, lat_gmi, (do3dq-do3dq_transport), 
         clevs_diff, cmap=cmap, extend='both', transform=ccrs.PlateCarree(), 
         zorder=1)
     # Add colorbars
@@ -1771,8 +1715,109 @@ def figS2(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
         ticks=clevs_diff[::2], extend='both', extendfrac='auto')
     colorbar.ax.tick_params(labelsize=12)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-        'figS2.pdf', dpi=600)
+        'figS1.pdf', dpi=600)
     return
+
+def figS2(lat_gmi, lng_gmi,  o3_gmi, o3_transport_gmi, lat_jet_ml): 
+    """Figure S2 of Kerr et al. (2020). (a) Mean O3 from the transport-only 
+    simulation. (b) Difference in mean O3 between the control simulation 
+    (Figure 1a) and transport-only simulation (Figure S1a). Scatter points and 
+    vertical bars are identical in (a-b) and show the mean latitude of the 
+    eddy-driven jet and its variability. 
+
+    Parameters
+    ----------
+    lat_gmi : numpy.ndarray
+        GMI CTM latitude coordinates, units of degrees north, [lat,]
+    lng_gmi : numpy.ndarray
+        GMI CTM longitude coordinates, units of degrees east, [lng,]
+    o3_gmi : numpy.ndarray     
+        Daily afternoon surface-level O3 from the GMI CTM, units of ppbv, 
+        [time, lat, lng]  
+    o3_transport_gmi : numpy.ndarray     
+        Daily afternoon surface-level O3 from the transport-only simulation of 
+        the GMI CTM, units of ppbv, [time, lat, lng]          
+    lat_jet_ml : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in the Northern Hemisphere mid-latitudes, units of degrees north, 
+        [time, lng]
+
+    Returns
+    -------
+    None    
+    """
+    import numpy as np
+    import matplotlib as mpl
+    mpl.rcParams['hatch.linewidth'] = 0.3     
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    o3_transport_gmi, lng_gmip = add_cyclic_point(o3_transport_gmi, 
+        coord=lng_gmi)
+    o3_gmi, lng_gmip = add_cyclic_point(o3_gmi, coord=lng_gmi)
+    fig = plt.figure(figsize=(9,5))
+    ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
+        projection=ccrs.PlateCarree(central_longitude=0.))
+    ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
+        projection=ccrs.PlateCarree(central_longitude=0.))
+    ax1.set_title('(a) $\mathregular{O_{3}}$', fontsize=16, x=0.02, ha='left')    
+    ax2.set_title('(b) $\mathregular{\delta}$ $\mathregular{O_{3}}$', 
+        fontsize=16, x=0.02, ha='left')    
+    for ax in [ax1, ax2]:
+        ax.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
+        ax.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
+            lat_gmi.min()+1, lat_gmi.max()-5])
+        ax.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+        lng_formatter = LongitudeFormatter()
+        ax.xaxis.set_major_formatter(lng_formatter)         
+        ax.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+        lat_formatter = LatitudeFormatter()
+        ax.yaxis.set_major_formatter(lat_formatter)
+        skiplng = 6
+        ax.errorbar(lng_gmi[::skiplng], np.nanmean(lat_jet_ml,axis=0)[::skiplng], 
+            yerr=np.nanstd(lat_jet_ml,axis=0)[::skiplng], zorder=10, color='k', 
+            markersize=3, elinewidth=1.25, ecolor='k', fmt='o', 
+            transform=ccrs.PlateCarree())
+    ax1.get_xaxis().set_ticklabels([])        
+    cmap = plt.get_cmap('OrRd')    
+    # Plot mean O3/variability transport-only simulations and (control-transport-only) 
+    # percentage change
+    mb1 = ax1.contourf(lng_gmip, lat_gmi, np.mean(o3_transport_gmi, axis=0), 
+        np.linspace(10, 60, 11), cmap=cmap, extend='both',
+        transform=ccrs.PlateCarree(), zorder=1)
+    csthick = ax1.contour(lng_gmip, lat_gmi, np.nanstd(o3_transport_gmi, axis=0), [10.], 
+        colors='k', linewidths=1.5, transform=ccrs.PlateCarree(), zorder=15)
+    csmedium = ax1.contour(lng_gmip, lat_gmi, np.nanstd(o3_transport_gmi, axis=0), [8.], 
+        colors='k', linestyles='--', linewidths=0.75, 
+        transform=ccrs.PlateCarree(), zorder=15)
+    # Negative values imply decreases in transport-only simulation!
+    pc = np.nanmean((o3_transport_gmi-o3_gmi), axis=0)
+    mb2 = ax2.contourf(lng_gmip, lat_gmi, pc, np.linspace(-2, 2, 9), 
+        cmap=plt.get_cmap('coolwarm'), extend='both', transform=ccrs.PlateCarree(), 
+        zorder=1)
+    # Add colorbars
+    plt.gcf().subplots_adjust(left=0.05, right=0.86, hspace=0.3)    
+    colorbar_axes = plt.gcf().add_axes([ax1.get_position().x1+0.03, 
+        ax1.get_position().y0, 0.02, (ax1.get_position().y1-
+        ax1.get_position().y0)])
+    colorbar = plt.colorbar(mb1, colorbar_axes, orientation='vertical', 
+        ticks=np.linspace(10, 60, 6), extend='both')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label('[ppbv]', fontsize=16, labelpad=16)
+    ax1.outline_patch.set_zorder(20)
+    colorbar_axes = plt.gcf().add_axes([ax2.get_position().x1+0.03, 
+        ax2.get_position().y0, 0.02, (ax2.get_position().y1-
+        ax2.get_position().y0)])
+    colorbar = plt.colorbar(mb2, colorbar_axes, orientation='vertical', extend='max')
+    colorbar.ax.tick_params(labelsize=12)
+    colorbar.set_label('[ppbv]', labelpad=8, fontsize=16)
+    ax2.outline_patch.set_zorder(20)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'figS2.pdf', dpi=600)    
+    return
+
 
 def figS3(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
     lat_jet_ml, significance_r_o3jetdist, significance_r_t2mjetdist, 
@@ -1825,13 +1870,25 @@ def figS3(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter 
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    r_o3jetdist, lng_gmip = add_cyclic_point(r_o3jetdist, 
+        coord=lng_gmi)
+    r_t2mjetdist, lng_gmip = add_cyclic_point(r_t2mjetdist, 
+        coord=lng_gmi)    
+    r_qv2mjetdist, lng_gmip = add_cyclic_point(r_qv2mjetdist, 
+        coord=lng_gmi)        
+    significance_r_o3jetdist, lng_gmip = add_cyclic_point(
+        significance_r_o3jetdist, coord=lng_gmi)    
+    significance_r_t2mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_t2mjetdist, coord=lng_gmi) 
+    significance_r_qv2mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_qv2mjetdist, coord=lng_gmi)        
     # Load ocean shapefiles
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,7.7))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     # r(O3, jet lat - lat)
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -1843,10 +1900,10 @@ def figS3(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, r_o3jetdist, np.linspace(-1,1,9), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, r_o3jetdist, np.linspace(-1,1,9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(O3, jet lat - lat)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_o3jetdist, 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_o3jetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
@@ -1866,10 +1923,10 @@ def figS3(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    mb = ax2.contourf(lng_gmi, lat_gmi, r_o3jetdist,
+    mb = ax2.contourf(lng_gmip, lat_gmi, r_o3jetdist,
         np.linspace(-1,1,9), cmap=cmap, extend='neither', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_t2mjetdist, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_t2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
@@ -1889,10 +1946,10 @@ def figS3(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist,
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    mb = ax3.contourf(lng_gmi, lat_gmi, r_qv2mjetdist,
+    mb = ax3.contourf(lng_gmip, lat_gmi, r_qv2mjetdist,
         np.linspace(-1,1,9), cmap=cmap, extend='neither', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax3.contourf(lng_gmi, lat_gmi, significance_r_qv2mjetdist, 
+    ax3.contourf(lng_gmip, lat_gmi, significance_r_qv2mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     ax3.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
@@ -1988,9 +2045,21 @@ def figS4(lat_gmi, lng_gmi, pblh_merra, U10M, WIND10M, lat_jet_ml, times_gmi,
     eqjet_lat, eqjet_lat_var, pwjet_lat, pwjet_lat_var, pwjet_WIND10M, eqjet_WIND10M = \
         globalo3_calculate.segregate_field_bylat(WIND10M, lng_gmi, lat_jet_ml, 
         times_gmi)
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    pwjet_pblh, lng_gmip = add_cyclic_point(pwjet_pblh, coord=lng_gmi)
+    eqjet_pblh, lng_gmip = add_cyclic_point(eqjet_pblh, coord=lng_gmi)
+    pwjet_U10M, lng_gmip = add_cyclic_point(pwjet_U10M, coord=lng_gmi)
+    eqjet_U10M, lng_gmip = add_cyclic_point(eqjet_U10M, coord=lng_gmi)
+    pwjet_WIND10M, lng_gmip = add_cyclic_point(pwjet_WIND10M, coord=lng_gmi)
+    eqjet_WIND10M, lng_gmip = add_cyclic_point(eqjet_WIND10M, coord=lng_gmi)    
+    significance_r_pblhjetdist, lng_gmip = add_cyclic_point(
+        significance_r_pblhjetdist, coord=lng_gmi)      
+    significance_r_U10Mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_U10Mjetdist, coord=lng_gmi)      
+    significance_r_WIND10Mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_WIND10Mjetdist, coord=lng_gmi)          
     fig = plt.figure(figsize=(9,7.7))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     # PBLH(PW - EW) 
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -2008,11 +2077,11 @@ def figS4(lat_gmi, lng_gmi, pblh_merra, U10M, WIND10M, lat_jet_ml, times_gmi,
     lat_formatter = LatitudeFormatter()    
     ax1.yaxis.set_major_formatter(lat_formatter)
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, (pwjet_pblh-eqjet_pblh), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, (pwjet_pblh-eqjet_pblh), 
         np.linspace(-300,300,7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(PBLH, jetlat)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_pblhjetdist, 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_pblhjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     # Add colorbar
@@ -2041,10 +2110,10 @@ def figS4(lat_gmi, lng_gmi, pblh_merra, U10M, WIND10M, lat_jet_ml, times_gmi,
     ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax2.yaxis.set_major_formatter(lat_formatter)    
-    mb = ax2.contourf(lng_gmi, lat_gmi, (pwjet_U10M-eqjet_U10M), 
+    mb = ax2.contourf(lng_gmip, lat_gmi, (pwjet_U10M-eqjet_U10M), 
         np.linspace(-4, 4, 9), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_U10Mjetdist, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_U10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     colorbar_axes = plt.gcf().add_axes([ax2.get_position().x1+0.03, 
@@ -2071,10 +2140,10 @@ def figS4(lat_gmi, lng_gmi, pblh_merra, U10M, WIND10M, lat_jet_ml, times_gmi,
     ax3.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
     lat_formatter = LatitudeFormatter()    
     ax3.yaxis.set_major_formatter(lat_formatter)    
-    mb = ax3.contourf(lng_gmi, lat_gmi, (pwjet_WIND10M-eqjet_WIND10M), 
+    mb = ax3.contourf(lng_gmip, lat_gmi, (pwjet_WIND10M-eqjet_WIND10M), 
         np.linspace(-3,3,7), cmap=cmap, extend='both', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax3.contourf(lng_gmi, lat_gmi, significance_r_WIND10Mjetdist, 
+    ax3.contourf(lng_gmip, lat_gmi, significance_r_WIND10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     colorbar_axes = plt.gcf().add_axes([ax3.get_position().x1+0.03, 
@@ -2146,10 +2215,20 @@ def figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     mpl.rcParams['hatch.linewidth']=0.3  
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter    
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    from cartopy.util import add_cyclic_point
+    # For wrapping around the Prime Meridian
+    r_pblhjetdist, lng_gmip = add_cyclic_point(r_pblhjetdist, coord=lng_gmi)
+    r_U10Mjetdist, lng_gmip = add_cyclic_point(r_U10Mjetdist, coord=lng_gmi)
+    r_WIND10Mjetdist, lng_gmip = add_cyclic_point(r_WIND10Mjetdist, 
+        coord=lng_gmi)
+    significance_r_pblhjetdist, lng_gmip = add_cyclic_point(
+        significance_r_pblhjetdist, coord=lng_gmi)
+    significance_r_U10Mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_U10Mjetdist, coord=lng_gmi)
+    significance_r_WIND10Mjetdist, lng_gmip = add_cyclic_point(
+        significance_r_WIND10Mjetdist, coord=lng_gmi)
     fig = plt.figure(figsize=(9,7.7))
-    if lng_gmi[-1] != 360:
-        lng_gmi[-1] = 360.    
     # r(PBLH, jet lat - lat)
     ax1 = plt.subplot2grid((3,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -2160,10 +2239,10 @@ def figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
     cmap = plt.get_cmap('coolwarm')
-    mb = ax1.contourf(lng_gmi, lat_gmi, r_pblhjetdist, np.linspace(-1,1,9), 
+    mb = ax1.contourf(lng_gmip, lat_gmi, r_pblhjetdist, np.linspace(-1,1,9), 
         cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
     # Hatching for significance of r(PBLH, jetlat)
-    ax1.contourf(lng_gmi, lat_gmi, significance_r_pblhjetdist, 
+    ax1.contourf(lng_gmip, lat_gmi, significance_r_pblhjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
@@ -2184,10 +2263,10 @@ def figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    mb = ax2.contourf(lng_gmi, lat_gmi, r_U10Mjetdist,
+    mb = ax2.contourf(lng_gmip, lat_gmi, r_U10Mjetdist,
         np.linspace(-1, 1, 9), cmap=cmap, extend='neither', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax2.contourf(lng_gmi, lat_gmi, significance_r_U10Mjetdist, 
+    ax2.contourf(lng_gmip, lat_gmi, significance_r_U10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
@@ -2198,7 +2277,7 @@ def figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     lat_formatter = LatitudeFormatter()
     ax2.yaxis.set_major_formatter(lat_formatter)      
     ax2.outline_patch.set_zorder(20)
-    # r(V10M, jet lat - lat)
+    # r(WIND10M, jet lat - lat)
     ax3 = plt.subplot2grid((3,2), (2,0), colspan=2,
             projection=ccrs.PlateCarree(central_longitude=0.))
     ax3.set_title(r'(c) r($\overline{\mathregular{U}_\mathregular{10}}$, '+
@@ -2208,10 +2287,10 @@ def figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     ax3.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
     ax3.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
         lat_gmi.min()+1, lat_gmi.max()-5])
-    mb = ax3.contourf(lng_gmi, lat_gmi, r_V10Mjetdist,
+    mb = ax3.contourf(lng_gmip, lat_gmi, r_WIND10Mjetdist,
         np.linspace(-1, 1, 9), cmap=cmap, extend='neither', 
         transform=ccrs.PlateCarree(), zorder=1)
-    ax3.contourf(lng_gmi, lat_gmi, significance_r_WIND10Mjetdist, 
+    ax3.contourf(lng_gmip, lat_gmi, significance_r_WIND10Mjetdist, 
         hatches=['//////'], colors='none', transform=ccrs.PlateCarree(), 
         zorder=2)
     ax3.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
@@ -2260,6 +2339,7 @@ except NameError:
     o3_gmi_china = nc.Dataset(datapath+'gmi_O3control_JJA2016-2017.nc')['O3_control'][:].data
     lat_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lat'][:].data
     lng_gmi = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['lng'][:].data
+    lng_gmi[-1] = 358.75
     mtime = nc.Dataset(datapath+'gmi_O3control_JJA2008-2010.nc')['time'][:].data
     o3_transport_gmi = nc.Dataset(datapath+'gmi_O3transportonly_JJA2008-2010.nc')['O3_transportonly'][:].data
     t2m_merra = nc.Dataset(datapath+'merra2_t2m_JJA2008-2010.nc')['T2M'][:].data
@@ -2288,6 +2368,8 @@ except NameError:
     significance_r_pblhjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_PBLH.nc')['sig_JETDIST_merra2_PBLH'][:].data 
     significance_r_U10Mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_U10M.nc')['sig_JETDIST_merra2_U10M'][:].data 
     significance_r_V10Mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_V10M.nc')['sig_JETDIST_merra2_V10M'][:].data 
+    significance_r_WIND10Mjetdist = nc.Dataset(datapath+'sig_merra2_jetdist_merra2_WIND10M.nc')['sig_JETDIST_merra2_WIND10M'][:].data 
+    significance_r_V10Mo3 = nc.Dataset(datapath+'sig_merra2_V10M_gmi_O3control.nc')['sig_V10M_O3_control'][:].data 
     # Calculate dO3/dT, dO3/dq, r(T, O3), and r(q, O3) from model
     do3dt2m = globalo3_calculate.calculate_do3dt(t2m_merra, o3_gmi, lat_gmi, 
         lng_gmi)
@@ -2305,11 +2387,7 @@ except NameError:
         lng_gmi)
     r_qv2mo3_transport = globalo3_calculate.calculate_r(qv2m_merra, 
         o3_transport_gmi, lat_gmi, lng_gmi) 
-    # Calculate V-O3 correlation and significance
-    r_V10Mo3 = globalo3_calculate.calculate_r(V10M, o3_gmi, lat_gmi, lng_gmi)
-    significance_r_V10Mo3 = \
-        globalo3_calculate.calculate_r_significance(V10M, o3_gmi, r_V10Mo3, 
-        lat_gmi, lng_gmi)
+    r_V10Mo3 = globalo3_calculate.calculate_r(V10M, o3_gmi, lat_gmi, lng_gmi) 
     # Regions where O3-temperature or O3-humidity correlation was 
     # significant in HindcastMR2 but not significant in 
     # HindcastMR2-DiurnalAvgTQ
@@ -2347,9 +2425,6 @@ except NameError:
     m_pblhjetdist, r_pblhjetdist, diff_pblhjetdist = \
         globalo3_calculate.calculate_fieldjet_relationship(pblh_merra, 
         lat_gmi, lng_gmi, lat_jet_ml, lng_gmi)
-    significance_r_WIND10Mjetdist = \
-        globalo3_calculate.calculate_r_significance(diff_WIND10Mjetdist, 
-        np.hypot(U10M, V10M), r_WIND10Mjetdist, lat_gmi, lng_gmi)
     times_gmi = pd.date_range(start='01/01/2008', end='12/31/2010')
     where_months = np.where(np.in1d(times_gmi.month, 
         np.array([6, 7, 8]))==True)[0]
@@ -2418,7 +2493,7 @@ except NameError:
                         
 # # FIGURE 1: Mean O3 and NOx
 # fig1(lat_gmi, lng_gmi, o3_gmi, lat_jet_ml)
-# FIGURE 2: model performance
+# # FIGURE 2: model performance
 # fig2(lat_gmi, lng_gmi, r_aqs, r_naps, r_emep, r_china)
 # # FIGURE 3: r(T, O3) and r(q, O3)
 # fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3, 
@@ -2447,16 +2522,16 @@ except NameError:
 # # FIGURE 9: difference in V10 on days with a poleward versus equatorward jet, 
 # # r(O3, V10M) and O3 latitudinal gradient. 
 # fig9(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml, times_gmi, 
-#     significance_r_V10Mjetdist)
+#     significance_r_V10Mjetdist, r_V10Mo3, significance_r_V10Mo3)
 # # FIGURE S1: Mean O3 from transport-only simulation and difference in O3 
 # # from control and transport-only simulations
-# figS1(lat_gmi, lng_gmi,  o3_gmi, o3_transport_gmi, lat_jet_ml)
-# # FIGURE S2; dO3/dT and dO3/dq from control and transport-only simulations
-# # and differences
-# figS2(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
+# figS1(lat_gmi, lng_gmi, do3dt2m, do3dt2m_transport, do3dq, do3dq_transport,
 #     significance_r_t2mo3, significance_r_qv2mo3, 
 #     significance_r_t2mo3_transport, significance_r_qv2mo3_transport,
 #     lat_jet_ml)
+# # FIGURE S2; dO3/dT and dO3/dq from control and transport-only simulations
+# # and differences
+# figS2(lat_gmi, lng_gmi,  o3_gmi, o3_transport_gmi, lat_jet_ml)
 # # FIGURE S3: r(O3, jet distance), r(T, jet distance), and r(q, jet distance)
 # figS3(lat_gmi, lng_gmi, r_o3jetdist, r_t2mjetdist, r_qv2mjetdist, 
 #     lat_jet_ml, significance_r_o3jetdist, significance_r_t2mjetdist, 
@@ -2466,11 +2541,11 @@ except NameError:
 # figS4(lat_gmi, lng_gmi, pblh_merra, U10M, WIND10M, lat_jet_ml, times_gmi, 
 #     significance_r_pblhjetdist, significance_r_U10Mjetdist, 
 #     significance_r_WIND10Mjetdist)
-# FIGURE S5: r(PBLH, jet distance), r(U10, jet distance), and r(WIND10, jet
-# distance)
-figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist, 
-    lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
-    significance_r_WIND10Mjetdist)
+# # FIGURE S5: r(PBLH, jet distance), r(U10, jet distance), and r(WIND10, jet
+# # distance)
+# figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist, 
+#     lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
+#     significance_r_WIND10Mjetdist)
 
 # # # # Reviewer comments 
 # import numpy as np
@@ -2621,8 +2696,6 @@ figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
 #         globalo3_calculate.calculate_r_significance(qv_merra_thisyr, 
 #         o3_gmi_thisyr, r_qvo3_thisyr, lat_gmi, lng_gmi)        
 #     fig = plt.figure(figsize=(9,5))
-#     if lng_gmi[-1] != 360:
-#         lng_gmi[-1] = 360.    
 #     # r(T, O3)
 #     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
 #         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -2758,8 +2831,6 @@ figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     #     globalo3_calculate.calculate_r_significance(qv2m_merra_thisyr, 
     #     o3_merra_thisyr, r_qvo3_thisyr, lat_gmi, lng_gmi)        
     # fig = plt.figure(figsize=(9,5))
-    # if lng_gmi[-1] != 360:
-    #     lng_gmi[-1] = 360.    
     # # r(T, O3)
     # ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
     #     projection=ccrs.PlateCarree(central_longitude=0.))
@@ -2925,3 +2996,5 @@ figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
 #    lat_gmi, lng_gmi)
 # do3dq_sma = globalo3_calculate.calculate_do3dt_sma(qv2m_merra, o3_gmi, 
 #    lat_gmi, lng_gmi)
+            
+            
