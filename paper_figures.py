@@ -301,7 +301,6 @@ def fig3(lat_gmi, lng_gmi, r_t2mo3, r_qv2mo3, significance_r_t2mo3,
     ocean50m = cfeature.NaturalEarthFeature('physical', 'ocean', '50m',
         edgecolor=None, facecolor='lightgrey')
     fig = plt.figure(figsize=(9,5))
-    # For wrapping around the Prime Meridian
     # r(T, O3)
     ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
         projection=ccrs.PlateCarree(central_longitude=0.))
@@ -2320,6 +2319,147 @@ def figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist,
     colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16)
     plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
         'figS5.pdf', dpi=600)
+    return
+
+def figS6(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml): 
+    """Regionally-averaged O3 from the control simulation versus 
+    regionally-averaged V10M. Regional averaging is conducted for the regions 
+    listed in each subplots' title and shown in Figure 3 but only within 
+    +/- 5 degrees of the mean position of the jet. Red dashed lines represent 
+    the OLS regression, and the inset text indicates its slope. 
+
+    Parameters
+    ----------
+    lat_gmi : numpy.ndarray
+        GMI CTM latitude coordinates, units of degrees north, [lat,]
+    lng_gmi : numpy.ndarray
+        GMI CTM longitude coordinates, units of degrees east, [lng,]
+    o3_gmi : numpy.ndarray     
+        Daily afternoon surface-level O3 from the GMI CTM, units of ppbv, 
+        [time, lat, lng]  
+    V10M : numpy.ndarray 
+        Daily mean 10-meter meridional wind (V10), units of m s-1, [time, lat, 
+        lng]        
+    lat_jet_ml : numpy.ndarray
+        The latitude of the jet, identifed by maximum zonal (U) wind at 500 hPa
+        in the Northern Hemisphere mid-latitudes, units of degrees north, 
+        [time, lng]
+    Returns
+    -------
+    None    
+    """
+    import sys
+    sys.path.append('/Users/ghkerr/phd/GMI/')
+    from geo_idx import geo_idx       
+    fig = plt.figure(figsize=(8,8))
+    ax1 = plt.subplot2grid((2,2),(0,0))
+    ax2 = plt.subplot2grid((2,2),(0,1))
+    ax3 = plt.subplot2grid((2,2),(1,0))
+    ax4 = plt.subplot2grid((2,2),(1,1))
+    # Eastern North America
+    ena_left = geo_idx(260., lng_gmi)
+    ena_right = geo_idx(295., lng_gmi)
+    lat_jet_ena = lat_jet_ml[:, ena_left:ena_right+1]
+    o3_ena, lat_ena, lng_ena = globalo3_calculate.find_grid_in_bb(
+        o3_gmi, lat_gmi, lng_gmi, 260., 295., lat_jet_ena.mean()-5, 
+        lat_jet_ena.mean()+5)
+    V10M_ena, lat_ena, lng_ena = globalo3_calculate.find_grid_in_bb(
+        V10M, lat_gmi, lng_gmi, 260., 295., lat_jet_ena.mean()-5, 
+        lat_jet_ena.mean()+5)
+    o3_ena = np.nanmean(o3_ena, axis=tuple((1,2)))
+    V10M_ena = np.nanmean(V10M_ena, axis=tuple((1,2)))
+    ax2.plot(V10M_ena, o3_ena, 'ko', markersize=3)
+    trend = np.polyfit(V10M_ena, o3_ena, 1)
+    trendpoly = np.poly1d(trend) 
+    ax2.plot(np.sort(V10M_ena), np.sort(trendpoly(V10M_ena)), lw=2, 
+        color='#e41a1c', ls='--', zorder=10)
+    ax2.set_title('(b) Eastern North America', fontsize=16, loc='left')
+    ax2.text(0.55, 0.03, '%.2f ppbv s m$^{-1}$'%trendpoly[1], ha='left',
+        transform=ax2.transAxes, fontsize=12, zorder=20)
+    # Western North America
+    wna_left = geo_idx(235., lng_gmi)
+    wna_right = geo_idx(260., lng_gmi)
+    lat_jet_wna = lat_jet_ml[:, wna_left:wna_right+1]
+    o3_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
+        o3_gmi, lat_gmi, lng_gmi, 235., 260., lat_jet_wna.mean()-5, 
+        lat_jet_wna.mean()-5)
+    V10M_wna, lat_wna, lng_wna = globalo3_calculate.find_grid_in_bb(
+        V10M, lat_gmi, lng_gmi, 235., 260., lat_jet_wna.mean()-5, 
+        lat_jet_wna.mean()-5)
+    o3_wna = np.nanmean(o3_wna, axis=tuple((1,2)))
+    V10M_wna = np.nanmean(V10M_wna, axis=tuple((1,2)))
+    ax1.plot(V10M_wna, o3_wna, 'ko', markersize=3)
+    trend = np.polyfit(V10M_wna, o3_wna, 1)
+    trendpoly = np.poly1d(trend) 
+    ax1.plot(np.sort(V10M_wna), np.sort(trendpoly(V10M_wna)), lw=2, 
+        color='#e41a1c', ls='--', zorder=10)
+    ax1.set_title('(a) Western North America', fontsize=16, loc='left')
+    ax1.text(0.55, 0.03, '%.2f ppbv s m$^{-1}$'%trendpoly[1], ha='left',
+        transform=ax1.transAxes, fontsize=12, zorder=20)
+    # Europe (since Europe crosses the prime meridian, finding grid cells over
+    # 0 deg longitude will not work, so find European domain in two steps)
+    eu1_left = geo_idx(350., lng_gmi)
+    eu1_right = geo_idx(360., lng_gmi)
+    lat_jet_eu1 = lat_jet_ml[:, eu1_left:eu1_right+1]
+    eu2_left = geo_idx(0., lng_gmi)
+    eu2_right = geo_idx(30., lng_gmi)
+    lat_jet_eu2 = lat_jet_ml[:, eu2_left:eu2_right+1]
+    lat_jet_eu = np.hstack([lat_jet_eu1, lat_jet_eu2])
+    o3_eu1, lat_eu1, lng_eu1 = globalo3_calculate.find_grid_in_bb(
+        o3_gmi, lat_gmi, lng_gmi, 350., 360., lat_jet_eu.mean()-5, 
+        lat_jet_eu.mean()+5)
+    o3_eu2, lat_eu2, lng_eu2 = globalo3_calculate.find_grid_in_bb(
+        o3_gmi, lat_gmi, lng_gmi, 0., 30., lat_jet_eu.mean()-5, 
+        lat_jet_eu.mean()+5) 
+    o3_eu = np.dstack([o3_eu1, o3_eu2])
+    V10M_eu1, lat_eu1, lng_eu1 = globalo3_calculate.find_grid_in_bb(
+        V10M, lat_gmi, lng_gmi, 350., 360., lat_jet_eu.mean()-5, 
+        lat_jet_eu.mean()+5)
+    V10M_eu2, lat_eu2, lng_eu2 = globalo3_calculate.find_grid_in_bb(
+        V10M, lat_gmi, lng_gmi, 0., 30., lat_jet_eu.mean()-5, 
+        lat_jet_eu.mean()+5) 
+    V10M_eu = np.dstack([V10M_eu1, V10M_eu2])
+    # Add back in _eu1? (mostly ocean, though)
+    o3_eu = np.nanmean(o3_eu2, axis=tuple((1,2)))
+    V10M_eu = np.nanmean(V10M_eu2, axis=tuple((1,2)))
+    ax3.plot(V10M_eu, o3_eu, 'ko', markersize=3)
+    trend = np.polyfit(V10M_eu, o3_eu, 1)
+    trendpoly = np.poly1d(trend) 
+    ax3.plot(np.sort(V10M_eu), np.sort(trendpoly(V10M_eu)), lw=2, 
+        color='#e41a1c', ls='--', zorder=10)
+    ax3.set_title('(c) Europe', fontsize=16, loc='left')
+    ax3.text(0.55, 0.03, '%.2f ppbv s m$^{-1}$'%trendpoly[1], ha='left',
+        transform=ax3.transAxes, fontsize=12, zorder=20)
+    # Asia
+    asia_left = geo_idx(90., lng_gmi)
+    asia_right = geo_idx(125., lng_gmi)
+    lat_jet_asia = lat_jet_ml[:, asia_left:asia_right+1]
+    o3_asia, lat_asia, lng_asia = globalo3_calculate.find_grid_in_bb(
+        o3_gmi, lat_gmi, lng_gmi, 90., 125., lat_jet_asia.mean()-5, 
+        lat_jet_asia.mean()+5) 
+    V10M_asia, lat_asia, lng_asia = globalo3_calculate.find_grid_in_bb(
+        V10M, lat_gmi, lng_gmi, 90., 125., lat_jet_asia.mean()-5, 
+        lat_jet_asia.mean()+5) 
+    o3_asia = np.nanmean(o3_asia, axis=tuple((1,2)))
+    V10M_asia = np.nanmean(V10M_asia, axis=tuple((1,2)))
+    ax4.plot(V10M_asia, o3_asia, 'ko', markersize=3)
+    trend = np.polyfit(V10M_asia, o3_asia, 1)
+    trendpoly = np.poly1d(trend) 
+    ax4.plot(np.sort(V10M_asia), np.sort(trendpoly(V10M_asia)), lw=2, 
+        color='#e41a1c', ls='--', zorder=10)
+    ax4.set_title('(d) China', fontsize=16, loc='left')
+    ax4.text(0.55, 0.03, '%.2f ppbv s m$^{-1}$'%trendpoly[1], ha='left',
+        transform=ax4.transAxes, fontsize=12, zorder=20)
+    # Aesthetics 
+    for ax in [ax1, ax2, ax3, ax4]:
+        ax.set_xlim([-3, 3])
+        ax.set_ylim([22, 50])
+    for ax in [ax1, ax3]:
+        ax.set_ylabel('O$_{3}$ [ppbv]', fontsize=16)
+    for ax in [ax3, ax4]:
+        ax.set_xlabel('V$_{10}$ [m s$^{-1}$]', fontsize=16)
+    plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+        'figS6.pdf', dpi=600)
     return 
 
 import numpy as np
@@ -2546,8 +2686,10 @@ except NameError:
 # figS5(lat_gmi, lng_gmi, r_pblhjetdist, r_U10Mjetdist, r_WIND10Mjetdist, 
 #     lat_jet_ml, significance_r_pblhjetdist, significance_r_U10Mjetdist, 
 #     significance_r_WIND10Mjetdist)
+# # FIGURE S6: Scatterplots of O3 versus V10M
+# figS6(lat_gmi, lng_gmi, o3_gmi, V10M, lat_jet_ml)
 
-# # # # Reviewer comments 
+# # # # # Reviewer comments 
 # import numpy as np
 # import matplotlib as mpl
 # mpl.rcParams['hatch.linewidth']=0.3     
@@ -2556,7 +2698,6 @@ except NameError:
 # import cartopy.feature as cfeature
 # import matplotlib.patches as mpatches
 # from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter   
-# import numpy as np
 # import sys
 # sys.path.append('/Users/ghkerr/phd/globalo3/')
 # import globalo3_open, globalo3_calculate, observations_open
@@ -2810,80 +2951,84 @@ except NameError:
 # ax2.legend(ncol=4, loc=3, bbox_to_anchor=[0, -0.5])
 # plt.subplots_adjust(bottom=0.2, top=0.95)
 # plt.savefig('/Users/ghkerr/Desktop/timeseries_rO3T_rO3q.png', dpi=350)
-
 # years_thisyr = [x.year for x in times_gmi]
-# # Separate by years             
 # years_thisyr = np.array(years_thisyr)
+# months_thismonth = [x.month for x in times_gmi]
+# months_thismonth = np.array(months_thismonth)
+# # Separate by years             
 # for year in np.arange(2008, 2011, 1):
-#     thisyr = np.where(years_thisyr==year)[0]
-#     t2m_merra_thisyr = t2m_merra[thisyr]
-#     qv2m_merra_thisyr = qv2m_merra[thisyr]
-#     o3_merra_thisyr = o3_gmi[thisyr]
-    # # Plot yearly maps of r(O3, T) and r(O3, q)
-    # r_to3_thisyr = globalo3_calculate.calculate_r(t2m_merra_thisyr, 
-    #     o3_merra_thisyr, lat_gmi, lng_gmi)
-    # r_qvo3_thisyr = globalo3_calculate.calculate_r(qv2m_merra_thisyr, 
-    #     o3_merra_thisyr, lat_gmi, lng_gmi)
-    # significance_r_to3_thisyr = \
-    #     globalo3_calculate.calculate_r_significance(t2m_merra_thisyr, 
-    #     o3_merra_thisyr, r_to3_thisyr, lat_gmi, lng_gmi)
-    # significance_r_qvo3_thisyr = \
-    #     globalo3_calculate.calculate_r_significance(qv2m_merra_thisyr, 
-    #     o3_merra_thisyr, r_qvo3_thisyr, lat_gmi, lng_gmi)        
-    # fig = plt.figure(figsize=(9,5))
-    # # r(T, O3)
-    # ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
-    #     projection=ccrs.PlateCarree(central_longitude=0.))
-    # ax1.set_title(r'(a) %d r(T, O$_{\mathregular{3}}$)'%year, fontsize=16, 
-    #     x=0.02, ha='left')    
-    # ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
-    # ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
-    #     lat_gmi.min()+1, lat_gmi.max()-5])
-    # ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
-    # lng_formatter = LongitudeFormatter()
-    # ax1.xaxis.set_major_formatter(lng_formatter)         
-    # ax1.get_xaxis().set_ticklabels([])    
-    # ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
-    # lat_formatter = LatitudeFormatter()    
-    # ax1.yaxis.set_major_formatter(lat_formatter)    
-    # cmap = plt.get_cmap('coolwarm')
-    # mb = ax1.contourf(lng_gmi, lat_gmi, r_to3_thisyr, np.linspace(-1, 1, 9), 
-    #     cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
-    # ax1.contourf(lng_gmi, lat_gmi, significance_r_to3_thisyr, hatches=['//////'], 
-    #     colors='none', transform=ccrs.PlateCarree(), zorder=2)
-    # # r(q, O3)
-    # ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
-    #     projection=ccrs.PlateCarree(central_longitude=0.))
-    # ax2.set_title(r'(b) %d r(q, O$_{\mathregular{3}}$)'%year, fontsize=16, 
-    #     x=0.02, ha='left')
-    # ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
-    # ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
-    #     lat_gmi.min()+1, lat_gmi.max()-5])
-    # ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
-    # lng_formatter = LongitudeFormatter()
-    # ax2.xaxis.set_major_formatter(lng_formatter)          
-    # ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
-    # lat_formatter = LatitudeFormatter()    
-    # ax2.yaxis.set_major_formatter(lat_formatter)
-    # mb = ax2.contourf(lng_gmi, lat_gmi, r_qvo3_thisyr, np.linspace(-1,1,9), 
-    #     cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
-    # ax2.contourf(lng_gmi, lat_gmi, significance_r_qvo3_thisyr, 
-    #     hatches=['//////'], colors='none', transform=ccrs.PlateCarree())
-    # ax2.outline_patch.set_zorder(20)      
-    # # Add colorbar
-    # plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
-    # colorbar_axes = plt.gcf().add_axes([
-    #     ax1.get_position().x1+0.03, # Left
-    #     (ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0, # Bottom 
-    #     0.02, # Width
-    #     ((ax1.get_position().y1-ax1.get_position().y0)/2.+ax1.get_position().y0)-
-    #     ((ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0)])
-    # colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
-    #     ticks=np.linspace(-1, 1, 9), extend='neither')
-    # colorbar.ax.tick_params(labelsize=12)
-    # colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16, labelpad=11)
-    # plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
-    #     'map_rto3_rqvo3_%d_noregion.jpg'%year, dpi=300)
+#     for month in [6, 7, 8]:
+#         thisyrmonth = np.where((years_thisyr==year) &
+#                                 (months_thismonth==month))[0]
+#         t2m_merra_thisyr = t2m_merra[thisyrmonth]
+#         qv2m_merra_thisyr = qv2m_merra[thisyrmonth]
+#         o3_merra_thisyr = o3_transport_gmi[thisyrmonth]
+#         # Plot yearly maps of r(O3, T) and r(O3, q)
+#         r_to3_thisyr = globalo3_calculate.calculate_r(t2m_merra_thisyr, 
+#             o3_merra_thisyr, lat_gmi, lng_gmi)
+#         r_qvo3_thisyr = globalo3_calculate.calculate_r(qv2m_merra_thisyr, 
+#             o3_merra_thisyr, lat_gmi, lng_gmi)
+#         significance_r_to3_thisyr = \
+#             globalo3_calculate.calculate_r_significance(t2m_merra_thisyr, 
+#             o3_merra_thisyr, r_to3_thisyr, lat_gmi, lng_gmi)
+#         significance_r_qvo3_thisyr = \
+#             globalo3_calculate.calculate_r_significance(qv2m_merra_thisyr, 
+#             o3_merra_thisyr, r_qvo3_thisyr, lat_gmi, lng_gmi)        
+#         fig = plt.figure(figsize=(9,5))
+#         # r(T, O3)
+#         lng_gmi[-1]=360.
+#         ax1 = plt.subplot2grid((2,2), (0,0), colspan=2,
+#             projection=ccrs.PlateCarree(central_longitude=0.))
+#         ax1.set_title(r'(a) %d-%d r(T, O$_{\mathregular{3}}$)'%(month,year), 
+#             fontsize=16, x=0.02, ha='left')    
+#         ax1.coastlines(lw=0.25, resolution='50m', color='k', zorder=3)
+#         ax1.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5])
+#         ax1.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+#         lng_formatter = LongitudeFormatter()
+#         ax1.xaxis.set_major_formatter(lng_formatter)         
+#         ax1.get_xaxis().set_ticklabels([])    
+#         ax1.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+#         lat_formatter = LatitudeFormatter()    
+#         ax1.yaxis.set_major_formatter(lat_formatter)    
+#         cmap = plt.get_cmap('coolwarm')
+#         mb = ax1.contourf(lng_gmi, lat_gmi, r_to3_thisyr, np.linspace(-1, 1, 9), 
+#             cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
+#         ax1.contourf(lng_gmi, lat_gmi, significance_r_to3_thisyr, hatches=['//////'], 
+#             colors='none', transform=ccrs.PlateCarree(), zorder=2)
+#         # r(q, O3)
+#         ax2 = plt.subplot2grid((2,2), (1,0), colspan=2,
+#             projection=ccrs.PlateCarree(central_longitude=0.))
+#         ax2.set_title(r'(b) %d-%d r(q, O$_{\mathregular{3}}$)'%(month,year), 
+#             fontsize=16, x=0.02, ha='left')
+#         ax2.coastlines(lw=0.25, resolution='50m', color='k', zorder=4)
+#         ax2.set_extent([lng_gmi.min()-180., lng_gmi.max()-180., 
+#             lat_gmi.min()+1, lat_gmi.max()-5])
+#         ax2.set_xticks([-180, -120, -60, 0, 60, 120, 180], crs=ccrs.PlateCarree())
+#         lng_formatter = LongitudeFormatter()
+#         ax2.xaxis.set_major_formatter(lng_formatter)          
+#         ax2.set_yticks([0, 20, 40, 60, 80], crs=ccrs.PlateCarree())
+#         lat_formatter = LatitudeFormatter()    
+#         ax2.yaxis.set_major_formatter(lat_formatter)
+#         mb = ax2.contourf(lng_gmi, lat_gmi, r_qvo3_thisyr, np.linspace(-1,1,9), 
+#             cmap=cmap, extend='neither', transform=ccrs.PlateCarree(), zorder=1)
+#         ax2.contourf(lng_gmi, lat_gmi, significance_r_qvo3_thisyr, 
+#             hatches=['//////'], colors='none', transform=ccrs.PlateCarree())
+#         ax2.outline_patch.set_zorder(20)      
+#         # Add colorbar
+#         plt.gcf().subplots_adjust(left=0.02, right=0.86, hspace=0.3)
+#         colorbar_axes = plt.gcf().add_axes([
+#             ax1.get_position().x1+0.03, # Left
+#             (ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0, # Bottom 
+#             0.02, # Width
+#             ((ax1.get_position().y1-ax1.get_position().y0)/2.+ax1.get_position().y0)-
+#             ((ax2.get_position().y1-ax2.get_position().y0)/2.+ax2.get_position().y0)])
+#         colorbar = plt.colorbar(mb, colorbar_axes, orientation='vertical', 
+#             ticks=np.linspace(-1, 1, 9), extend='neither')
+#         colorbar.ax.tick_params(labelsize=12)
+#         colorbar.set_label('[$\mathregular{\cdot}$]', fontsize=16, labelpad=11)
+#         plt.savefig('/Users/ghkerr/phd/globalo3/figs/'+
+#             'map_rto3transport_rqvo3transport_%d%d_noregion.jpg'%(month,year), dpi=300)
 
 # years_thisyr = [x.year for x in times_gmi]
 # months_thismonth = [x.month for x in times_gmi]
@@ -2997,4 +3142,4 @@ except NameError:
 # do3dq_sma = globalo3_calculate.calculate_do3dt_sma(qv2m_merra, o3_gmi, 
 #    lat_gmi, lng_gmi)
             
-            
+
